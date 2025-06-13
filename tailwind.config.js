@@ -18,6 +18,20 @@ module.exports = {
     },
     extend: {
       colors: {
+        // Brand colors using #6400fe as the primary accent
+        brand: {
+          50: '#f5f3ff',
+          100: '#ede9fe',
+          200: '#ddd6fe',
+          300: '#c4b5fd',
+          400: '#a78bfa',
+          500: '#8b5cf6',
+          600: '#6400fe', // Main brand color
+          700: '#5b21b6',
+          800: '#4c1d95',
+          900: '#3c1361',
+          950: '#2e1065',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

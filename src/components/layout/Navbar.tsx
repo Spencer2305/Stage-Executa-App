@@ -1,66 +1,142 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/state/userStore";
 import { 
-  Bot, 
   Menu, 
   X, 
   User,
   LogOut,
   Settings,
-  CreditCard
+  CreditCard,
+  Plus,
+  Bot,
+  BarChart3,
+  Cog,
+  LayoutDashboard
 } from "lucide-react";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
   const { user, logout } = useUserStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
+  
+  // Check if we're on dashboard pages
+  const isDashboard = pathname?.startsWith('/dashboard');
+
+  // Helper function to get active state classes
+  const getLinkClasses = (href: string) => {
+    const isActive = pathname === href;
+    return `text-sm font-medium transition-colors ${
+      isActive 
+        ? 'text-brand-600 border-b-2 border-brand-600 pb-1' 
+        : 'text-muted-foreground hover:text-brand-600 hover:bg-transparent'
+    }`;
+  };
+
+  // Helper function for mobile link classes
+  const getMobileLinkClasses = (href: string) => {
+    const isActive = pathname === href;
+    return `block py-2 text-sm font-medium transition-colors ${
+      isActive 
+        ? 'text-brand-600 bg-brand-50 px-3 rounded-md' 
+        : 'text-muted-foreground hover:text-brand-600 hover:bg-transparent'
+    }`;
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="rounded-lg bg-primary p-2">
-            <Bot className="h-5 w-5 text-primary-foreground" />
+        <Link href="/" className="flex items-center">
+          <div className="relative h-12 w-[200px]">
+            <Image
+              src="/Executa-logo.png"
+              alt="Executa Logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
-          <span className="text-xl font-bold">Executa</span>
         </Link>
 
         {/* Navigation Links - Desktop */}
         <div className="hidden md:flex items-center space-x-6">
-          <Link 
-            href="#features" 
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Features
-          </Link>
-          <Link 
-            href="#pricing" 
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Pricing
-          </Link>
-          <Link 
-            href="#docs" 
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Docs
-          </Link>
+          {isDashboard ? (
+            // Dashboard Navigation
+            <>
+              <Link 
+                href="/dashboard" 
+                className={getLinkClasses('/dashboard')}
+              >
+                Dashboard
+              </Link>
+              <Link 
+                href="/dashboard/create" 
+                className={getLinkClasses('/dashboard/create')}
+              >
+                Create an AI
+              </Link>
+              <Link 
+                href="/dashboard/my-ais" 
+                className={getLinkClasses('/dashboard/my-ais')}
+              >
+                My AIs
+              </Link>
+              <Link 
+                href="/dashboard/analytics" 
+                className={getLinkClasses('/dashboard/analytics')}
+              >
+                Analytics
+              </Link>
+              <Link 
+                href="/dashboard/settings" 
+                className={getLinkClasses('/dashboard/settings')}
+              >
+                Settings
+              </Link>
+            </>
+          ) : (
+            // Marketing Navigation
+            <>
+              <Link 
+                href="#features" 
+                className="text-sm font-medium text-muted-foreground hover:text-brand-600 hover:bg-transparent transition-colors"
+              >
+                Features
+              </Link>
+              <Link 
+                href="#pricing" 
+                className="text-sm font-medium text-muted-foreground hover:text-brand-600 hover:bg-transparent transition-colors"
+              >
+                Pricing
+              </Link>
+              <Link 
+                href="/docs" 
+                className="text-sm font-medium text-muted-foreground hover:text-brand-600 hover:bg-transparent transition-colors"
+              >
+                Docs
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Auth Buttons - Desktop */}
         <div className="hidden md:flex items-center space-x-2">
           {user ? (
             <div className="flex items-center space-x-2">
-              <Button asChild variant="ghost">
-                <Link href="/dashboard">Dashboard</Link>
-              </Button>
+              {!isDashboard && (
+                <Button asChild variant="ghost">
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
+              )}
               <div className="relative group">
-                <Button variant="ghost" size="sm" className="rounded-full">
-                  <User className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="rounded-full hover:bg-transparent">
+                  <User className="h-4 w-4 text-muted-foreground hover:text-brand-600 hover:bg-transparent transition-colors" />
                 </Button>
                 <div className="absolute right-0 top-full mt-2 w-48 bg-popover border rounded-md shadow-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                   <div className="p-2 space-y-1">
@@ -115,34 +191,73 @@ export default function Navbar() {
         <div className="md:hidden border-t bg-background">
           <div className="container py-4 space-y-4">
             <div className="space-y-2">
-              <Link 
-                href="#features" 
-                className="block py-2 text-sm font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Features
-              </Link>
-              <Link 
-                href="#pricing" 
-                className="block py-2 text-sm font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Pricing
-              </Link>
-              <Link 
-                href="#docs" 
-                className="block py-2 text-sm font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Docs
-              </Link>
+              {isDashboard ? (
+                // Dashboard Mobile Navigation
+                <>
+                  <Link 
+                    href="/dashboard/create" 
+                    className="block py-2 text-sm font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Create an AI
+                  </Link>
+                  <Link 
+                    href="/dashboard/my-ais" 
+                    className="block py-2 text-sm font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    My AIs
+                  </Link>
+                  <Link 
+                    href="/dashboard/analytics" 
+                    className="block py-2 text-sm font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Analytics
+                  </Link>
+                  <Link 
+                    href="/dashboard/settings" 
+                    className="block py-2 text-sm font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Settings
+                  </Link>
+                </>
+              ) : (
+                // Marketing Mobile Navigation
+                <>
+                  <Link 
+                    href="#features" 
+                    className="block py-2 text-sm font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Features
+                  </Link>
+                  <Link 
+                    href="#pricing" 
+                    className="block py-2 text-sm font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Pricing
+                  </Link>
+                  <Link 
+                    href="/docs" 
+                    className="block py-2 text-sm font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Docs
+                  </Link>
+                </>
+              )}
             </div>
             <div className="pt-4 border-t space-y-2">
               {user ? (
                 <>
-                  <Button asChild variant="ghost" className="w-full justify-start">
-                    <Link href="/dashboard">Dashboard</Link>
-                  </Button>
+                  {!isDashboard && (
+                    <Button asChild variant="ghost" className="w-full justify-start">
+                      <Link href="/dashboard">Dashboard</Link>
+                    </Button>
+                  )}
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start text-destructive hover:text-destructive"

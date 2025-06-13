@@ -229,9 +229,11 @@ export default function DashboardPage() {
                               {model.status === 'training' && (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                               )}
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4 mr-1" />
-                                View
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link href={`/dashboard/assistants/${model.id}`}>
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  View
+                                </Link>
                               </Button>
                             </div>
                           </div>
@@ -258,13 +260,17 @@ export default function DashboardPage() {
                     Create New Assistant
                   </Button>
                 </CreateAssistantDialog>
-                <Button variant="outline" className="w-full justify-start">
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  View Analytics
+                <Button asChild variant="outline" className="w-full justify-start">
+                  <Link href="/dashboard/analytics">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    View Analytics
+                  </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Zap className="mr-2 h-4 w-4" />
-                  API Documentation
+                <Button asChild variant="outline" className="w-full justify-start">
+                  <Link href="/docs#api-reference">
+                    <Zap className="mr-2 h-4 w-4" />
+                    API Documentation
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

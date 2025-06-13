@@ -1,39 +1,31 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useModelStore } from "@/state/modelStore";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { 
   Upload, 
-  File, 
-  X, 
-  ChevronRight, 
-  ChevronLeft, 
-  Mail, 
+  FileText, 
+  Globe, 
+  Bot, 
+  Settings, 
+  ArrowRight,
+  ArrowLeft,
+  X,
   Check,
-  Bot,
-  FileText,
+  Mail,
   Loader2
 } from "lucide-react";
 
-interface CreateAssistantDialogProps {
-  children: React.ReactNode;
-}
-
-export default function CreateAssistantDialog({ children }: CreateAssistantDialogProps) {
+export default function CreateAIPage() {
+  const router = useRouter();
   const { createModel, isLoading } = useModelStore();
-  const [open, setOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
@@ -127,18 +119,11 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
         },
       });
 
-      // Reset form and close dialog
-      setFormData({
-        name: "",
-        description: "",
-        files: [],
-        gmailIntegration: false,
-      });
-      setCurrentStep(1);
-      setErrors({});
-      setOpen(false);
+      toast.success("AI Assistant created successfully!");
+      router.push("/dashboard");
     } catch (error) {
       setErrors({ submit: "Failed to create assistant. Please try again." });
+      toast.error("Failed to create assistant");
     }
   };
 
@@ -149,7 +134,7 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
   };
 
   const getStepColor = (step: number) => {
-    if (step < currentStep) return "bg-brand-800 text-white";
+    if (step < currentStep) return "bg-primary text-primary-foreground";
     if (step === currentStep) return "bg-primary text-primary-foreground";
     return "bg-muted text-muted-foreground";
   };
@@ -333,73 +318,94 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Create AI Assistant</DialogTitle>
-          <DialogDescription>
-            Set up your new AI assistant in just a few steps.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Create Your AI Assistant</h1>
+            <p className="text-muted-foreground">
+              Build a custom AI assistant trained on your knowledge base
+            </p>
+          </div>
 
-        {/* Step Indicator */}
-        <div className="flex items-center justify-between mb-6">
-          {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
-            <div key={step} className="flex items-center flex-1">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${getStepColor(step)}`}
-              >
-                {getStepIcon(step)}
-              </div>
-              {step < totalSteps && (
-                <div
-                  className={`flex-1 h-px mx-2 ${
-                    step < currentStep ? "bg-brand-800" : "bg-muted"
-                  }`}
-                />
-              )}
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
+                <div key={step} className="flex items-center flex-1">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${getStepColor(step)}`}
+                  >
+                    {getStepIcon(step)}
+                  </div>
+                  {step < totalSteps && (
+                    <div
+                      className={`flex-1 h-px mx-2 ${
+                        step < currentStep ? "bg-primary" : "bg-muted"
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
 
-        {/* Step Content */}
-        <div className="min-h-[300px]">
-          {renderStep()}
-        </div>
+          {/* Step Content */}
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                {currentStep === 1 && "Basic Information"}
+                {currentStep === 2 && "Upload Knowledge Base"}
+                {currentStep === 3 && "Integrations"}
+                {currentStep === 4 && "Review & Create"}
+              </CardTitle>
+              <CardDescription>
+                {currentStep === 1 && "Give your AI assistant a name and description"}
+                {currentStep === 2 && "Upload documents that your AI will learn from"}
+                {currentStep === 3 && "Connect external data sources (optional)"}
+                {currentStep === 4 && "Review your settings and create the assistant"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="min-h-[300px]">
+                {renderStep()}
+              </div>
 
-        {/* Navigation */}
-        <div className="flex justify-between pt-4">
-          <Button
-            variant="outline"
-            onClick={prevStep}
-            disabled={currentStep === 1}
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Previous
-          </Button>
+              {/* Navigation */}
+              <div className="flex justify-between pt-4">
+                <Button
+                  variant="outline"
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Previous
+                </Button>
 
-          {currentStep < totalSteps ? (
-            <Button onClick={nextStep}>
-              Next
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Assistant"
-              )}
-            </Button>
-          )}
+                {currentStep < totalSteps ? (
+                  <Button onClick={nextStep}>
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button onClick={handleSubmit} disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Assistant"
+                    )}
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 } 
