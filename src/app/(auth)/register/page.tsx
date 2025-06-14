@@ -14,7 +14,7 @@ import { Bot, Eye, EyeOff, Loader2, Mail, Lock, User } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { setUser, setLoading } = useUserStore();
+  const { register } = useUserStore();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -61,34 +61,18 @@ export default function RegisterPage() {
     }
 
     setIsSubmitting(true);
-    setLoading(true);
 
     try {
-      // For now, create a mock user since we don't have the backend API yet
-      const mockUser = {
-        id: `user_${Date.now()}`,
-        email: formData.email,
-        name: formData.name,
-        plan: 'free' as const,
-      };
-
-      // Store auth token (mock)
-      localStorage.setItem('executa-auth-token', `mock_token_${Date.now()}`);
-      
-      // Set user in store
-      setUser(mockUser);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await register(formData.email, formData.password, formData.name);
       
       // Redirect to dashboard
       router.push("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
-      setErrors({ submit: "Registration failed. Please try again." });
+      const errorMessage = error.response?.data?.error || "Registration failed. Please try again.";
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
-      setLoading(false);
     }
   };
 

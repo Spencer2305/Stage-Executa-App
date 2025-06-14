@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User authentication and account management
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  passwordHash      String   @map("password_hash")
+  name              String
+  avatar            String?
+  plan              Plan     @default(FREE)
+  emailVerified     Boolean  @default(false) @map("email_verified")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // AWS Resources
+  s3Bucket          String?  @map("s3_bucket")
+  stripeCustomerId  String?  @map("stripe_customer_id")
+  
+  // Relations
+  assistants        Assistant[]
+  knowledgeFiles    KnowledgeFile[]
+  sessions          Session[]
+  
+  @@map("users")
+}
+
+// User sessions for JWT management
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  userAgent String?  @map("user_agent")
+  ipAddress String?  @map("ip_address")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+// Knowledge files uploaded by users
+model KnowledgeFile {
+  id               String               @id @default(cuid())
+  userId           String               @map("user_id")
+  originalName     String               @map("original_name")
+  s3Key            String               @map("s3_key")
+  fileType         String               @map("file_type")
+  fileSize         BigInt               @map("file_size")
+  status           KnowledgeFileStatus  @default(UPLOADED)
+  openaiFileId     String?              @map("openai_file_id")
+  vectorStoreId    String?              @map("vector_store_id")
+  processedAt      DateTime?            @map("processed_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  metadata         Json?                // Store file metadata like page count, word count, etc.
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assistantFiles AssistantFile[]
+  
+  @@map("knowledge_files")
+}
+
+// AI Assistants created by users
+model Assistant {
+  id                String            @id @default(cuid())
+  userId            String            @map("user_id")
+  name              String
+  description       String?
+  status            AssistantStatus   @default(DRAFT)
+  openaiAssistantId String?           @map("openai_assistant_id")
+  vectorStoreId     String?           @map("vector_store_id")
+  apiKey            String?           @map("api_key")
+  embedUrl          String?           @map("embed_url")
+  totalSessions     Int               @default(0) @map("total_sessions")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  lastTrained       DateTime?         @map("last_trained")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files AssistantFile[]
+  
+  @@map("assistants")
+}
+
+// Junction table linking assistants to knowledge files
+model AssistantFile {
+  assistantId String @map("assistant_id")
+  fileId      String @map("file_id")
+  
+  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  file      KnowledgeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  
+  @@id([assistantId, fileId])
+  @@map("assistant_files")
+}
+
+// Enums
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum KnowledgeFileStatus {
+  UPLOADED
+  PROCESSING
+  PROCESSED
+  ERROR
+}
+
+enum AssistantStatus {
+  DRAFT
+  TRAINING
+  ACTIVE
+  ERROR
+}

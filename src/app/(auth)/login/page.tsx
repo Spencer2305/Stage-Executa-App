@@ -13,7 +13,7 @@ import { Bot, Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser, setLoading } = useUserStore();
+  const { login } = useUserStore();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -47,38 +47,18 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true);
-    setLoading(true);
 
     try {
-      // Mock login - in production, this would call the actual API
-      if (formData.email === "test@test.com" && formData.password === "Password123") {
-        const mockUser = {
-          id: "user_1",
-          email: formData.email,
-          name: "Test User",
-          plan: 'free' as const,
-        };
-
-        // Store auth token (mock)
-        localStorage.setItem('executa-auth-token', `mock_token_${Date.now()}`);
-        
-        // Set user in store
-        setUser(mockUser);
-        
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Redirect to dashboard
-        router.push("/dashboard");
-      } else {
-        setErrors({ submit: "Invalid email or password" });
-      }
-    } catch (error) {
+      await login(formData.email, formData.password);
+      
+      // Redirect to dashboard
+      router.push("/dashboard");
+    } catch (error: any) {
       console.error("Login error:", error);
-      setErrors({ submit: "Login failed. Please try again." });
+      const errorMessage = error.response?.data?.error || "Login failed. Please try again.";
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
-      setLoading(false);
     }
   };
 
@@ -176,12 +156,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Demo Credentials */}
-              <div className="p-3 text-sm bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-950/20 dark:border-blue-800">
-                <p className="font-medium text-blue-900 dark:text-blue-100">Demo Credentials:</p>
-                <p className="text-blue-700 dark:text-blue-200">Email: test@test.com</p>
-                <p className="text-blue-700 dark:text-blue-200">Password: Password123</p>
-              </div>
+
 
               {/* Submit Button */}
               <Button type="submit" className="w-full" disabled={isSubmitting}>
