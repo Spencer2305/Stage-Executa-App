@@ -17,6 +17,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        'kanit': ['Kanit', 'sans-serif'],
+        'heebo': ['Heebo', 'sans-serif'],
+      },
       colors: {
         // Brand colors using #6400fe as the primary accent
         brand: {
