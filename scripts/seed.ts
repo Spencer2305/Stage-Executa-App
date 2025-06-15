@@ -39,7 +39,7 @@ async function main() {
     // Create a processing session
     const processingSession = await prisma.fileProcessingSession.create({
       data: {
-        accountId: testAccount.accountId,
+        accountId: testAccount.id, // Use internal ID, not accountId field
         userId: testUser.id,
         sessionName: 'Initial Knowledge Base Setup',
         status: 'COMPLETED',
@@ -56,7 +56,7 @@ async function main() {
     // Create test assistant
     const testAssistant = await prisma.assistant.create({
       data: {
-        accountId: testAccount.accountId,
+        accountId: testAccount.id, // Use internal ID, not accountId field
         name: 'Test AI Assistant',
         description: 'A test AI assistant for demo purposes',
         instructions: 'You are a helpful AI assistant. Answer questions based on the provided knowledge base.',

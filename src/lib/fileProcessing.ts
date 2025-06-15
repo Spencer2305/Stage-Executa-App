@@ -6,6 +6,8 @@ import {
   ensureAccountBucket 
 } from './aws';
 import OpenAI from 'openai';
+import pdfParse from 'pdf-parse';
+import mammoth from 'mammoth';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -137,21 +139,35 @@ export async function extractTextFromFile(
         };
       
       case 'application/pdf':
-        // For now, we'll use a placeholder for PDF extraction
-        // In production, you'd use a library like pdf-parse or pdf2pic
-        return {
-          text: `[PDF Document: ${fileName}]\n\nThis is a placeholder for PDF text extraction. In production, implement PDF parsing here.`,
-          pageCount: 1
-        };
+        try {
+          const pdfData = await pdfParse(buffer);
+          return {
+            text: pdfData.text,
+            pageCount: pdfData.numpages || 1
+          };
+        } catch (error) {
+          console.error(`Error parsing PDF ${fileName}:`, error);
+          return {
+            text: `[PDF Document: ${fileName}]\n\nError extracting text from PDF: ${error}`,
+            pageCount: 1
+          };
+        }
       
       case 'application/msword':
       case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-        // For now, we'll use a placeholder for Word document extraction
-        // In production, you'd use a library like mammoth or docx-parser
-        return {
-          text: `[Word Document: ${fileName}]\n\nThis is a placeholder for Word document text extraction. In production, implement DOCX parsing here.`,
-          pageCount: 1
-        };
+        try {
+          const result = await mammoth.extractRawText({ buffer });
+          return {
+            text: result.value,
+            pageCount: Math.ceil(result.value.length / 3000) || 1 // Rough estimate: ~3000 chars per page
+          };
+        } catch (error) {
+          console.error(`Error parsing Word document ${fileName}:`, error);
+          return {
+            text: `[Word Document: ${fileName}]\n\nError extracting text from document: ${error}`,
+            pageCount: 1
+          };
+        }
       
       default:
         // Try to extract as plain text

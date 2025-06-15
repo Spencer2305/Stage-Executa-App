@@ -51,10 +51,10 @@ export const authApi = {
     }
   },
   
-  register: async (email: string, password: string, name?: string) => {
-    console.log('Making registration request:', { email, name });
+  register: async (email: string, password: string, name: string, organizationName?: string) => {
+    console.log('Making registration request:', { email, name, organizationName });
     try {
-      const response = await api.post('/auth/register', { email, password, name });
+      const response = await api.post('/auth/register', { email, password, name, organizationName });
       console.log('Registration response:', response.data);
       return response.data;
     } catch (error) {
