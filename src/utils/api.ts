@@ -9,11 +9,16 @@ const api = axios.create({
   },
 });
 
-// Add auth token to requests if available
+// Add auth token to requests if available (but not for auth endpoints)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('executa-auth-token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  // Don't add auth token to auth endpoints
+  const isAuthEndpoint = config.url?.includes('/auth/');
+  
+  if (!isAuthEndpoint) {
+    const token = localStorage.getItem('executa-auth-token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -35,13 +40,27 @@ api.interceptors.response.use(
 // Auth API functions
 export const authApi = {
   login: async (email: string, password: string) => {
-    const response = await api.post('/auth/login', { email, password });
-    return response.data;
+    console.log('Making login request:', { email });
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      console.log('Login response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Login API error:', error);
+      throw error;
+    }
   },
   
   register: async (email: string, password: string, name?: string) => {
-    const response = await api.post('/auth/register', { email, password, name });
-    return response.data;
+    console.log('Making registration request:', { email, name });
+    try {
+      const response = await api.post('/auth/register', { email, password, name });
+      console.log('Registration response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Registration API error:', error);
+      throw error;
+    }
   },
   
   logout: async () => {
