@@ -13,25 +13,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Account management for multi-tenant architecture
+model Account {
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique // URL-friendly identifier
+  accountId         String   @unique @map("account_id") // For billing and AWS resource naming
+  plan              Plan     @default(FREE)
+  billingEmail      String?  @map("billing_email")
+  s3BucketName      String?  @map("s3_bucket_name") // Account-specific knowledge bucket
+  openaiOrgId       String?  @map("openai_org_id") // Optional OpenAI organization
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  users             User[]
+  assistants        Assistant[]
+  knowledgeFiles    KnowledgeFile[]
+  fileSessions      FileProcessingSession[]
+  
+  @@map("accounts")
+}
+
 // User authentication and account management
 model User {
   id                String   @id @default(cuid())
+  accountId         String   @map("account_id")
   email             String   @unique
   passwordHash      String   @map("password_hash")
   name              String
   avatar            String?
-  plan              Plan     @default(FREE)
+  role              UserRole @default(MEMBER)
   emailVerified     Boolean  @default(false) @map("email_verified")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
   
-  // AWS Resources
-  s3Bucket          String?  @map("s3_bucket")
-  stripeCustomerId  String?  @map("stripe_customer_id")
-  
   // Relations
-  assistants        Assistant[]
-  knowledgeFiles    KnowledgeFile[]
+  account           Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   sessions          Session[]
   
   @@map("users")
@@ -52,46 +70,99 @@ model Session {
   @@map("sessions")
 }
 
-// Knowledge files uploaded by users
+// File processing sessions to track batch uploads
+model FileProcessingSession {
+  id               String                     @id @default(cuid())
+  accountId        String                     @map("account_id")
+  userId           String                     @map("user_id")
+  sessionName      String?                    @map("session_name")
+  status           FileProcessingSessionStatus @default(PENDING)
+  totalFiles       Int                        @default(0) @map("total_files")
+  processedFiles   Int                        @default(0) @map("processed_files")
+  errorFiles       Int                        @default(0) @map("error_files")
+  startedAt        DateTime?                  @map("started_at")
+  completedAt      DateTime?                  @map("completed_at")
+  createdAt        DateTime                   @default(now()) @map("created_at")
+  
+  // Relations
+  account          Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  files            KnowledgeFile[]
+  
+  @@map("file_processing_sessions")
+}
+
+// Knowledge files uploaded by users (now account-specific)
 model KnowledgeFile {
-  id               String               @id @default(cuid())
-  userId           String               @map("user_id")
-  originalName     String               @map("original_name")
-  s3Key            String               @map("s3_key")
-  fileType         String               @map("file_type")
-  fileSize         BigInt               @map("file_size")
-  status           KnowledgeFileStatus  @default(UPLOADED)
-  openaiFileId     String?              @map("openai_file_id")
-  vectorStoreId    String?              @map("vector_store_id")
-  processedAt      DateTime?            @map("processed_at")
-  createdAt        DateTime             @default(now()) @map("created_at")
-  metadata         Json?                // Store file metadata like page count, word count, etc.
+  id                      String                    @id @default(cuid())
+  accountId               String                    @map("account_id")
+  processingSessionId     String?                   @map("processing_session_id")
+  originalName            String                    @map("original_name")
+  s3Key                   String                    @map("s3_key") // Full S3 path within account bucket
+  s3Bucket                String                    @map("s3_bucket") // Account-specific bucket name
+  fileType                String                    @map("file_type")
+  fileSize                BigInt                    @map("file_size")
+  mimeType                String?                   @map("mime_type")
+  checksum                String?                   // For deduplication
+  status                  KnowledgeFileStatus       @default(UPLOADED)
   
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assistantFiles AssistantFile[]
+  // OpenAI integration
+  openaiFileId            String?                   @map("openai_file_id")
+  vectorStoreId           String?                   @map("vector_store_id")
   
+  // Processing metadata
+  extractedText           String?                   @map("extracted_text") @db.Text
+  textLength              Int?                      @map("text_length")
+  pageCount               Int?                      @map("page_count")
+  processingStartedAt     DateTime?                 @map("processing_started_at")
+  processingCompletedAt   DateTime?                 @map("processing_completed_at")
+  processingError         String?                   @map("processing_error")
+  
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  
+  // Relations
+  account                 Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  processingSession       FileProcessingSession? @relation(fields: [processingSessionId], references: [id])
+  assistantFiles          AssistantFile[]
+  
+  @@index([accountId, status])
+  @@index([s3Key])
+  @@index([checksum])
   @@map("knowledge_files")
 }
 
-// AI Assistants created by users
+// AI Assistants created by users (now account-specific)
 model Assistant {
   id                String            @id @default(cuid())
-  userId            String            @map("user_id")
+  accountId         String            @map("account_id")
   name              String
   description       String?
+  instructions      String?           @db.Text // System instructions for the assistant
   status            AssistantStatus   @default(DRAFT)
+  
+  // OpenAI integration
   openaiAssistantId String?           @map("openai_assistant_id")
   vectorStoreId     String?           @map("vector_store_id")
+  model             String?           @default("gpt-4-turbo") // OpenAI model to use
+  
+  // API access
   apiKey            String?           @map("api_key")
   embedUrl          String?           @map("embed_url")
+  isPublic          Boolean           @default(false) @map("is_public")
+  
+  // Usage tracking
   totalSessions     Int               @default(0) @map("total_sessions")
+  totalMessages     Int               @default(0) @map("total_messages")
+  
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
   lastTrained       DateTime?         @map("last_trained")
   
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  files AssistantFile[]
+  // Relations
+  account           Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  files             AssistantFile[]
   
+  @@index([accountId, status])
   @@map("assistants")
 }
 
@@ -99,6 +170,7 @@ model Assistant {
 model AssistantFile {
   assistantId String @map("assistant_id")
   fileId      String @map("file_id")
+  addedAt     DateTime @default(now()) @map("added_at")
   
   assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
   file      KnowledgeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
@@ -114,11 +186,25 @@ enum Plan {
   ENTERPRISE
 }
 
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum FileProcessingSessionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+}
+
 enum KnowledgeFileStatus {
   UPLOADED
   PROCESSING
   PROCESSED
   ERROR
+  DELETED
 }
 
 enum AssistantStatus {

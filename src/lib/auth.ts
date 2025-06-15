@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
 import { db } from './db';
+import { v4 as uuidv4 } from 'uuid';
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
@@ -9,6 +10,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 export interface JWTPayload {
   userId: string;
   email: string;
+  accountId: string;
   iat?: number;
   exp?: number;
 }
@@ -17,8 +19,14 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  plan: string;
+  role: string;
   emailVerified: boolean;
+  account: {
+    id: string;
+    accountId: string;
+    name: string;
+    plan: string;
+  };
 }
 
 // Password utilities
@@ -61,7 +69,13 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthUse
     // Check if session exists and is valid
     const session = await db.session.findUnique({
       where: { token },
-      include: { user: true }
+      include: { 
+        user: {
+          include: {
+            account: true
+          }
+        }
+      }
     });
 
     if (!session || session.expiresAt < new Date()) {
@@ -72,8 +86,14 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthUse
       id: session.user.id,
       email: session.user.email,
       name: session.user.name,
-      plan: session.user.plan,
-      emailVerified: session.user.emailVerified
+      role: session.user.role,
+      emailVerified: session.user.emailVerified,
+      account: {
+        id: session.user.account.id,
+        accountId: session.user.account.accountId,
+        name: session.user.account.name,
+        plan: session.user.account.plan
+      }
     };
   } catch (error) {
     console.error('Authentication error:', error);
@@ -82,9 +102,14 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthUse
 }
 
 // Create session
-export async function createSession(userId: string, userAgent?: string, ipAddress?: string): Promise<string> {
+export async function createSession(
+  userId: string, 
+  userAgent?: string, 
+  ipAddress?: string
+): Promise<string> {
   const user = await db.user.findUnique({
-    where: { id: userId }
+    where: { id: userId },
+    include: { account: true }
   });
 
   if (!user) {
@@ -93,7 +118,8 @@ export async function createSession(userId: string, userAgent?: string, ipAddres
 
   const token = signToken({
     userId: user.id,
-    email: user.email
+    email: user.email,
+    accountId: user.account.accountId
   });
 
   const expiresAt = new Date();
@@ -117,6 +143,86 @@ export async function deleteSession(token: string): Promise<void> {
   await db.session.deleteMany({
     where: { token }
   });
+}
+
+// Create account and user (for registration)
+export async function createAccountAndUser(
+  email: string,
+  password: string,
+  name: string,
+  organizationName?: string
+): Promise<{ user: AuthUser; token: string }> {
+  // Hash password
+  const passwordHash = await hashPassword(password);
+
+  // Generate account ID
+  const accountId = `acc_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+  const slug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  // Create account and user in a transaction
+  const result = await db.$transaction(async (tx) => {
+    // Create account
+    const account = await tx.account.create({
+      data: {
+        name: organizationName || `${name}'s Organization`,
+        slug: slug,
+        accountId: accountId,
+        plan: 'FREE',
+        billingEmail: email
+      }
+    });
+
+    // Create user
+    const user = await tx.user.create({
+      data: {
+        accountId: account.id,
+        email,
+        passwordHash,
+        name,
+        role: 'OWNER',
+        emailVerified: false
+      },
+      include: {
+        account: true
+      }
+    });
+
+    return { account, user };
+  });
+
+  // Create session token
+  const token = signToken({
+    userId: result.user.id,
+    email: result.user.email,
+    accountId: result.account.accountId
+  });
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+
+  await db.session.create({
+    data: {
+      userId: result.user.id,
+      token,
+      expiresAt
+    }
+  });
+
+  const authUser: AuthUser = {
+    id: result.user.id,
+    email: result.user.email,
+    name: result.user.name,
+    role: result.user.role,
+    emailVerified: result.user.emailVerified,
+    account: {
+      id: result.account.id,
+      accountId: result.account.accountId,
+      name: result.account.name,
+      plan: result.account.plan
+    }
+  };
+
+  return { user: authUser, token };
 }
 
 // Validation utilities

@@ -1,0 +1,148 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { authenticateRequest } from '@/lib/auth';
+import { uploadAndProcessFiles } from '@/lib/fileProcessing';
+import { db } from '@/lib/db';
+import formidable from 'formidable';
+import fs from 'fs';
+import { Readable } from 'stream';
+
+export async function POST(request: NextRequest) {
+  try {
+    // Authenticate user
+    const user = await authenticateRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's account
+    const userAccount = await db.user.findUnique({
+      where: { id: user.id },
+      include: { account: true }
+    });
+
+    if (!userAccount?.account) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
+
+    // Parse multipart form data
+    const formData = await request.formData();
+    const files = formData.getAll('files') as File[];
+    const processingSessionId = formData.get('processingSessionId') as string | null;
+
+    if (!files || files.length === 0) {
+      return NextResponse.json({ error: 'No files provided' }, { status: 400 });
+    }
+
+    // Convert files to processing format
+    const filesToProcess = await Promise.all(
+      files.map(async (file) => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        return {
+          buffer,
+          fileName: file.name,
+          mimeType: file.type || 'application/octet-stream'
+        };
+      })
+    );
+
+    // Process files
+    const result = await uploadAndProcessFiles(
+      userAccount.account.accountId,
+      filesToProcess,
+      processingSessionId || undefined
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('File upload error:', error);
+    return NextResponse.json(
+      { error: 'File upload failed', details: String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // Authenticate user
+    const user = await authenticateRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's account
+    const userAccount = await db.user.findUnique({
+      where: { id: user.id },
+      include: { account: true }
+    });
+
+    if (!userAccount?.account) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
+
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const status = searchParams.get('status') as string | null;
+
+    // Build where clause
+    const whereClause: any = {
+      accountId: userAccount.account.accountId
+    };
+
+    if (status) {
+      whereClause.status = status;
+    }
+
+    // Get files
+    const [files, totalCount] = await Promise.all([
+      db.knowledgeFile.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          originalName: true,
+          fileType: true,
+          fileSize: true,
+          status: true,
+          textLength: true,
+          pageCount: true,
+          createdAt: true,
+          processingCompletedAt: true,
+          processingError: true
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit
+      }),
+      db.knowledgeFile.count({ where: whereClause })
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        files: files.map(file => ({
+          ...file,
+          fileSize: file.fileSize.toString() // Convert BigInt to string for JSON
+        })),
+        pagination: {
+          page,
+          limit,
+          totalCount,
+          totalPages: Math.ceil(totalCount / limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get files error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch files', details: String(error) },
+      { status: 500 }
+    );
+  }
+} 
