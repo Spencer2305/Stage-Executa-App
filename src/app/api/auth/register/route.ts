@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPassword, createSession, validateEmail, validatePassword } from '@/lib/auth';
+import { validateEmail, validatePassword, hashPassword } from '@/lib/auth';
+import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email, password, name } = body;
+    const { email, password, name, organizationName } = await request.json();
 
-    // Validation
+    // Validate required fields
     if (!email || !password || !name) {
       return NextResponse.json(
         { error: 'Email, password, and name are required' },
@@ -15,6 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate email format
     if (!validateEmail(email)) {
       return NextResponse.json(
         { error: 'Invalid email format' },
@@ -22,68 +25,98 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate password strength
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.valid) {
       return NextResponse.json(
-        { error: 'Invalid password', details: passwordValidation.errors },
+        { error: 'Password validation failed', details: passwordValidation.errors },
         { status: 400 }
       );
     }
 
     // Check if user already exists
     const existingUser = await db.user.findUnique({
-      where: { email: email.toLowerCase() }
+      where: { email }
     });
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 409 }
+        { error: 'User already exists' },
+        { status: 400 }
       );
     }
 
+    // Generate unique account ID for new organizations
+    const accountId = `acc_${crypto.randomBytes(8).toString('hex')}`;
+
+    // Create account first
+    const account = await db.account.create({
+      data: {
+        name: organizationName,
+        slug: organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        accountId,
+        plan: 'FREE',
+        billingEmail: email
+      }
+    });
+
     // Hash password
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await bcrypt.hash(password, 12);
 
     // Create user
     const user = await db.user.create({
       data: {
-        email: email.toLowerCase(),
+        email,
+        name,
         passwordHash,
-        name: name.trim(),
-        plan: 'FREE'
+        accountId: account.id,
+        role: 'OWNER'
       }
     });
 
-    // Get user agent and IP
-    const userAgent = request.headers.get('user-agent') || undefined;
-    const forwarded = request.headers.get('x-forwarded-for');
-    const realIp = request.headers.get('x-real-ip');
-    const ipAddress = forwarded ? forwarded.split(',')[0] : realIp || undefined;
+    // Generate JWT token with proper syntax
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        accountId: user.accountId
+      },
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
 
-    // Create session
-    const token = await createSession(user.id, userAgent, ipAddress);
-
-    // Return user data (without password hash)
-    const userData = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      plan: user.plan,
-      emailVerified: user.emailVerified,
-      createdAt: user.createdAt
-    };
+    // Store session
+    await db.session.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      }
+    });
 
     return NextResponse.json({
-      user: userData,
-      token,
-      message: 'User registered successfully'
-    }, { status: 201 });
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          accountId: user.accountId
+        },
+        token,
+        account: {
+          id: account.id,
+          name: account.name,
+          accountId: account.accountId,
+          plan: account.plan
+        }
+      }
+    });
 
-  } catch (error) {
-    console.error('Registration error:', error);
+  } catch (dbError) {
+    console.error('Database error during registration:', dbError);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Database error during registration' },
       { status: 500 }
     );
   }

@@ -2,14 +2,22 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi } from '@/utils/api';
 
+interface Account {
+  id: string;
+  accountId: string;
+  name: string;
+  plan: 'FREE' | 'PRO' | 'ENTERPRISE';
+}
+
 interface User {
   id: string;
   email: string;
   name: string;
   avatar?: string;
-  plan: 'FREE' | 'PRO' | 'ENTERPRISE';
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
   emailVerified: boolean;
   createdAt: Date;
+  account: Account;
 }
 
 interface UserState {
@@ -22,7 +30,7 @@ interface UserState {
   
   // Async actions
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, organizationName?: string) => Promise<void>;
   getCurrentUser: () => Promise<void>;
 }
 
@@ -81,10 +89,10 @@ export const useUserStore = create<UserState>()(
         }
       },
       
-      register: async (email: string, password: string, name: string) => {
+      register: async (email: string, password: string, name: string, organizationName?: string) => {
         set({ isLoading: true });
         try {
-          const response = await authApi.register(email, password, name);
+          const response = await authApi.register(email, password, name, organizationName);
           const { user, token } = response;
           
           // Store token

@@ -3,9 +3,9 @@ export interface Model {
   name: string;
   description?: string;
   status: 'draft' | 'training' | 'active' | 'error';
-  createdAt: Date;
-  updatedAt: Date;
-  lastTrained?: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  lastTrained?: Date | string;
   documents: Document[];
   apiKey?: string;
   embedUrl?: string;
@@ -21,7 +21,7 @@ export interface Document {
   name: string;
   type: 'pdf' | 'txt' | 'docx' | 'gmail' | 'crm';
   size: number;
-  uploadedAt: Date;
+  uploadedAt: Date | string;
   status: 'uploading' | 'processing' | 'completed' | 'error';
   content?: string;
 }
@@ -41,14 +41,14 @@ export interface ModelSession {
   id: string;
   modelId: string;
   messages: ChatMessage[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
+  timestamp: Date | string;
 }
 
