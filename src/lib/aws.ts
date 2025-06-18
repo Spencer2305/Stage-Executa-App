@@ -15,7 +15,23 @@ const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 
 // Generate account-specific bucket name
 export function generateAccountBucketName(accountId: string): string {
-  return `${EXECUTA_APP_PREFIX}-knowledge-${accountId}-${AWS_REGION}`.toLowerCase();
+  // S3 bucket names can only contain lowercase letters, numbers, and hyphens
+  // Must be between 3 and 63 characters, start and end with letter/number
+  const sanitizedAccountId = accountId.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+  const sanitizedRegion = AWS_REGION.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+  
+  // Build bucket name: executa-app-knowledge-{accountId}-{region}
+  const bucketName = `${EXECUTA_APP_PREFIX}-knowledge-${sanitizedAccountId}-${sanitizedRegion}`;
+  
+  // Ensure it's not too long (S3 limit is 63 characters)
+  if (bucketName.length > 63) {
+    // Truncate account ID if needed
+    const maxAccountIdLength = 63 - EXECUTA_APP_PREFIX.length - '-knowledge--'.length - sanitizedRegion.length;
+    const truncatedAccountId = sanitizedAccountId.substring(0, maxAccountIdLength);
+    return `${EXECUTA_APP_PREFIX}-knowledge-${truncatedAccountId}-${sanitizedRegion}`;
+  }
+  
+  return bucketName;
 }
 
 // Generate SQS queue name for file processing
@@ -26,6 +42,7 @@ export function generateProcessingQueueName(accountId: string): string {
 // Create account-specific S3 bucket
 export async function createAccountBucket(accountId: string): Promise<string> {
   const bucketName = generateAccountBucketName(accountId);
+  console.log(`🪣 Attempting to create S3 bucket: ${bucketName} for account: ${accountId}`);
   
   try {
     // Check if bucket already exists
@@ -46,97 +63,52 @@ export async function createAccountBucket(accountId: string): Promise<string> {
     };
 
     await s3.createBucket(createParams).promise();
+    console.log(`✅ Bucket created: ${bucketName}`);
 
-    // Set bucket policy for secure access
-    const bucketPolicy = {
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Sid: 'ExecutaAppAccess',
-          Effect: 'Allow',
-          Principal: {
-          },
-          Action: [
-            's3:GetObject',
-            's3:PutObject',
-            's3:DeleteObject',
-            's3:ListBucket'
-          ],
-          Resource: [
-            `arn:aws:s3:::${bucketName}`,
-            `arn:aws:s3:::${bucketName}/*`
+    // Enable server-side encryption (simplest approach)
+    try {
+      await s3.putBucketEncryption({
+        Bucket: bucketName,
+        ServerSideEncryptionConfiguration: {
+          Rules: [
+            {
+              ApplyServerSideEncryptionByDefault: {
+                SSEAlgorithm: 'AES256'
+              }
+            }
           ]
         }
-      ]
-    };
+      }).promise();
+      console.log(`✅ Encryption enabled for: ${bucketName}`);
+    } catch (encryptionError) {
+      console.log(`⚠️ Could not enable encryption (non-critical): ${String(encryptionError)}`);
+    }
 
-    await s3.putBucketPolicy({
-      Bucket: bucketName,
-      Policy: JSON.stringify(bucketPolicy)
-    }).promise();
-
-    // Enable versioning
-    await s3.putBucketVersioning({
-      Bucket: bucketName,
-      VersioningConfiguration: {
-        Status: 'Enabled'
-      }
-    }).promise();
-
-    // Set lifecycle configuration to manage costs
-    await s3.putBucketLifecycleConfiguration({
-      Bucket: bucketName,
-      LifecycleConfiguration: {
-        Rules: [
-          {
-            Id: 'DeleteIncompleteMultipartUploads',
-            Status: 'Enabled',
-            AbortIncompleteMultipartUpload: {
-              DaysAfterInitiation: 1
+    // Add basic tags (optional, non-critical)
+    try {
+      await s3.putBucketTagging({
+        Bucket: bucketName,
+        Tagging: {
+          TagSet: [
+            {
+              Key: 'Project',
+              Value: 'ExecutaApp'
+            },
+            {
+              Key: 'AccountId',
+              Value: accountId
+            },
+            {
+              Key: 'Environment',
+              Value: process.env.NODE_ENV || 'development'
             }
-          },
-          {
-            Id: 'TransitionToIA',
-            Status: 'Enabled',
-            Transitions: [
-              {
-                Days: 30,
-                StorageClass: 'STANDARD_IA'
-              },
-              {
-                Days: 90,
-                StorageClass: 'GLACIER'
-              }
-            ]
-          }
-        ]
-      }
-    }).promise();
-
-    // Add tags for billing and organization
-    await s3.putBucketTagging({
-      Bucket: bucketName,
-      Tagging: {
-        TagSet: [
-          {
-            Key: 'Project',
-            Value: 'ExecutaApp'
-          },
-          {
-            Key: 'AccountId',
-            Value: accountId
-          },
-          {
-            Key: 'Environment',
-            Value: process.env.NODE_ENV || 'development'
-          },
-          {
-            Key: 'BillingGroup',
-            Value: 'ExecutaApp-Knowledge-Storage'
-          }
-        ]
-      }
-    }).promise();
+          ]
+        }
+      }).promise();
+      console.log(`✅ Tags added to: ${bucketName}`);
+    } catch (tagError) {
+      console.log(`⚠️ Could not add tags (non-critical): ${String(tagError)}`);
+    }
 
     console.log(`Created bucket: ${bucketName}`);
     return bucketName;

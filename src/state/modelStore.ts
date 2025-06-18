@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Model, CreateModelRequest } from '@/types/model';
-import { v4 as uuidv4 } from 'uuid';
+import { modelApi } from '@/utils/api';
+import { toast } from 'sonner';
 
 interface ModelState {
   models: Model[];
@@ -19,6 +20,7 @@ interface ModelState {
   createModel: (request: CreateModelRequest) => Promise<Model>;
   fetchModels: () => Promise<void>;
   trainModel: (id: string) => Promise<void>;
+  refreshModel: (id: string) => Promise<void>;
 }
 
 export const useModelStore = create<ModelState>((set, get) => ({
@@ -46,64 +48,52 @@ export const useModelStore = create<ModelState>((set, get) => ({
   
   setLoading: (isLoading) => set({ isLoading }),
   
+  // Fetch all models from API
+  fetchModels: async () => {
+    set({ isLoading: true });
+    try {
+      const models = await modelApi.list();
+      set({ models, isLoading: false });
+    } catch (error) {
+      console.error('Failed to fetch models:', error);
+      toast.error('Failed to load assistants');
+      set({ isLoading: false });
+    }
+  },
+  
+  // Create new assistant with real API call
   createModel: async (request) => {
     set({ isLoading: true });
     
     try {
-      // Create new model with training status
-      const newModel: Model = {
-        id: `assistant_${uuidv4()}`,
-        name: request.name,
-        description: request.description,
-        status: 'training',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        documents: request.documents.map((file, index) => ({
-          id: `doc_${uuidv4()}`,
-          name: file.name,
-          type: file.name.endsWith('.pdf') ? 'pdf' : 
-                file.name.endsWith('.docx') ? 'docx' : 'txt',
-          size: file.size,
-          uploadedAt: new Date(),
-          status: 'processing'
-        })),
-        totalSessions: 0,
-        owner: {
-          id: 'mock_user_id',
-          email: 'user@example.com'
-        }
-      };
+      // Call the real API to create assistant
+      const newModel = await modelApi.create(request);
       
       // Add to store
       get().addModel(newModel);
       
-      // Simulate training process (5 seconds)
-      setTimeout(() => {
-        get().updateModel(newModel.id, { 
-          status: 'active',
-          lastTrained: new Date(),
-          apiKey: `sk_${Math.random().toString(36).substring(7)}`,
-          embedUrl: `https://chat.executa.ai/embed/${newModel.id}`,
-          documents: newModel.documents.map(doc => ({
-            ...doc,
-            status: 'completed'
-          }))
-        });
-      }, 5000);
-      
+      toast.success('AI Assistant created successfully!');
       set({ isLoading: false });
+      
       return newModel;
+      
     } catch (error) {
+      console.error('Failed to create assistant:', error);
+      toast.error('Failed to create assistant');
       set({ isLoading: false });
       throw error;
     }
   },
-  
-  fetchModels: async () => {
-    set({ isLoading: true });
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    set({ isLoading: false });
+
+  // Refresh a single model from API
+  refreshModel: async (id: string) => {
+    try {
+      const model = await modelApi.get(id);
+      get().updateModel(id, model);
+    } catch (error) {
+      console.error('Failed to refresh model:', error);
+      toast.error('Failed to refresh assistant');
+    }
   },
   
   trainModel: async (id) => {

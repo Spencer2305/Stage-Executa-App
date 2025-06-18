@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { validateEmail, validatePassword, hashPassword } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,94 +41,82 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User already exists with this email' },
+        { error: 'User already exists' },
         { status: 400 }
       );
     }
 
+    // Generate unique account ID for new organizations
+    const accountId = `acc_${crypto.randomBytes(8).toString('hex')}`;
+
+    // Create account first
+    const account = await db.account.create({
+      data: {
+        name: organizationName,
+        slug: organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        accountId,
+        plan: 'FREE',
+        billingEmail: email
+      }
+    });
+
     // Hash password
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await bcrypt.hash(password, 12);
 
-    // Generate account ID and slug
-    const accountId = `acc_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
-    const slug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    // Create user
+    const user = await db.user.create({
+      data: {
+        email,
+        name,
+        passwordHash,
+        accountId: account.id,
+        role: 'OWNER'
+      }
+    });
 
-    try {
-      // Create account first
-      const account = await db.account.create({
-        data: {
-          name: organizationName || `${name}'s Organization`,
-          slug: slug,
-          accountId: accountId,
-          plan: 'FREE',
-          billingEmail: email
-        }
-      });
+    // Generate JWT token with proper syntax
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        accountId: user.accountId
+      },
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
 
-      // Create user linked to the account
-      const user = await db.user.create({
-        data: {
-          accountId: account.id,
-          email,
-          passwordHash,
-          name,
-          role: 'OWNER',
-          emailVerified: false
-        }
-      });
+    // Store session
+    await db.session.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      }
+    });
 
-      // Create session token
-      const token = jwt.sign(
-        {
-          userId: user.id,
-          email: user.email,
-          accountId: account.accountId
-        },
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-      );
-
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      await db.session.create({
-        data: {
-          userId: user.id,
-          token,
-          expiresAt
-        }
-      });
-
-      // Return user data and token
-      return NextResponse.json({
+    return NextResponse.json({
+      success: true,
+      data: {
         user: {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
-          emailVerified: user.emailVerified,
-          createdAt: user.createdAt,
-          account: {
-            id: account.id,
-            accountId: account.accountId,
-            name: account.name,
-            plan: account.plan
-          }
+          accountId: user.accountId
         },
-        token
-      });
+        token,
+        account: {
+          id: account.id,
+          name: account.name,
+          accountId: account.accountId,
+          plan: account.plan
+        }
+      }
+    });
 
-    } catch (dbError) {
-      console.error('Database error during registration:', dbError);
-      return NextResponse.json(
-        { error: 'Failed to create account', details: String(dbError) },
-        { status: 500 }
-      );
-    }
-
-  } catch (error) {
-    console.error('Registration error:', error);
+  } catch (dbError) {
+    console.error('Database error during registration:', dbError);
     return NextResponse.json(
-      { error: 'Registration failed', details: String(error) },
+      { error: 'Database error during registration' },
       { status: 500 }
     );
   }

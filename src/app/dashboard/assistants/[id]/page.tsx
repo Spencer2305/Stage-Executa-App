@@ -1,72 +1,149 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useModelStore } from "@/state/modelStore";
+import { useUserStore } from "@/state/userStore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Link from "next/link";
+import { toast } from "sonner";
+import KnowledgeBaseManager from "@/components/knowledge/KnowledgeBaseManager";
+import { Document as ModelDocument } from "@/types/model";
 import { 
   ArrowLeft, 
   Bot, 
   MessageSquare, 
-  Send, 
-  Copy, 
-  ExternalLink,
-  Settings,
-  BarChart3,
-  FileText,
-  Calendar,
+  FileText, 
+  Users, 
   Activity,
-  Users,
-  Clock,
+  Send,
+  Settings,
   Share,
-  Download,
+  Copy,
+  ExternalLink,
+  BarChart3,
   Edit,
-  Trash2
+  Trash2,
+  Download
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+
+interface ChatMessage {
+  id: string;
+  content: string;
+  sender: 'user' | 'bot';
+  timestamp: Date | string;
+}
 
 export default function AssistantViewPage() {
   const params = useParams();
   const router = useRouter();
-  const { models, deleteModel } = useModelStore();
+  const assistantId = params.id as string;
+  const { models, deleteModel, fetchModels, refreshModel, isLoading } = useModelStore();
+  const { user, isLoading: userLoading } = useUserStore();
+  const assistant = models.find(m => m.id === assistantId);
+  
   const [message, setMessage] = useState("");
-  const [chatMessages, setChatMessages] = useState([
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: 1,
-      content: "Hello! I'm your AI assistant. How can I help you today?",
+      id: "1",
+      content: "Hello! I'm ready to help you with any questions about the knowledge base. What would you like to know?",
       sender: "bot",
       timestamp: new Date()
     }
   ]);
+  const [assistantFiles, setAssistantFiles] = useState<ModelDocument[]>([]);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  const assistantId = params?.id as string;
-  const assistant = models.find(m => m.id === assistantId);
+  useEffect(() => {
+    const loadAssistantData = async () => {
+      try {
+        setPageLoading(true);
+        
+        // Wait for user authentication to be resolved
+        if (userLoading) {
+          console.log('⏳ Waiting for user authentication...');
+          return;
+        }
+        
+        // Check if user is authenticated
+        if (!user) {
+          console.log('❌ User not authenticated, redirecting to login...');
+          router.push('/login');
+          return;
+        }
+        
+        console.log('✅ User authenticated, proceeding with data fetch...');
+        
+        // If models array is empty, fetch all models first
+        if (models.length === 0) {
+          console.log('📋 No models in store, fetching all models...');
+          await fetchModels();
+        }
+        
+        // After fetchModels completes, get the updated models from store
+        const currentModels = useModelStore.getState().models;
+        console.log('📋 After fetchModels, current models length:', currentModels.length);
+        console.log('📋 Current models data:', currentModels);
+        
+        // After fetching, check if we have the assistant
+        const foundAssistant = currentModels.find(m => m.id === assistantId);
+        console.log(`🔍 Looking for assistant ${assistantId} in ${currentModels.length} models`);
+        console.log('🔍 Found assistant:', foundAssistant);
+        
+        if (!foundAssistant && currentModels.length > 0) {
+          // Models were fetched but assistant not found, try refreshing this specific assistant
+          console.log(`🔄 Assistant ${assistantId} not found in models, trying to refresh...`);
+          try {
+            await refreshModel(assistantId);
+          } catch (error) {
+            console.error('Failed to refresh assistant:', error);
+            setNotFound(true);
+          }
+        } else if (currentModels.length === 0) {
+          // If still no models after fetch, something is wrong
+          console.log('❌ No models found after fetch');
+          setNotFound(true);
+        }
+      } catch (error) {
+        console.error('Error loading assistant data:', error);
+        setNotFound(true);
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
+    loadAssistantData();
+  }, [assistantId, fetchModels, refreshModel, user, userLoading, router]);
+
+  useEffect(() => {
+    if (assistant?.documents) {
+      setAssistantFiles(assistant.documents);
+    }
+  }, [assistant?.documents]);
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
-    const newMessage = {
-      id: chatMessages.length + 1,
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
       content: message,
-      sender: "user" as const,
+      sender: "user",
       timestamp: new Date()
     };
 
-    setChatMessages(prev => [...prev, newMessage]);
+    setChatMessages(prev => [...prev, userMessage]);
     setMessage("");
 
     // Simulate bot response
     setTimeout(() => {
-      const botResponse = {
-        id: chatMessages.length + 2,
-        content: "Thanks for your message! This is a demo response from your AI assistant.",
+      const botResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: "Thank you for your message! This is a demo response. In a real implementation, this would be connected to your AI assistant.",
         sender: "bot" as const,
         timestamp: new Date()
       };
@@ -74,14 +151,21 @@ export default function AssistantViewPage() {
     }, 1000);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid Date';
+    }
+    
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    }).format(date);
+    }).format(dateObj);
   };
 
   const getStatusColor = (status: string) => {
@@ -151,7 +235,7 @@ export default function AssistantViewPage() {
     const chatData = chatMessages.map(msg => ({
       sender: msg.sender,
       content: msg.content,
-      timestamp: msg.timestamp.toISOString()
+      timestamp: msg.timestamp.toString()
     }));
     
     const dataStr = JSON.stringify(chatData, null, 2);
@@ -169,7 +253,31 @@ export default function AssistantViewPage() {
     toast.success("Chat exported successfully!");
   };
 
-  if (!assistant) {
+  const handleFilesUpdated = (updatedFiles: ModelDocument[]) => {
+    setAssistantFiles(updatedFiles);
+    // You might also want to update the model store here
+    // This would require adding an update method to the model store
+  };
+
+  // Loading state
+  if (pageLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+            <h2 className="text-2xl font-bold mb-2">Loading Assistant...</h2>
+            <p className="text-muted-foreground">
+              Please wait while we fetch your AI assistant details.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not found state
+  if (notFound || !assistant) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
@@ -179,12 +287,17 @@ export default function AssistantViewPage() {
             <p className="text-muted-foreground mb-6">
               The AI assistant you're looking for doesn't exist or has been deleted.
             </p>
-            <Button asChild>
-              <Link href="/dashboard/my-ais">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to My AIs
-              </Link>
-            </Button>
+            <div className="flex gap-4 justify-center">
+              <Button asChild variant="outline">
+                <Link href="/dashboard/my-ais">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to My AIs
+                </Link>
+              </Button>
+              <Button onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -252,7 +365,7 @@ export default function AssistantViewPage() {
               <div className="flex items-center space-x-2">
                 <FileText className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="text-lg font-semibold">{assistant.documents.length}</p>
+                  <p className="text-lg font-semibold">{assistantFiles.length}</p>
                   <p className="text-xs text-muted-foreground">Documents</p>
                 </div>
               </div>
@@ -347,7 +460,7 @@ export default function AssistantViewPage() {
             </Card>
           </div>
 
-          {/* Assistant Details */}
+          {/* Assistant Details Sidebar */}
           <div className="space-y-6">
             {/* Assistant Info */}
             <Card className="rounded-xl">
@@ -409,39 +522,15 @@ export default function AssistantViewPage() {
                 </Button>
               </CardContent>
             </Card>
-
-            {/* Documents */}
-            <Card className="rounded-xl">
-              <CardHeader>
-                <CardTitle>Knowledge Base</CardTitle>
-                <CardDescription>
-                  {assistant.documents.length} documents
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-32">
-                  <div className="space-y-2">
-                    {assistant.documents.map((doc, index) => (
-                      <div key={doc.id || index} className="flex items-center space-x-2 p-2 border rounded-lg">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm truncate block">
-                            {typeof doc === 'object' ? doc.name : doc}
-                          </span>
-                          {typeof doc === 'object' && doc.size && (
-                            <span className="text-xs text-muted-foreground">
-                              {(doc.size / 1024).toFixed(1)} KB
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
           </div>
         </div>
+
+        {/* Knowledge Base Management */}
+        <KnowledgeBaseManager
+          assistantId={assistantId}
+          files={assistantFiles}
+          onFilesUpdated={handleFilesUpdated}
+        />
       </div>
     </div>
   );

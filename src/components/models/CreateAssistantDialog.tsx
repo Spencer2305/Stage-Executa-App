@@ -26,6 +26,7 @@ import {
   FileText,
   Loader2
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface CreateAssistantDialogProps {
   children: React.ReactNode;
@@ -67,10 +68,19 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
   }, []);
 
   const handleFiles = (fileList: FileList) => {
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'];
     const newFiles = Array.from(fileList).filter(file => {
-      const validTypes = ['.pdf', '.docx', '.txt'];
-      return validTypes.some(type => file.name.toLowerCase().endsWith(type));
+      return validTypes.includes(file.type) || 
+             file.name.toLowerCase().endsWith('.pdf') ||
+             file.name.toLowerCase().endsWith('.docx') ||
+             file.name.toLowerCase().endsWith('.doc') ||
+             file.name.toLowerCase().endsWith('.txt') ||
+             file.name.toLowerCase().endsWith('.md');
     });
+    
+    if (newFiles.length !== fileList.length) {
+      toast.error('Some files were skipped. Only PDF, DOC, DOCX, TXT, and MD files are supported.');
+    }
     
     setFormData(prev => ({
       ...prev,
@@ -118,6 +128,7 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
     if (!validateStep(2)) return;
 
     try {
+      // Create assistant using real API
       await createModel({
         name: formData.name,
         description: formData.description,
@@ -137,8 +148,13 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
       setCurrentStep(1);
       setErrors({});
       setOpen(false);
+      
+      toast.success('Assistant created successfully!');
+      
     } catch (error) {
+      console.error('Create assistant error:', error);
       setErrors({ submit: "Failed to create assistant. Please try again." });
+      toast.error('Failed to create assistant');
     }
   };
 
@@ -213,14 +229,14 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
                       <input
                         type="file"
                         multiple
-                        accept=".pdf,.docx,.txt"
+                        accept=".pdf,.docx,.doc,.txt,.md"
                         onChange={(e) => e.target.files && handleFiles(e.target.files)}
                         className="hidden"
                       />
                     </label>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Supports PDF, DOCX, and TXT files (max 10 files)
+                    Supports PDF, DOC, DOCX, TXT, and MD files (max 10 files)
                   </p>
                 </div>
               </div>
