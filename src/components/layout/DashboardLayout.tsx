@@ -126,20 +126,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {navigationItems.find(item => isActive(item.href))?.name || "Dashboard"}
-            </h1>
-            <div className="flex items-center space-x-4">
-              {/* You can add header actions here */}
-            </div>
-          </div>
-        </header>
-
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
+        <main className="flex-1 overflow-y-auto bg-gray-50 pt-8">
           {children}
         </main>
       </div>

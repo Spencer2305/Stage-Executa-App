@@ -43,6 +43,9 @@ model User {
   passwordHash      String   @map("password_hash")
   name              String
   avatar            String?
+  bio               String?
+  company           String?
+  website           String?
   role              UserRole @default(MEMBER)
   emailVerified     Boolean  @default(false) @map("email_verified")
   createdAt         DateTime @default(now()) @map("created_at")

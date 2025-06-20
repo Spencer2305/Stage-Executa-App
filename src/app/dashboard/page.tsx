@@ -36,7 +36,8 @@ import {
   Sparkles,
   Clock,
   Star,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -386,6 +387,220 @@ function AssistantCard({ model }: { model: any }) {
   );
 }
 
+// AI Suggestions Component with sleek design
+function AISuggestionsSection({ models, router }: { models: any[], router: any }) {
+  const [showSuggestions, setShowSuggestions] = useState(true);
+
+  if (!showSuggestions) {
+    return null;
+  }
+  const suggestions = [
+    {
+      id: 1,
+      type: 'optimization',
+      title: 'Optimize Response Time',
+      description: 'Your assistants could respond 23% faster with knowledge base refinement',
+      action: 'Review Knowledge Base',
+      icon: Rocket,
+      color: 'blue',
+      priority: 'high',
+      estimated: '5 min'
+    },
+    {
+      id: 2,
+      type: 'integration',
+      title: 'Connect Gmail Integration',
+      description: 'Add Gmail to expand your assistant\'s knowledge with email conversations',
+      action: 'Connect Gmail',
+      icon: Mail,
+      color: 'red',
+      priority: 'medium',
+      estimated: '2 min'
+    },
+    {
+      id: 3,
+      type: 'analytics',
+      title: 'View Conversation Insights',
+      description: 'Discover patterns in user questions to improve your assistant',
+      action: 'View Analytics',
+      icon: BarChart3,
+      color: 'purple',
+      priority: 'medium',
+      estimated: '3 min'
+    },
+    {
+      id: 4,
+      type: 'deployment',
+      title: 'Deploy to Website',
+      description: 'Add your assistant to your website to help visitors 24/7',
+      action: 'Get Embed Code',
+      icon: Globe,
+      color: 'green',
+      priority: 'high',
+      estimated: '1 min'
+    }
+  ];
+
+  const getColorClasses = (color: string) => {
+    switch (color) {
+      case 'blue':
+        return {
+          bg: 'bg-blue-50',
+          border: 'border-blue-200',
+          icon: 'text-blue-600',
+          button: 'bg-blue-600 hover:bg-blue-700'
+        };
+      case 'red':
+        return {
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          icon: 'text-red-600',
+          button: 'bg-red-600 hover:bg-red-700'
+        };
+      case 'purple':
+        return {
+          bg: 'bg-purple-50',
+          border: 'border-purple-200',
+          icon: 'text-purple-600',
+          button: 'bg-purple-600 hover:bg-purple-700'
+        };
+      case 'green':
+        return {
+          bg: 'bg-green-50',
+          border: 'border-green-200',
+          icon: 'text-green-600',
+          button: 'bg-green-600 hover:bg-green-700'
+        };
+      default:
+        return {
+          bg: 'bg-gray-50',
+          border: 'border-gray-200',
+          icon: 'text-gray-600',
+          button: 'bg-gray-600 hover:bg-gray-700'
+        };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 font-kanit uppercase tracking-wide">
+            AI Suggestions
+          </h2>
+          <p className="text-gray-600 mt-1">Personalized recommendations to enhance your assistants</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium px-3 py-1">
+            <Sparkles className="w-3 h-3 mr-1" />
+            AI Powered
+          </Badge>
+          <button
+            onClick={() => setShowSuggestions(false)}
+            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200"
+            title="Dismiss all suggestions"
+          >
+            <X className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
+      </div>
+
+      {/* Quick Win Banner */}
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-emerald-100 rounded-full">
+            <Target className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-emerald-900">Quick Win</h3>
+            <p className="text-emerald-700 text-sm">Complete these suggestions to boost performance by 35%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Suggestions Grid with improved spacing and sizing */}
+      <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+        {suggestions.map((suggestion) => {
+          const colors = getColorClasses(suggestion.color);
+          const IconComponent = suggestion.icon;
+          
+          return (
+            <Card key={suggestion.id} className={`border ${colors.border} ${colors.bg} hover:shadow-lg transition-all duration-300 group relative overflow-hidden min-h-[320px] flex flex-col`}>
+              {/* High Impact badge */}
+              {suggestion.priority === 'high' && (
+                <div className="absolute top-3 left-3 z-10">
+                  <Badge className="bg-orange-500 text-white text-xs px-2 py-1 font-medium">
+                    High Impact
+                  </Badge>
+                </div>
+              )}
+              
+              <CardContent className="p-6 h-full flex flex-col">
+                {/* Icon at top */}
+                <div className="flex justify-center mb-4">
+                  <div className={`p-3 rounded-xl ${colors.bg} ring-2 ring-white shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                    <IconComponent className={`h-6 w-6 ${colors.icon}`} />
+                  </div>
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 text-center">
+                  <h3 className="font-semibold text-gray-900 text-base leading-tight mb-3">
+                    {suggestion.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    {suggestion.description}
+                  </p>
+                </div>
+                
+                {/* Bottom section with time and button */}
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                  <div className="flex items-center space-x-2 text-xs text-gray-500">
+                    <Clock className="w-3 h-3" />
+                    <span>{suggestion.estimated}</span>
+                  </div>
+                  
+                  <Button 
+                    size="sm" 
+                    className={`${colors.button} text-white shadow-sm font-medium px-4 py-2 h-auto text-xs group-hover:scale-105 transition-transform duration-300`}
+                    onClick={() => {
+                      switch(suggestion.id) {
+                        case 1: // Optimize Response Time - go to files/knowledge base
+                          router.push('/dashboard/files');
+                          break;
+                        case 2: // Connect Gmail Integration - go to settings integrations
+                          router.push('/dashboard/settings');
+                          break;
+                        case 3: // View Conversation Insights - go to analytics
+                          router.push('/dashboard/analytics');
+                          break;
+                        case 4: // Deploy to Website - go to specific assistant
+                          if (models.length > 0) {
+                            router.push(`/dashboard/assistants/${models[0].id}`);
+                          } else {
+                            router.push('/dashboard/create');
+                          }
+                          break;
+                        default:
+                          break;
+                      }
+                    }}
+                  >
+                    {suggestion.action}
+                    <ChevronRight className="w-3 h-3 ml-1" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user } = useUserStore();
   const { models, isLoading, fetchModels } = useModelStore();
@@ -404,7 +619,7 @@ export default function DashboardPage() {
         {/* Header with enhanced styling */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 leading-tight">
+            <h1 className="text-4xl font-bold text-gray-900 leading-tight font-kanit uppercase tracking-wide">
               Welcome back, {user?.name?.split(' ')[0] || 'there'}!
             </h1>
             <p className="text-gray-600 mt-2 text-lg leading-relaxed">
@@ -529,6 +744,9 @@ export default function DashboardPage() {
           </Card>
         </div>
 
+        {/* AI Suggestions Section */}
+        {models.length > 0 && <AISuggestionsSection models={models} router={router} />}
+
         {/* Content: Onboarding or Assistant Grid */}
                 {models.length === 0 ? (
           <FirstTimeUserOnboarding />
@@ -563,7 +781,7 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Your AI Assistants</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-kanit uppercase tracking-wide">Your AI Assistants</h2>
                   <p className="text-gray-600 mt-1">Manage and monitor your AI-powered assistants</p>
           </div>
                 <CreateAssistantDialog>

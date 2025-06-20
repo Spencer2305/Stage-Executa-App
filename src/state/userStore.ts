@@ -14,6 +14,9 @@ interface User {
   email: string;
   name: string;
   avatar?: string;
+  bio?: string;
+  company?: string;
+  website?: string;
   role: 'OWNER' | 'ADMIN' | 'MEMBER';
   emailVerified: boolean;
   createdAt: Date;

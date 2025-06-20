@@ -434,11 +434,11 @@ export default function CreateAIPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="p-8 space-y-8 max-w-7xl mx-auto">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Create Your AI Assistant</h1>
+            <h1 className="text-3xl font-bold mb-2 font-kanit uppercase tracking-wide">Create Your AI Assistant</h1>
             <p className="text-muted-foreground">
               Build a custom AI assistant trained on your knowledge base
             </p>

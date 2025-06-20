@@ -243,11 +243,11 @@ export default function MyAIsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 space-y-8">
+      <div className="p-8 space-y-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">My AI Assistants</h1>
+            <h1 className="text-3xl font-bold font-kanit uppercase tracking-wide">My AI Assistants</h1>
             <p className="text-muted-foreground mt-1">
               Manage and monitor your AI assistants
             </p>

@@ -39,46 +39,96 @@ import {
   Calendar,
   Briefcase,
   BarChart3,
-  Clock
+  Clock,
+  Upload,
+  Download,
+  X,
+  Check,
+  Star,
+  Zap as ZapIcon
 } from "lucide-react";
 import { useUserStore } from "@/state/userStore";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-// Integration logo component for better visual representation
+// Integration logo component with actual company logos
 function IntegrationLogo({ name, className = "w-8 h-8" }: { name: string, className?: string }) {
   const logoMap: { [key: string]: string } = {
-    'gmail': '🔴', // Gmail red
-    'drive': '🔵', // Google Drive blue
-    'slack': '🟣', // Slack purple
-    'notion': '⚫', // Notion black
-    'intercom': '🔵', // Intercom blue
-    'zapier': '🟠', // Zapier orange
-    'discord': '🟣', // Discord purple
-    'zendesk': '🟢', // Zendesk green
-    'hubspot': '🟠', // HubSpot orange
-    'salesforce': '🔵', // Salesforce blue
-    'microsoft-teams': '🟣', // Microsoft Teams purple
-    'dropbox': '🔵', // Dropbox blue
-    'confluence': '🔵', // Confluence blue
-    'jira': '🔵', // Jira blue
-    'trello': '🔵', // Trello blue
-    'shopify': '🟢', // Shopify green
-    'stripe': '🟣', // Stripe purple
-    'zoom': '🔵', // Zoom blue
-    'calendly': '🟠', // Calendly orange
-    'airtable': '🟡', // Airtable yellow
-    'monday': '🟠', // Monday.com orange
-    'asana': '🔴', // Asana red
+    // Communication & Collaboration
+    'gmail': '/Gmail_icon_(2020).svg.png',
+    'slack': '/Slack_icon_2019.svg.png',
+    'discord': '/discord-logo.png',
+    'microsoft-teams': '/Microsoft_Office_Teams_(2018–present).svg.webp',
+    'zoom': '/download-round-blue-zoom-logo-icon-png-701751695039210sjnvxytv5d.png',
+    'intercom': '/Intercom.png',
+    
+    // Productivity & Project Management  
+    'notion': '/Notion_app_logo.png',
+    'drive': '/Google_drive.png',
+    'dropbox': '/Dropbox_Icon.svg.png',
+    'confluence': '/Confluence.png',
+    'jira': '/jira-icon-512x512-kkop6eik.png',
+    'trello': '/Trello_icon-icons.webp',
+    'monday': '/monday-icon.webp',
+    'asana': '/asana-icon-2048x1893-0woxnfwz.png',
+    'airtable': '/airtable-icon-512x428-olxouyvv.png',
+    'calendly': '/Calendarly.png',
+    
+    // Sales & Marketing
+    'hubspot': '/168_Hubspot_logo_logos-512.webp',
+    'salesforce': '/Salesforce.com_logo.svg.png',
+    'zendesk': '/zendesk-icon-2048x2048-q18vy4hu.png',
+    
+    // E-commerce & Payments
+    'shopify': '/Shopify.png',
+    'stripe': '/Stripe.webp',
+    
+    // Automation & Development
+    'zapier': '/zapier-icon.svg',
+    'api': '/Restapi.png',
+    'website': '/Website_widget.png',
   };
 
-  // For now, using emoji placeholders - in production, these would be actual company logos
-  const emoji = logoMap[name] || '⚡';
+  const logoSrc = logoMap[name];
   
+  // If we have an actual image file, use it
+  if (logoSrc && logoSrc.startsWith('/')) {
+    return (
+      <div className={`${className} rounded-lg flex items-center justify-center bg-white border overflow-hidden`}>
+        <img 
+          src={logoSrc} 
+          alt={`${name} logo`}
+          className="w-full h-full object-contain p-1"
+          onError={(e) => {
+            // Fallback to emoji if image fails to load
+            const img = e.currentTarget;
+            const fallback = img.nextElementSibling as HTMLElement;
+            if (img && fallback) {
+              img.style.display = 'none';
+              fallback.style.display = 'flex';
+            }
+          }}
+        />
+        <div 
+          className="w-full h-full hidden items-center justify-center text-white font-semibold"
+          style={{ backgroundColor: '#6B7280' }}
+        >
+          {name.charAt(0).toUpperCase()}
+        </div>
+      </div>
+    );
+  }
+  
+  // Fallback to color-coded background with first letter for integrations without logos
+  const color = logoSrc || '#6B7280';
+  const firstLetter = name.charAt(0).toUpperCase();
   return (
-    <div className={`${className} rounded-lg flex items-center justify-center text-2xl bg-gray-50 border`}>
-      {emoji}
+    <div 
+      className={`${className} rounded-lg flex items-center justify-center text-white font-semibold border shadow-sm`}
+      style={{ backgroundColor: color }}
+    >
+      {firstLetter}
     </div>
   );
 }
@@ -179,23 +229,40 @@ function IntegrationCard({
 
 export default function SettingsPage() {
   const router = useRouter();
-  
-  useEffect(() => {
-    // Redirect to main dashboard
-    router.push('/dashboard');
-  }, []);
-
-  const { user, updateUser } = useUserStore();
+  const { user, updateUser, getCurrentUser } = useUserStore();
   const [showApiKey, setShowApiKey] = useState(false);
   const [profile, setProfile] = useState({
     name: user?.name || "",
     email: user?.email || "",
-    bio: "",
-    company: "",
-    website: "",
+    bio: user?.bio || "",
+    company: user?.company || "",
+    website: user?.website || "",
   });
   
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [passwordChanging, setPasswordChanging] = useState(false);
+  const [showBillingDialog, setShowBillingDialog] = useState(false);
+  const [showPlanChangeDialog, setShowPlanChangeDialog] = useState(false);
+
+  // Update profile state when user changes
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name || "",
+        email: user.email || "",
+        bio: user.bio || "",
+        company: user.company || "",
+        website: user.website || "",
+      });
+    }
+  }, [user]);
 
   const [notifications, setNotifications] = useState({
     emailUpdates: true,
@@ -259,7 +326,20 @@ export default function SettingsPage() {
 
       // Update user in store
       console.log('🔄 Updating user store with avatar:', data.user.avatar ? 'present' : 'missing');
+      console.log('📋 Response data:', { 
+        success: data.success, 
+        hasUser: !!data.user, 
+        avatarLength: data.user?.avatar?.length || 0 
+      });
+      
       updateUser({ avatar: data.user.avatar });
+      
+      // Refresh user data from server to ensure consistency
+      setTimeout(() => {
+        console.log('♻️ Refreshing user data after avatar update');
+        getCurrentUser();
+      }, 500);
+      
       toast.success('Avatar updated successfully!');
 
     } catch (error) {
@@ -312,6 +392,109 @@ export default function SettingsPage() {
       newSet.delete(integration);
       return newSet;
     });
+  };
+
+  const handleProfileSave = async () => {
+    if (!profile.name.trim() || !profile.email.trim()) {
+      toast.error('Name and email are required');
+      return;
+    }
+
+    setProfileSaving(true);
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(profile),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      // Update user in store
+      updateUser(data.user);
+      toast.success('Profile updated successfully!');
+
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update profile');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleManageSubscription = () => {
+    // For now, show a modal with subscription options
+    // In a real app, this would typically redirect to Stripe Customer Portal
+    setShowBillingDialog(true);
+  };
+
+  const handleChangePlan = () => {
+    setShowBillingDialog(false);
+    setShowPlanChangeDialog(true);
+  };
+
+  const handleSelectPlan = (planName: string, planPrice: string) => {
+    // In a real app, this would make an API call to change the subscription
+    toast.success(`Plan change initiated! You will be switched to ${planName} at your next billing cycle.`);
+    setShowPlanChangeDialog(false);
+  };
+
+  const handlePasswordChange = async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword) {
+      toast.error('Please fill in all password fields');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    setPasswordChanging(true);
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      const response = await fetch('/api/user/password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to change password');
+      }
+
+      toast.success('Password changed successfully! Please log in again.');
+      setShowPasswordDialog(false);
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      
+      // Redirect to login since all sessions are invalidated
+      setTimeout(() => {
+        localStorage.removeItem('executa-auth-token');
+        router.push('/login');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Password change error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to change password');
+    } finally {
+      setPasswordChanging(false);
+    }
   };
 
   // Comprehensive integrations organized by category
@@ -541,11 +724,617 @@ export default function SettingsPage() {
   const availableCount = allIntegrations.filter(i => !(i as any).comingSoon).length;
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <h1 className="text-xl font-semibold text-gray-900 mb-2">Redirecting...</h1>
-        <p className="text-gray-600">Taking you to the dashboard.</p>
+    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+      <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 font-kanit uppercase tracking-wide">Settings</h1>
+        <p className="text-gray-600 mt-2">Manage your account settings and preferences</p>
       </div>
+
+      <Tabs defaultValue="profile" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+        </TabsList>
+
+        {/* Profile Tab */}
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Information</CardTitle>
+              <CardDescription>
+                Update your account profile information and avatar
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Avatar Section */}
+              <div className="flex items-center space-x-6">
+                <div className="relative">
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user?.name || 'User avatar'}
+                      className="h-20 w-20 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-8 w-8 text-primary" />
+                    </div>
+                  )}
+                  {avatarUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="avatar-upload" className="cursor-pointer">
+                    <Button variant="outline" size="sm" disabled={avatarUploading} asChild>
+                      <span>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {avatarUploading ? 'Uploading...' : 'Upload Avatar'}
+                      </span>
+                    </Button>
+                  </Label>
+                  <Input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                    disabled={avatarUploading}
+                  />
+                  {user?.avatar && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleAvatarRemove}
+                      disabled={avatarUploading}
+                      className="ml-2"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove
+                    </Button>
+                  )}
+                  <p className="text-xs text-gray-500">JPG, PNG, GIF up to 2MB</p>
+                </div>
+              </div>
+
+              {/* Profile Form */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={profile.name}
+                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profile.email}
+                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="company">Company</Label>
+                  <Input
+                    id="company"
+                    value={profile.company}
+                    onChange={(e) => setProfile({ ...profile, company: e.target.value })}
+                    placeholder="Enter your company name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    value={profile.website}
+                    onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+                    placeholder="Enter your website URL"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="bio">Bio</Label>
+                <Textarea
+                  id="bio"
+                  value={profile.bio}
+                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                  placeholder="Tell us about yourself..."
+                  rows={3}
+                />
+              </div>
+              
+              <Button 
+                className="w-full sm:w-auto" 
+                onClick={handleProfileSave}
+                disabled={profileSaving}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {profileSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Integrations Tab */}
+        <TabsContent value="integrations">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Connected Integrations</CardTitle>
+                <CardDescription>
+                  Connect your favorite tools and services to enhance your AI assistant
+                  <div className="flex items-center space-x-4 mt-2">
+                    <Badge variant="outline">
+                      {connectedCount} connected
+                    </Badge>
+                    <Badge variant="outline">
+                      {availableCount} available
+                    </Badge>
+                  </div>
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            {Object.entries(integrations).map(([category, items]) => (
+              <div key={category} className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 capitalize">
+                  {category.replace(/([A-Z])/g, ' $1').trim()}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {items.map((integration) => (
+                    <IntegrationCard
+                      key={integration.id}
+                      {...integration}
+                      onConnect={() => handleConnect(integration.id)}
+                      onDisconnect={() => handleDisconnect(integration.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* Notifications Tab */}
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Preferences</CardTitle>
+              <CardDescription>
+                Choose how you want to be notified about updates and activities
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Email Updates</h4>
+                    <p className="text-sm text-gray-600">Receive notifications about account activity</p>
+                  </div>
+                  <Button
+                    variant={notifications.emailUpdates ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setNotifications({...notifications, emailUpdates: !notifications.emailUpdates})}
+                  >
+                    {notifications.emailUpdates ? "Enabled" : "Disabled"}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Security Alerts</h4>
+                    <p className="text-sm text-gray-600">Get notified about security-related events</p>
+                  </div>
+                  <Button
+                    variant={notifications.securityAlerts ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setNotifications({...notifications, securityAlerts: !notifications.securityAlerts})}
+                  >
+                    {notifications.securityAlerts ? "Enabled" : "Disabled"}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Marketing Emails</h4>
+                    <p className="text-sm text-gray-600">Receive updates about new features and promotions</p>
+                  </div>
+                  <Button
+                    variant={notifications.marketingEmails ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setNotifications({...notifications, marketingEmails: !notifications.marketingEmails})}
+                  >
+                    {notifications.marketingEmails ? "Enabled" : "Disabled"}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Weekly Reports</h4>
+                    <p className="text-sm text-gray-600">Get weekly summaries of your assistant's performance</p>
+                  </div>
+                  <Button
+                    variant={notifications.weeklyReports ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setNotifications({...notifications, weeklyReports: !notifications.weeklyReports})}
+                  >
+                    {notifications.weeklyReports ? "Enabled" : "Disabled"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Security Tab */}
+        <TabsContent value="security">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>API Keys</CardTitle>
+                <CardDescription>
+                  Manage your API keys for integrating with external services
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <h4 className="font-medium">Primary API Key</h4>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                          {showApiKey ? apiKey : '••••••••••••••••••••••••••••••••'}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                        >
+                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-x-2">
+                      <Button variant="outline" size="sm">
+                        Copy
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        Regenerate
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Security</CardTitle>
+                <CardDescription>
+                  Manage your account security settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button 
+                  variant="outline" 
+                  className="w-full sm:w-auto"
+                  onClick={() => setShowPasswordDialog(true)}
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  Change Password
+                </Button>
+                <Button variant="outline" className="w-full sm:w-auto text-red-600 hover:text-red-700">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Account
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Billing Tab */}
+        <TabsContent value="billing">
+          <Card>
+            <CardHeader>
+              <CardTitle>Billing & Usage</CardTitle>
+              <CardDescription>
+                Manage your subscription and view usage statistics
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-medium">Current Plan</h4>
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h5 className="font-medium">Pro Plan</h5>
+                        <p className="text-sm text-gray-600">$29/month</p>
+                      </div>
+                      <Badge className="bg-green-100 text-green-800">Active</Badge>
+                    </div>
+                  </div>
+                  <Button variant="outline" className="w-full" onClick={handleManageSubscription}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Manage Subscription
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  <h4 className="font-medium">Usage This Month</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span>Messages</span>
+                      <span>1,247 / 10,000</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>API Calls</span>
+                      <span>8,932 / 50,000</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Storage</span>
+                      <span>2.1 GB / 10 GB</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Password Change Dialog */}
+      {showPasswordDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Change Password</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                  placeholder="Enter current password"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                  placeholder="Enter new password"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                  placeholder="Confirm new password"
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowPasswordDialog(false);
+                  setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                }}
+                disabled={passwordChanging}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handlePasswordChange}
+                disabled={passwordChanging}
+                className="flex-1"
+              >
+                {passwordChanging ? 'Changing...' : 'Change Password'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Billing Management Dialog */}
+      {showBillingDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Manage Subscription</h3>
+            
+            <div className="space-y-4">
+              <div className="p-4 border rounded-lg bg-blue-50">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Current Plan: Pro</h4>
+                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                </div>
+                <p className="text-sm text-gray-600">$29/month • Billed monthly</p>
+                <p className="text-sm text-gray-600 mt-1">Next billing date: {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
+              </div>
+
+              <div className="space-y-3">
+                <Button variant="outline" className="w-full justify-start">
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Update Payment Method
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Invoices
+                </Button>
+                <Button variant="outline" className="w-full justify-start" onClick={handleChangePlan}>
+                  <SettingsIcon className="h-4 w-4 mr-2" />
+                  Change Plan
+                </Button>
+                <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700">
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel Subscription
+                </Button>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> This is a demo. In a production app, this would redirect to your billing provider's customer portal (e.g., Stripe Customer Portal) for secure subscription management.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowBillingDialog(false)}
+                className="flex-1"
+              >
+                Close
+              </Button>
+              <Button 
+                onClick={() => {
+                  // In a real app, this would redirect to billing portal
+                  window.open('https://billing.stripe.com/p/login/test_example', '_blank');
+                  setShowBillingDialog(false);
+                }}
+                className="flex-1"
+              >
+                Open Billing Portal
+              </Button>
+            </div>
+          </div>
+                  </div>
+        )}
+
+      {/* Plan Change Dialog */}
+      {showPlanChangeDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-2xl font-bold mb-2">Choose Your Plan</h3>
+            <p className="text-gray-600 mb-6">Select the plan that best fits your needs. Changes take effect at your next billing cycle.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Free Plan */}
+              <div className="border rounded-lg p-6 relative">
+                <div className="text-center">
+                  <h4 className="text-xl font-semibold mb-2">Free</h4>
+                  <div className="text-3xl font-bold mb-4">$0<span className="text-lg text-gray-500">/month</span></div>
+                  <ul className="text-left space-y-2 mb-6">
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />1 AI Assistant</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />100 messages/month</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />Basic support</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />1 GB storage</li>
+                  </ul>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => handleSelectPlan('Free', '$0')}
+                  >
+                    Downgrade to Free
+                  </Button>
+                </div>
+              </div>
+
+              {/* Pro Plan - Current */}
+              <div className="border-2 border-blue-500 rounded-lg p-6 relative bg-blue-50">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <Badge className="bg-blue-500 text-white">Current Plan</Badge>
+                </div>
+                <div className="text-center">
+                  <h4 className="text-xl font-semibold mb-2">Pro</h4>
+                  <div className="text-3xl font-bold mb-4">$29<span className="text-lg text-gray-500">/month</span></div>
+                  <ul className="text-left space-y-2 mb-6">
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />10 AI Assistants</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />10,000 messages/month</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />Priority support</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />10 GB storage</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />API access</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />Custom branding</li>
+                  </ul>
+                  <Button 
+                    disabled 
+                    className="w-full bg-blue-500 text-white"
+                  >
+                    Current Plan
+                  </Button>
+                </div>
+              </div>
+
+              {/* Enterprise Plan */}
+              <div className="border rounded-lg p-6 relative">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <Badge className="bg-purple-500 text-white flex items-center">
+                    <Star className="h-3 w-3 mr-1" />
+                    Popular
+                  </Badge>
+                </div>
+                <div className="text-center">
+                  <h4 className="text-xl font-semibold mb-2">Enterprise</h4>
+                  <div className="text-3xl font-bold mb-4">$99<span className="text-lg text-gray-500">/month</span></div>
+                  <ul className="text-left space-y-2 mb-6">
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />Unlimited AI Assistants</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />Unlimited messages</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />24/7 dedicated support</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />100 GB storage</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />Advanced API access</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />White-label solution</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />SSO integration</li>
+                    <li className="flex items-center"><Check className="h-4 w-4 text-green-500 mr-2" />Custom integrations</li>
+                  </ul>
+                  <Button 
+                    className="w-full bg-purple-500 hover:bg-purple-600 text-white"
+                    onClick={() => handleSelectPlan('Enterprise', '$99')}
+                  >
+                    <ZapIcon className="h-4 w-4 mr-2" />
+                    Upgrade to Enterprise
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <div className="bg-blue-100 rounded-full p-2">
+                  <HelpCircle className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-1">Need help choosing?</h5>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Our team can help you find the perfect plan for your needs.
+                  </p>
+                  <Button variant="outline" size="sm">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Contact Sales
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowPlanChangeDialog(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

@@ -4,6 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { 
   BarChart3, 
   TrendingUp, 
   MessageSquare, 
@@ -22,11 +28,12 @@ import {
   ChevronDown,
   TrendingDown,
   Zap,
-  Target
+  Target,
+  Check
 } from "lucide-react";
 import { useUserStore } from "@/state/userStore";
 import { useModelStore } from "@/state/modelStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Simple Sparkline Component
 function Sparkline({ data, color = "blue", trend = "up" }: { 
@@ -86,10 +93,48 @@ function MiniBarChart({ data, color = "blue" }: { data: number[], color?: string
 export default function AnalyticsPage() {
   const { user } = useUserStore();
   const { models, fetchModels } = useModelStore();
+  
+  // State for filters
+  const [selectedAssistant, setSelectedAssistant] = useState("All Assistants");
+  const [selectedTimeRange, setSelectedTimeRange] = useState("Last 7 days");
 
   useEffect(() => {
     fetchModels();
   }, [fetchModels]);
+
+  // Assistant options for dropdown
+  const assistantOptions = [
+    "All Assistants",
+    ...models.map(model => model.name)
+  ];
+
+  // Time range options
+  const timeRangeOptions = [
+    "Last 24 hours",
+    "Last 7 days", 
+    "Last 30 days",
+    "Last 3 months",
+    "Last 6 months",
+    "Last year",
+    "All time"
+  ];
+
+  // Function to handle CSV export
+  const handleExport = () => {
+    // Mock export functionality
+    const csvData = `Assistant,Conversations,Rating,Response Time
+${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(4 + Math.random()).toFixed(1)},${(0.8 + Math.random() * 2).toFixed(1)}s`).join('\n')}`;
+    
+    const blob = new Blob([csvData], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics-${selectedTimeRange.toLowerCase().replace(/\s+/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
 
   // Enhanced mock data with trends
   const mockData = {
@@ -114,25 +159,81 @@ export default function AnalyticsPage() {
   }));
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
+          <h1 className="text-3xl font-bold text-gray-900 font-kanit uppercase tracking-wide">Analytics</h1>
           <p className="text-gray-600 mt-1">
             Monitor performance and insights across all your AI assistants
           </p>
+          {(selectedAssistant !== "All Assistants" || selectedTimeRange !== "Last 7 days") && (
+            <div className="flex items-center space-x-2 mt-2">
+              <span className="text-sm text-gray-500">Filtered by:</span>
+              {selectedAssistant !== "All Assistants" && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectedAssistant}
+                </Badge>
+              )}
+              {selectedTimeRange !== "Last 7 days" && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectedTimeRange}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            All Assistants
-            <ChevronDown className="ml-2 h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm">
-            Last 7 days
-            <ChevronDown className="ml-2 h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm">
+          {/* Assistant Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                {selectedAssistant}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {assistantOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option}
+                  onClick={() => setSelectedAssistant(option)}
+                  className="flex items-center justify-between"
+                >
+                  <span>{option}</span>
+                  {selectedAssistant === option && (
+                    <Check className="h-4 w-4" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Time Range Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                {selectedTimeRange}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {timeRangeOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option}
+                  onClick={() => setSelectedTimeRange(option)}
+                  className="flex items-center justify-between"
+                >
+                  <span>{option}</span>
+                  {selectedTimeRange === option && (
+                    <Check className="h-4 w-4" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Export Button */}
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>

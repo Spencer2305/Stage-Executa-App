@@ -46,22 +46,51 @@ export async function POST(request: NextRequest) {
     
     console.log('💾 Updating user avatar in database for user:', user.id);
     console.log('📏 Data URL length:', dataUrl.length);
+    console.log('📁 File details:', { 
+      name: file.name, 
+      type: file.type, 
+      size: file.size,
+      base64Length: base64.length 
+    });
 
-    // Update user avatar in database
+    // First check if user exists
+    const existingUser = await db.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, email: true, avatar: true }
+    });
+    
+    console.log('👤 Existing user found:', !!existingUser);
+    console.log('📸 Current avatar length:', existingUser?.avatar?.length || 0);
+
+    // Update user avatar in database with better error handling
     const updatedUser = await db.user.update({
       where: { id: user.id },
-      data: { avatar: dataUrl },
+      data: { 
+        avatar: dataUrl,
+        updatedAt: new Date() // Explicitly update timestamp
+      },
       select: {
         id: true,
         name: true,
         email: true,
         avatar: true,
         role: true,
+        updatedAt: true
       }
     });
     
     console.log('✅ Avatar updated successfully in database');
     console.log('🖼️ Updated user avatar length:', updatedUser.avatar?.length || 0);
+    console.log('⏰ Update timestamp:', updatedUser.updatedAt);
+
+    // Verify the update by fetching the user again
+    const verifyUser = await db.user.findUnique({
+      where: { id: user.id },
+      select: { avatar: true }
+    });
+    
+    console.log('🔍 Verification - avatar saved:', !!verifyUser?.avatar);
+    console.log('🔍 Verification - avatar length:', verifyUser?.avatar?.length || 0);
 
     return NextResponse.json({
       success: true,

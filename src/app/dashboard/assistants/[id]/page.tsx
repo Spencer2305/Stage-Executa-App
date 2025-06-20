@@ -517,7 +517,7 @@ export default function AssistantViewPage() {
             </Button>
               <div>
             <div className="flex items-center space-x-3">
-              <h1 className="text-2xl font-bold text-gray-900">{assistant.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 font-kanit uppercase tracking-wide">{assistant.name}</h1>
               <Badge className={`border ${getStatusColor(assistant.status)}`}>
                     {getStatusText(assistant.status)}
                   </Badge>

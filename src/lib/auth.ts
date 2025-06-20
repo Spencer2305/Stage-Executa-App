@@ -19,6 +19,10 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  avatar?: string;
+  bio?: string;
+  company?: string;
+  website?: string;
   role: string;
   emailVerified: boolean;
   account: {
@@ -86,6 +90,10 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthUse
       id: session.user.id,
       email: session.user.email,
       name: session.user.name,
+      avatar: session.user.avatar || undefined,
+      bio: session.user.bio || undefined,
+      company: session.user.company || undefined,
+      website: session.user.website || undefined,
       role: session.user.role,
       emailVerified: session.user.emailVerified,
       account: {

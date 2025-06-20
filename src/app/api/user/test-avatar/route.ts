@@ -2,52 +2,72 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    console.log('🧪 Test avatar update started');
+    console.log('🧪 Testing avatar functionality');
     
-    // Authenticate user
+    // Test authentication
     const user = await authenticateRequest(request);
-    console.log('👤 Authenticated user:', user ? user.id : 'None');
+    console.log('👤 Current user:', user ? { id: user.id, email: user.email } : 'None');
     
     if (!user) {
-      console.log('❌ Authentication failed');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ 
+        error: 'Not authenticated',
+        debug: {
+          hasUser: false,
+          timestamp: new Date().toISOString()
+        }
+      }, { status: 401 });
     }
 
-    // Simple test avatar (small base64 image)
-    const testAvatar = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-    
-    console.log('💾 Updating user avatar in database for user:', user.id);
-    console.log('📏 Test avatar length:', testAvatar.length);
-
-    // Update user avatar in database
-    const updatedUser = await db.user.update({
+    // Test database connection and fetch current user data
+    const dbUser = await db.user.findUnique({
       where: { id: user.id },
-      data: { avatar: testAvatar },
       select: {
         id: true,
-        name: true,
         email: true,
+        name: true,
         avatar: true,
         role: true,
+        createdAt: true
       }
     });
-    
-    console.log('✅ Avatar updated successfully in database');
-    console.log('🖼️ Updated user avatar length:', updatedUser.avatar?.length || 0);
+
+    console.log('💾 Database user:', dbUser ? { 
+      id: dbUser.id, 
+      email: dbUser.email, 
+      avatar: dbUser.avatar ? `${dbUser.avatar.substring(0, 50)}...` : 'none' 
+    } : 'Not found');
+
+    // Test a simple update to see if database writes work
+    const testUpdate = await db.user.update({
+      where: { id: user.id },
+      data: { updatedAt: new Date() },
+      select: { id: true, updatedAt: true }
+    });
 
     return NextResponse.json({
       success: true,
-      user: updatedUser,
-      message: 'Test avatar updated successfully'
+      debug: {
+        authenticated: true,
+        userId: user.id,
+        userEmail: user.email,
+        hasAvatar: !!dbUser?.avatar,
+        avatarLength: dbUser?.avatar?.length || 0,
+        canWriteToDb: !!testUpdate,
+        timestamp: new Date().toISOString()
+      },
+      user: dbUser
     });
 
   } catch (error) {
-    console.error('❌ Test avatar update error:', error);
+    console.error('🚨 Test avatar error:', error);
     return NextResponse.json({ 
-      error: 'Failed to update test avatar',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Test failed',
+      debug: {
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      }
     }, { status: 500 });
   }
 } 
