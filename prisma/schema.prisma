@@ -150,6 +150,24 @@ model Assistant {
   embedUrl          String?           @map("embed_url")
   isPublic          Boolean           @default(false) @map("is_public")
   
+  // Embed widget styling
+  embedBubbleColor  String?           @default("#3B82F6") @map("embed_bubble_color")
+  embedButtonShape  String?           @default("rounded") @map("embed_button_shape") // square, rounded, pill
+  embedFontStyle    String?           @default("system") @map("embed_font_style") // system, sans, serif, monospace
+  embedPosition     String?           @default("bottom-right") @map("embed_position") // bottom-left, bottom-right
+  
+  // Full chat UI styling
+  chatBackgroundColor    String?      @default("#FFFFFF") @map("chat_background_color")
+  userMessageBubbleColor String?      @default("#3B82F6") @map("user_message_bubble_color")  
+  assistantMessageBubbleColor String? @default("#F3F4F6") @map("assistant_message_bubble_color")
+  assistantFontStyle     String?      @default("sans") @map("assistant_font_style") // sans, serif, monospace
+  messageBubbleRadius    Int?         @default(12) @map("message_bubble_radius") // 0-24px
+  showAssistantAvatar    Boolean?     @default(true) @map("show_assistant_avatar")
+  assistantAvatarUrl     String?      @map("assistant_avatar_url")
+  showChatHeader         Boolean?     @default(true) @map("show_chat_header")
+  chatHeaderTitle        String?      @default("AI Assistant") @map("chat_header_title")
+  welcomeMessage         String?      @map("welcome_message")
+  
   // Usage tracking
   totalSessions     Int               @default(0) @map("total_sessions")
   totalMessages     Int               @default(0) @map("total_messages")

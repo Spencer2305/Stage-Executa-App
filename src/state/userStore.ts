@@ -92,7 +92,7 @@ export const useUserStore = create<UserState>()(
       register: async (email: string, password: string, name: string, organizationName?: string) => {
         set({ isLoading: true });
         try {
-          const response = await authApi.register(email, password, name, organizationName);
+          const response = await authApi.register(email, password, name, organizationName || '');
           const { user, token } = response;
           
           // Store token
@@ -112,22 +112,31 @@ export const useUserStore = create<UserState>()(
       },
       
       getCurrentUser: async () => {
+        console.log('📋 UserStore: getCurrentUser called');
         const token = localStorage.getItem('executa-auth-token');
+        console.log('🔍 UserStore: Token in localStorage:', token ? 'Found' : 'Not found');
+        
         if (!token) {
+          console.log('❌ UserStore: No token found, setting user to null');
           set({ user: null });
           return;
         }
         
         try {
-          const response = await authApi.me();
+          console.log('📡 UserStore: Making API call to getCurrentUser...');
+          const response = await authApi.getCurrentUser();
+          console.log('✅ UserStore: API call successful, response:', response);
+          
           const userData = {
             ...response.user,
             createdAt: new Date(response.user.createdAt)
           };
+          console.log('👤 UserStore: Setting user data:', userData);
           
           set({ user: userData });
         } catch (error) {
-          console.error('Get current user error:', error);
+          console.error('❌ UserStore: Get current user error:', error);
+          console.log('🧹 UserStore: Clearing token due to API error');
           // Token might be invalid, clear it
           localStorage.removeItem('executa-auth-token');
           set({ user: null });

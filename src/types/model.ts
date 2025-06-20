@@ -9,6 +9,21 @@ export interface Model {
   documents: Document[];
   apiKey?: string;
   embedUrl?: string;
+  embedBubbleColor?: string;
+  embedButtonShape?: string;
+  embedFontStyle?: string;
+  embedPosition?: string;
+  // Full chat UI styling
+  chatBackgroundColor?: string;
+  userMessageBubbleColor?: string;
+  assistantMessageBubbleColor?: string;
+  assistantFontStyle?: string;
+  messageBubbleRadius?: number;
+  showAssistantAvatar?: boolean;
+  assistantAvatarUrl?: string;
+  showChatHeader?: boolean;
+  chatHeaderTitle?: string;
+  welcomeMessage?: string;
   totalSessions: number;
   owner: {
     id: string;

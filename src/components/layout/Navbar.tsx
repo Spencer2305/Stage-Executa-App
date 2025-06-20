@@ -27,6 +27,11 @@ export default function Navbar() {
   
   // Check if we're on dashboard pages
   const isDashboard = pathname?.startsWith('/dashboard');
+  
+  // Don't render navbar on dashboard pages
+  if (isDashboard) {
+    return null;
+  }
 
   // Helper function to get active state classes
   const getLinkClasses = (href: string) => {

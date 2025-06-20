@@ -9,16 +9,23 @@ const api = axios.create({
   },
 });
 
-// Add auth token to requests if available (but not for auth endpoints)
+// Add auth token to requests if available (but not for auth endpoints except /auth/me)
 api.interceptors.request.use((config) => {
-  // Don't add auth token to auth endpoints
+  // Don't add auth token to auth endpoints EXCEPT /auth/me which needs authentication
   const isAuthEndpoint = config.url?.includes('/auth/');
+  const isAuthMeEndpoint = config.url?.includes('/auth/me');
+  console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url} (isAuthEndpoint: ${isAuthEndpoint}, isAuthMeEndpoint: ${isAuthMeEndpoint})`);
   
-  if (!isAuthEndpoint) {
+  if (!isAuthEndpoint || isAuthMeEndpoint) {
     const token = localStorage.getItem('executa-auth-token');
     if (token) {
+      console.log('🔑 API: Adding Authorization header to request');
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.log('❌ API: No token found, not adding Authorization header');
     }
+  } else {
+    console.log('🔓 API: Auth endpoint (non-me), skipping Authorization header');
   }
   return config;
 });

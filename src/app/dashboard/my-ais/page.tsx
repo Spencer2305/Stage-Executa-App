@@ -29,9 +29,107 @@ import {
   Trash2,
   Copy,
   BarChart3,
-  ExternalLink
+  ExternalLink,
+  MoreVertical,
+  Circle,
+  FileText,
+  Mail,
+  Zap,
+  Target,
+  TrendingUp,
+  RefreshCw,
+  Lightbulb,
+  Globe,
+  Filter,
+  Users
 } from "lucide-react";
 import Link from "next/link";
+import CreateAssistantDialog from "@/components/models/CreateAssistantDialog";
+
+// Training source badge component
+function TrainingSourceBadges({ documents }: { documents: any[] }) {
+  const sources = new Set<string>();
+  
+  documents.forEach(doc => {
+    if (doc.type === 'pdf' || doc.type === 'txt' || doc.type === 'docx') {
+      sources.add('docs');
+    } else if (doc.type === 'gmail') {
+      sources.add('gmail');
+    }
+  });
+
+  return (
+    <div className="flex items-center space-x-1">
+      {sources.has('docs') && (
+        <Badge variant="secondary" className="text-xs">
+          <FileText className="w-3 h-3 mr-1" />
+          Docs
+        </Badge>
+      )}
+      {sources.has('gmail') && (
+        <Badge variant="secondary" className="text-xs">
+          <Mail className="w-3 h-3 mr-1" />
+          Gmail
+        </Badge>
+      )}
+      {sources.size === 0 && (
+        <Badge variant="outline" className="text-xs text-gray-500">
+          <Zap className="w-3 h-3 mr-1" />
+          API
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+// Deployment badges component
+function DeploymentBadges({ isActive }: { isActive: boolean }) {
+  if (!isActive) {
+    return (
+      <Badge variant="outline" className="text-xs text-gray-500">
+        Not deployed
+      </Badge>
+    );
+  }
+
+  return (
+    <div className="flex items-center space-x-1">
+      <Badge variant="secondary" className="text-xs">
+        <Globe className="w-3 h-3 mr-1" />
+        Website
+      </Badge>
+    </div>
+  );
+}
+
+// Progress nudge component
+function ProgressNudge({ model }: { model: any }) {
+  if (model.totalSessions > 0 || model.documents.length > 5) {
+    return null;
+  }
+
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+      <div className="flex items-start space-x-2">
+        <Lightbulb className="h-4 w-4 text-blue-600 mt-0.5" />
+        <div>
+          <p className="text-xs text-blue-800 font-medium">
+            {model.totalSessions === 0 && model.status === 'draft' 
+              ? "Ready to deploy? Train your assistant to start helping users"
+              : "No usage yet — deploy your assistant to start collecting insights"
+            }
+          </p>
+          {model.status === 'draft' && (
+            <Button size="sm" className="mt-2 text-xs h-6 px-2">
+              <Target className="w-3 h-3 mr-1" />
+              Deploy Now
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MyAIsPage() {
   const router = useRouter();
@@ -154,12 +252,14 @@ export default function MyAIsPage() {
               Manage and monitor your AI assistants
             </p>
           </div>
-          <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
-            <Link href="/dashboard/create">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Assistant
-            </Link>
-          </Button>
+          <CreateAssistantDialog>
+            <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
+              <Link href="/dashboard/create">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Assistant
+              </Link>
+            </Button>
+          </CreateAssistantDialog>
         </div>
 
         {/* Stats */}
@@ -262,12 +362,14 @@ export default function MyAIsPage() {
                 }
               </p>
               {!searchQuery && filterStatus === "all" && (
-                <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
-                  <Link href="/dashboard/create">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Assistant
-                  </Link>
-                </Button>
+                <CreateAssistantDialog>
+                  <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
+                    <Link href="/dashboard/create">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Assistant
+                    </Link>
+                  </Button>
+                </CreateAssistantDialog>
               )}
             </CardContent>
           </Card>
@@ -291,7 +393,7 @@ export default function MyAIsPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -371,7 +473,7 @@ export default function MyAIsPage() {
                       onClick={() => handleSettingsClick(model.id)}
                     >
                       <Settings className="h-4 w-4 mr-1" />
-                      Settings
+                      Edit Assistant
                     </Button>
                   </div>
                 </CardContent>

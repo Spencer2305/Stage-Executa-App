@@ -20,13 +20,23 @@ import {
   X,
   Check,
   Mail,
-  Loader2
+  Loader2,
+  CheckCircle,
+  MessageSquare,
+  Code,
+  Bell,
+  Sparkles,
+  Rocket,
+  Heart
 } from "lucide-react";
 
 export default function CreateAIPage() {
   const router = useRouter();
   const { createModel, isLoading } = useModelStore();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isCreated, setIsCreated] = useState(false);
+  const [createdAssistantId, setCreatedAssistantId] = useState<string | null>(null);
+  const [gmailNotify, setGmailNotify] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -36,7 +46,7 @@ export default function CreateAIPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dragActive, setDragActive] = useState(false);
 
-  const totalSteps = 4;
+  const totalSteps = 5; // Increased to 5 steps
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -110,7 +120,7 @@ export default function CreateAIPage() {
     if (!validateStep(2)) return;
 
     try {
-      await createModel({
+      const result = await createModel({
         name: formData.name,
         description: formData.description,
         documents: formData.files,
@@ -119,8 +129,13 @@ export default function CreateAIPage() {
         },
       });
 
+      setIsCreated(true);
+      setCreatedAssistantId(result?.id || 'new-assistant');
+      
+      // Move to success screen
+      setCurrentStep(5);
+      
       toast.success("AI Assistant created successfully!");
-      router.push("/dashboard");
     } catch (error) {
       setErrors({ submit: "Failed to create assistant. Please try again." });
       toast.error("Failed to create assistant");
@@ -137,6 +152,24 @@ export default function CreateAIPage() {
     if (step < currentStep) return "bg-primary text-primary-foreground";
     if (step === currentStep) return "bg-primary text-primary-foreground";
     return "bg-muted text-muted-foreground";
+  };
+
+  const handleTestChat = () => {
+    if (createdAssistantId) {
+      router.push(`/dashboard/assistants/${createdAssistantId}`);
+    }
+  };
+
+  const handleEmbedIt = () => {
+    const embedCode = `<script src="https://cdn.executa.ai/widget.js" data-assistant-id="${createdAssistantId}"></script>`;
+    navigator.clipboard.writeText(embedCode);
+    toast.success("Embed code copied to clipboard!");
+  };
+
+  const handleUploadMore = () => {
+    if (createdAssistantId) {
+      router.push(`/dashboard/assistants/${createdAssistantId}?tab=knowledge`);
+    }
   };
 
   const renderStep = () => {
@@ -268,6 +301,21 @@ export default function CreateAIPage() {
                   Coming Soon
                 </div>
               </div>
+              
+              {/* Notification signup for Gmail */}
+              <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="gmail-notify"
+                  checked={gmailNotify}
+                  onChange={(e) => setGmailNotify(e.target.checked)}
+                  className="h-4 w-4 text-primary"
+                />
+                <label htmlFor="gmail-notify" className="text-sm text-blue-700 cursor-pointer">
+                  <Bell className="inline w-4 h-4 mr-1" />
+                  Notify me when Gmail integration is available
+                </label>
+              </div>
             </div>
           </div>
         );
@@ -309,6 +357,73 @@ export default function CreateAIPage() {
                 {errors.submit}
               </div>
             )}
+          </div>
+        );
+
+      case 5:
+        // Success/Confirmation Screen
+        return (
+          <div className="text-center space-y-6">
+            <div className="space-y-4">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold text-gray-900 flex items-center justify-center gap-2">
+                  <Sparkles className="h-5 w-5 text-yellow-500" />
+                  Your assistant is live and ready to help!
+                  <Sparkles className="h-5 w-5 text-yellow-500" />
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {formData.name} has been created and trained. Want to test it out?
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border border-green-200">
+              <div className="flex items-center justify-center space-x-2 text-green-700 mb-4">
+                <Heart className="w-4 h-4" />
+                <span className="font-medium">Next Steps</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Button 
+                  onClick={handleTestChat}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Test It
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={handleEmbedIt}
+                >
+                  <Code className="mr-2 h-4 w-4" />
+                  Embed It
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={handleUploadMore}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload More Knowledge
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center space-x-2 text-sm text-blue-700">
+                <Rocket className="w-4 h-4" />
+                <span>Ready to deploy? Your assistant can now be embedded on websites, integrated with Slack, or accessed via API.</span>
+              </div>
+            </div>
+
+            <Button 
+              variant="outline" 
+              onClick={() => router.push('/dashboard')}
+              className="w-full"
+            >
+              Go to Dashboard
+            </Button>
           </div>
         );
 
@@ -360,12 +475,14 @@ export default function CreateAIPage() {
                 {currentStep === 2 && "Upload Knowledge Base"}
                 {currentStep === 3 && "Integrations"}
                 {currentStep === 4 && "Review & Create"}
+                {currentStep === 5 && "Success!"}
               </CardTitle>
               <CardDescription>
                 {currentStep === 1 && "Give your AI assistant a name and description"}
                 {currentStep === 2 && "Upload documents that your AI will learn from"}
                 {currentStep === 3 && "Connect external data sources (optional)"}
                 {currentStep === 4 && "Review your settings and create the assistant"}
+                {currentStep === 5 && "Your assistant has been created successfully"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -373,35 +490,37 @@ export default function CreateAIPage() {
                 {renderStep()}
               </div>
 
-              {/* Navigation */}
-              <div className="flex justify-between pt-4">
-                <Button
-                  variant="outline"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Previous
-                </Button>
+              {/* Navigation - Hide on success screen */}
+              {currentStep < 5 && (
+                <div className="flex justify-between pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={prevStep}
+                    disabled={currentStep === 1}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
 
-                {currentStep < totalSteps ? (
-                  <Button onClick={nextStep}>
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button onClick={handleSubmit} disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      "Create Assistant"
-                    )}
-                  </Button>
-                )}
-              </div>
+                  {currentStep < 4 ? (
+                    <Button onClick={nextStep}>
+                      Next
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button onClick={handleSubmit} disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        "Create Assistant"
+                      )}
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
