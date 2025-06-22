@@ -33,7 +33,7 @@ interface UserState {
   
   // Async actions
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, organizationName?: string) => Promise<void>;
+  register: (email: string, password: string, name: string, organizationName?: string) => Promise<{ redirectTo?: string }>;
   getCurrentUser: () => Promise<void>;
 }
 
@@ -96,7 +96,7 @@ export const useUserStore = create<UserState>()(
         set({ isLoading: true });
         try {
           const response = await authApi.register(email, password, name, organizationName || '');
-          const { user, token } = response;
+          const { user, token, redirectTo } = response;
           
           // Store token
           localStorage.setItem('executa-auth-token', token);
@@ -108,6 +108,8 @@ export const useUserStore = create<UserState>()(
           };
           
           set({ user: userData, isLoading: false });
+          
+          return { redirectTo };
         } catch (error) {
           set({ isLoading: false });
           throw error;

@@ -30,6 +30,11 @@ export interface AuthUser {
     accountId: string;
     name: string;
     plan: string;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    subscriptionStatus?: string | null;
+    currentPeriodStart?: Date | null;
+    currentPeriodEnd?: Date | null;
   };
 }
 
@@ -100,7 +105,12 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthUse
         id: session.user.account.id,
         accountId: session.user.account.accountId,
         name: session.user.account.name,
-        plan: session.user.account.plan
+        plan: session.user.account.plan,
+        stripeCustomerId: session.user.account.stripeCustomerId,
+        stripeSubscriptionId: session.user.account.stripeSubscriptionId,
+        subscriptionStatus: session.user.account.subscriptionStatus,
+        currentPeriodStart: session.user.account.currentPeriodStart,
+        currentPeriodEnd: session.user.account.currentPeriodEnd,
       }
     };
   } catch (error) {
@@ -165,7 +175,8 @@ export async function createAccountAndUser(
 
   // Generate account ID
   const accountId = `acc_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
-  const slug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  const baseSlug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  const slug = `${baseSlug}-${uuidv4().substring(0, 8)}`; // Make slug unique
 
   // Create account and user in a transaction
   const result = await db.$transaction(async (tx) => {
@@ -226,7 +237,12 @@ export async function createAccountAndUser(
       id: result.account.id,
       accountId: result.account.accountId,
       name: result.account.name,
-      plan: result.account.plan
+      plan: result.account.plan,
+      stripeCustomerId: result.account.stripeCustomerId,
+      stripeSubscriptionId: result.account.stripeSubscriptionId,
+      subscriptionStatus: result.account.subscriptionStatus,
+      currentPeriodStart: result.account.currentPeriodStart,
+      currentPeriodEnd: result.account.currentPeriodEnd,
     }
   };
 
