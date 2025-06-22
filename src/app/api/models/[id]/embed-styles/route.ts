@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { verifyToken } from '@/lib/auth';
+import { authenticateRequest } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -9,25 +9,35 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
+    const user = await authenticateRequest(request);
     if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const assistantId = params.id;
     const body = await request.json();
-    const { embedBubbleColor, embedButtonShape, embedFontStyle, embedPosition } = body;
+    const { 
+      bubbleColor, 
+      buttonShape, 
+      fontStyle, 
+      position,
+      chatBackgroundColor,
+      userMessageBubbleColor,
+      assistantMessageBubbleColor,
+      assistantFontStyle,
+      messageBubbleRadius,
+      showAssistantAvatar,
+      assistantAvatarIcon,
+      showChatHeader,
+      chatHeaderTitle,
+      welcomeMessage
+    } = body;
 
     // Verify the assistant belongs to the user's account
     const assistant = await prisma.assistant.findFirst({
       where: {
         id: assistantId,
-        accountId: user.accountId,
+        accountId: user.account.id,
       },
     });
 
@@ -39,19 +49,43 @@ export async function PUT(
     const updatedAssistant = await prisma.assistant.update({
       where: { id: assistantId },
       data: {
-        // TODO: Uncomment these fields after running database migration
-        // embedBubbleColor,
-        // embedButtonShape,
-        // embedFontStyle,
-        // embedPosition,
-        updatedAt: new Date(), // Update timestamp for now
+        embedBubbleColor: bubbleColor,
+        embedButtonShape: buttonShape,
+        embedFontStyle: fontStyle,
+        embedPosition: position,
+        chatBackgroundColor,
+        userMessageBubbleColor,
+        assistantMessageBubbleColor,
+        assistantFontStyle,
+        messageBubbleRadius: messageBubbleRadius ? parseInt(messageBubbleRadius.toString()) : null,
+        showAssistantAvatar,
+        assistantAvatarUrl: assistantAvatarIcon || null,
+        showChatHeader,
+        chatHeaderTitle: chatHeaderTitle || null,
+        welcomeMessage: welcomeMessage || null,
+        updatedAt: new Date(),
       },
     });
 
     return NextResponse.json({
       message: 'Embed styles updated successfully',
       assistant: updatedAssistant,
-      styles: { embedBubbleColor, embedButtonShape, embedFontStyle, embedPosition },
+      styles: { 
+        bubbleColor, 
+        buttonShape, 
+        fontStyle, 
+        position,
+        chatBackgroundColor,
+        userMessageBubbleColor,
+        assistantMessageBubbleColor,
+        assistantFontStyle,
+        messageBubbleRadius,
+        showAssistantAvatar,
+        assistantAvatarIcon,
+        showChatHeader,
+        chatHeaderTitle,
+        welcomeMessage
+      },
     });
   } catch (error) {
     console.error('Error updating embed styles:', error);
@@ -69,14 +103,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
+    const user = await authenticateRequest(request);
     if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const assistantId = params.id;
@@ -85,15 +114,24 @@ export async function GET(
     const assistant = await prisma.assistant.findFirst({
       where: {
         id: assistantId,
-        accountId: user.accountId,
+        accountId: user.account.id,
       },
       select: {
         id: true,
-        // TODO: Uncomment these fields after running database migration
-        // embedBubbleColor: true,
-        // embedButtonShape: true,
-        // embedFontStyle: true,
-        // embedPosition: true,
+        embedBubbleColor: true,
+        embedButtonShape: true,
+        embedFontStyle: true,
+        embedPosition: true,
+        chatBackgroundColor: true,
+        userMessageBubbleColor: true,
+        assistantMessageBubbleColor: true,
+        assistantFontStyle: true,
+        messageBubbleRadius: true,
+        showAssistantAvatar: true,
+        assistantAvatarUrl: true,
+        showChatHeader: true,
+        chatHeaderTitle: true,
+        welcomeMessage: true,
       },
     });
 
@@ -101,13 +139,22 @@ export async function GET(
       return NextResponse.json({ error: 'Assistant not found' }, { status: 404 });
     }
 
-    // Return default values for now
     return NextResponse.json({
       id: assistant.id,
-      embedBubbleColor: "#3B82F6",
-      embedButtonShape: "rounded",
-      embedFontStyle: "system",
-      embedPosition: "bottom-right",
+      embedBubbleColor: assistant.embedBubbleColor || "#3B82F6",
+      embedButtonShape: assistant.embedButtonShape || "rounded",
+      embedFontStyle: assistant.embedFontStyle || "system",
+      embedPosition: assistant.embedPosition || "bottom-right",
+      chatBackgroundColor: assistant.chatBackgroundColor || "#FFFFFF",
+      userMessageBubbleColor: assistant.userMessageBubbleColor || "#3B82F6",
+      assistantMessageBubbleColor: assistant.assistantMessageBubbleColor || "#F3F4F6",
+      assistantFontStyle: assistant.assistantFontStyle || "sans",
+      messageBubbleRadius: assistant.messageBubbleRadius || 12,
+      showAssistantAvatar: assistant.showAssistantAvatar !== false,
+      assistantAvatarUrl: assistant.assistantAvatarUrl || "",
+      showChatHeader: assistant.showChatHeader !== false,
+      chatHeaderTitle: assistant.chatHeaderTitle || "AI Assistant",
+      welcomeMessage: assistant.welcomeMessage || "",
     });
   } catch (error) {
     console.error('Error fetching embed styles:', error);

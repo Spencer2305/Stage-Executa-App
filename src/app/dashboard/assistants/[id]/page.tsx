@@ -14,6 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import KnowledgeBaseManager from "@/components/knowledge/KnowledgeBaseManager";
 import { Document as ModelDocument } from "@/types/model";
@@ -54,6 +59,29 @@ import {
   ImageIcon,
   User
 } from "lucide-react";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faRobot, 
+  faUser, 
+  faUserTie, 
+  faHeadset, 
+  faCog, 
+  faLightbulb, 
+  faHeart, 
+  faStar, 
+  faThumbsUp, 
+  faShield, 
+  faGraduationCap, 
+  faBriefcase, 
+  faHome, 
+  faPhone, 
+  faEnvelope,
+  faComment,
+  faComments,
+  faInfoCircle,
+  faQuestionCircle,
+  faExclamationCircle
+} from '@fortawesome/free-solid-svg-icons';
 
 interface ChatMessage {
   id: string;
@@ -61,6 +89,30 @@ interface ChatMessage {
   sender: 'user' | 'bot';
   timestamp: Date | string;
 }
+
+// Avatar icon options for Font Awesome
+const avatarIcons = [
+  { id: 'robot', icon: faRobot, label: 'Robot' },
+  { id: 'user', icon: faUser, label: 'User' },
+  { id: 'user-tie', icon: faUserTie, label: 'Professional' },
+  { id: 'headset', icon: faHeadset, label: 'Support Agent' },
+  { id: 'cog', icon: faCog, label: 'Technical' },
+  { id: 'lightbulb', icon: faLightbulb, label: 'Ideas' },
+  { id: 'heart', icon: faHeart, label: 'Friendly' },
+  { id: 'star', icon: faStar, label: 'Premium' },
+  { id: 'thumbs-up', icon: faThumbsUp, label: 'Helpful' },
+  { id: 'shield', icon: faShield, label: 'Security' },
+  { id: 'graduation-cap', icon: faGraduationCap, label: 'Education' },
+  { id: 'briefcase', icon: faBriefcase, label: 'Business' },
+  { id: 'home', icon: faHome, label: 'Home' },
+  { id: 'phone', icon: faPhone, label: 'Contact' },
+  { id: 'envelope', icon: faEnvelope, label: 'Messages' },
+  { id: 'comment', icon: faComment, label: 'Chat' },
+  { id: 'comments', icon: faComments, label: 'Discussion' },
+  { id: 'info-circle', icon: faInfoCircle, label: 'Information' },
+  { id: 'question-circle', icon: faQuestionCircle, label: 'Help' },
+  { id: 'exclamation-circle', icon: faExclamationCircle, label: 'Important' },
+];
 
 export default function AssistantViewPage() {
   const params = useParams();
@@ -102,12 +154,13 @@ export default function AssistantViewPage() {
     assistantFontStyle: assistant?.assistantFontStyle || "sans",
     messageBubbleRadius: assistant?.messageBubbleRadius || 12,
     showAssistantAvatar: assistant?.showAssistantAvatar !== false,
-    assistantAvatarUrl: assistant?.assistantAvatarUrl || "",
+    assistantAvatarIcon: assistant?.assistantAvatarUrl || "robot",
     showChatHeader: assistant?.showChatHeader !== false,
     chatHeaderTitle: assistant?.chatHeaderTitle || "AI Assistant",
     welcomeMessage: assistant?.welcomeMessage || ""
   });
   const [embedCodeType, setEmbedCodeType] = useState<'styled' | 'raw'>('styled');
+  const [isSavingStyles, setIsSavingStyles] = useState(false);
 
   useEffect(() => {
     const loadAssistantData = async () => {
@@ -166,6 +219,28 @@ export default function AssistantViewPage() {
       setAssistantFiles(assistant.documents);
     }
   }, [assistant?.documents]);
+
+  // Load embed styles when assistant is loaded
+  useEffect(() => {
+    if (assistant) {
+      setEmbedStyle({
+        bubbleColor: assistant.embedBubbleColor || "#3B82F6",
+        buttonShape: assistant.embedButtonShape || "rounded",
+        fontStyle: assistant.embedFontStyle || "system",
+        position: assistant.embedPosition || "bottom-right",
+        chatBackgroundColor: assistant.chatBackgroundColor || "#FFFFFF",
+        userMessageBubbleColor: assistant.userMessageBubbleColor || "#3B82F6",
+        assistantMessageBubbleColor: assistant.assistantMessageBubbleColor || "#F3F4F6",
+        assistantFontStyle: assistant.assistantFontStyle || "sans",
+        messageBubbleRadius: assistant.messageBubbleRadius || 12,
+        showAssistantAvatar: assistant.showAssistantAvatar !== false,
+                 assistantAvatarIcon: assistant.assistantAvatarUrl || "robot",
+        showChatHeader: assistant.showChatHeader !== false,
+        chatHeaderTitle: assistant.chatHeaderTitle || "AI Assistant",
+        welcomeMessage: assistant.welcomeMessage || ""
+      });
+    }
+  }, [assistant]);
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
@@ -274,12 +349,15 @@ export default function AssistantViewPage() {
 
   // Functions for embed functionality
   const saveEmbedStyles = async () => {
+    setIsSavingStyles(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('executa-auth-token');
       if (!token) {
         toast.error("Authentication required");
         return;
       }
+
+      console.log('Saving embed styles:', embedStyle); // Debug log
 
       const response = await fetch(`/api/models/${assistantId}/embed-styles`, {
         method: 'PUT',
@@ -290,20 +368,22 @@ export default function AssistantViewPage() {
         body: JSON.stringify(embedStyle),
       });
 
+      const data = await response.json();
+      console.log('Save response:', data); // Debug log
+
       if (!response.ok) {
-        throw new Error('Failed to save embed styles');
+        throw new Error(data.error || 'Failed to save embed styles');
       }
 
-      const data = await response.json();
       toast.success("Embed styles saved successfully!");
       
-      // Update the assistant in the store if needed
-      if (data.assistant) {
-        // TODO: Update the modelStore with the new assistant data
-      }
+      // Refresh the assistant data to get the latest saved values
+      await refreshModel(assistantId);
     } catch (error) {
       console.error("Error saving embed styles:", error);
       toast.error("Failed to save embed styles");
+    } finally {
+      setIsSavingStyles(false);
     }
   };
 
@@ -320,7 +400,7 @@ export default function AssistantViewPage() {
       assistantFontStyle: "sans",
       messageBubbleRadius: 12,
       showAssistantAvatar: true,
-      assistantAvatarUrl: "",
+      assistantAvatarIcon: "robot",
       showChatHeader: true,
       chatHeaderTitle: "AI Assistant",
       welcomeMessage: ""
@@ -921,16 +1001,57 @@ export default function AssistantViewPage() {
                       </button>
                     </div>
 
-                    {/* Assistant Avatar URL */}
+                    {/* Assistant Avatar Icon */}
                     {embedStyle.showAssistantAvatar && (
                       <div className="space-y-2">
-                        <Label>Assistant Avatar URL</Label>
-                        <Input
-                          value={embedStyle.assistantAvatarUrl}
-                          onChange={(e) => setEmbedStyle(prev => ({ ...prev, assistantAvatarUrl: e.target.value }))}
-                          placeholder="https://example.com/avatar.png"
-                          className="w-full"
-                        />
+                        <Label>Assistant Avatar Icon</Label>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start">
+                              <div className="flex items-center space-x-2">
+                                <FontAwesomeIcon 
+                                  icon={avatarIcons.find(icon => icon.id === embedStyle.assistantAvatarIcon)?.icon || faRobot}
+                                  className="w-4 h-4"
+                                />
+                                <span>Choose Icon</span>
+                              </div>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-64 bg-white p-3">
+                            <div className="grid grid-cols-4 gap-2">
+                              {avatarIcons.map((iconOption) => (
+                                <button
+                                  key={iconOption.id}
+                                  onClick={() => setEmbedStyle(prev => ({ ...prev, assistantAvatarIcon: iconOption.id }))}
+                                  className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center transition-all hover:bg-gray-50 ${
+                                    embedStyle.assistantAvatarIcon === iconOption.id 
+                                      ? 'border-blue-500 bg-blue-50' 
+                                      : 'border-gray-200'
+                                  }`}
+                                >
+                                  <FontAwesomeIcon 
+                                    icon={iconOption.icon}
+                                    className="w-5 h-5 text-gray-600"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        {/* Icon Preview */}
+                        <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded border">
+                          <div 
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-white"
+                            style={{ backgroundColor: embedStyle.bubbleColor }}
+                          >
+                            <FontAwesomeIcon 
+                              icon={avatarIcons.find(icon => icon.id === embedStyle.assistantAvatarIcon)?.icon || faRobot}
+                              className="w-4 h-4"
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600">Preview of selected icon</span>
+                        </div>
                       </div>
                     )}
 
@@ -977,8 +1098,15 @@ export default function AssistantViewPage() {
                   </div>
 
                   <div className="flex space-x-3">
-                    <Button onClick={saveEmbedStyles} className="flex-1">
-                      Save Style Settings
+                    <Button onClick={saveEmbedStyles} disabled={isSavingStyles} className="flex-1">
+                      {isSavingStyles ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Style Settings'
+                      )}
                     </Button>
                     <Button onClick={resetToDefaults} variant="outline" className="flex items-center space-x-2">
                       <RotateCcw className="h-4 w-4" />
@@ -1166,15 +1294,10 @@ export default function AssistantViewPage() {
                               className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
                               style={{ backgroundColor: embedStyle.bubbleColor }}
                             >
-                              {embedStyle.assistantAvatarUrl ? (
-                                <img 
-                                  src={embedStyle.assistantAvatarUrl} 
-                                  alt="Avatar" 
-                                  className="w-full h-full rounded-full object-cover"
-                                />
-                              ) : (
-                                <User className="w-4 h-4 text-white" />
-                              )}
+                                                          <FontAwesomeIcon 
+                              icon={avatarIcons.find(icon => icon.id === embedStyle.assistantAvatarIcon)?.icon || faRobot}
+                              className="w-4 h-4 text-white"
+                            />
                             </div>
                           )}
                           <div 
@@ -1209,15 +1332,10 @@ export default function AssistantViewPage() {
                             className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
                             style={{ backgroundColor: embedStyle.bubbleColor }}
                           >
-                            {embedStyle.assistantAvatarUrl ? (
-                              <img 
-                                src={embedStyle.assistantAvatarUrl} 
-                                alt="Avatar" 
-                                className="w-full h-full rounded-full object-cover"
-                              />
-                            ) : (
-                              <User className="w-4 w-4 text-white" />
-                            )}
+                                                      <FontAwesomeIcon 
+                            icon={avatarIcons.find(icon => icon.id === embedStyle.assistantAvatarIcon)?.icon || faRobot}
+                            className="w-4 h-4 text-white"
+                          />
                           </div>
                         )}
                         <div 
@@ -1250,15 +1368,10 @@ export default function AssistantViewPage() {
                             className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
                             style={{ backgroundColor: embedStyle.bubbleColor }}
                           >
-                            {embedStyle.assistantAvatarUrl ? (
-                              <img 
-                                src={embedStyle.assistantAvatarUrl} 
-                                alt="Avatar" 
-                                className="w-full h-full rounded-full object-cover"
-                              />
-                            ) : (
-                              <User className="w-4 h-4 text-white" />
-                            )}
+                            <FontAwesomeIcon 
+                              icon={avatarIcons.find(icon => icon.id === embedStyle.assistantAvatarIcon)?.icon || faRobot}
+                              className="w-4 h-4 text-white"
+                            />
                           </div>
                         )}
                         <div 
