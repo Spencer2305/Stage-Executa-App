@@ -8,6 +8,8 @@ import { useUserStore } from "@/state/userStore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -919,29 +921,19 @@ export default function AssistantViewPage() {
                       </button>
                     </div>
 
-                    {/* Avatar Upload */}
+                    {/* Assistant Avatar URL */}
                     {embedStyle.showAssistantAvatar && (
                       <div className="space-y-2">
-                        <Label>Assistant Avatar</Label>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
-                            {embedStyle.assistantAvatarUrl ? (
-                              <img 
-                                src={embedStyle.assistantAvatarUrl} 
-                                alt="Avatar" 
-                                className="w-full h-full rounded-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="h-5 w-5 text-gray-400" />
-                            )}
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Upload Avatar
-                          </Button>
-                        </div>
-                  </div>
-                )}
-                
+                        <Label>Assistant Avatar URL</Label>
+                        <Input
+                          value={embedStyle.assistantAvatarUrl}
+                          onChange={(e) => setEmbedStyle(prev => ({ ...prev, assistantAvatarUrl: e.target.value }))}
+                          placeholder="https://example.com/avatar.png"
+                          className="w-full"
+                        />
+                      </div>
+                    )}
+
                     {/* Chat Header Toggle */}
                     <div className="flex items-center justify-between">
                       <Label>Enable Chat Header</Label>
@@ -1000,204 +992,303 @@ export default function AssistantViewPage() {
             {/* Live Preview Section */}
             <div className="space-y-6">
               <Card>
-              <CardHeader>
+                <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <Smartphone className="h-5 w-5" />
+                    <Eye className="h-5 w-5" />
                     <span>Live Preview</span>
                   </CardTitle>
                   <CardDescription>
-                    Full chat interface preview with your styling
+                    See how your AI assistant will appear to visitors
                   </CardDescription>
-              </CardHeader>
+                </CardHeader>
                 <CardContent>
-                  <div className="relative bg-gray-100 rounded-lg h-96 overflow-hidden border">
-                    {/* Mock website background */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-gray-100 p-4">
-                      <div className="text-xs text-gray-500 mb-2">Your Website</div>
-                      <div className="space-y-2">
-                        <div className="h-3 bg-gray-300 rounded w-3/4"></div>
-                        <div className="h-3 bg-gray-300 rounded w-1/2"></div>
-                        <div className="h-3 bg-gray-300 rounded w-2/3"></div>
+                  {/* Preview Tabs */}
+                  <Tabs defaultValue="mock" className="space-y-4">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="mock">Mock Website</TabsTrigger>
+                      <TabsTrigger value="live">Your Website</TabsTrigger>
+                    </TabsList>
+
+                    {/* Mock Website Preview */}
+                    <TabsContent value="mock" className="space-y-4">
+                      <div className="text-sm font-medium text-gray-700 mb-3">Mock Website with Chatbot:</div>
+                      <div className="relative w-full h-96 bg-gradient-to-b from-gray-50 to-gray-100 border rounded-lg overflow-hidden">
+                        {/* Mock website content */}
+                        <div className="p-6 space-y-4">
+                          <div className="h-8 bg-gray-300 rounded w-1/3"></div>
+                          <div className="space-y-2">
+                            <div className="h-4 bg-gray-300 rounded w-full"></div>
+                            <div className="h-4 bg-gray-300 rounded w-5/6"></div>
+                            <div className="h-4 bg-gray-300 rounded w-4/5"></div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 mt-6">
+                            <div className="h-20 bg-gray-300 rounded"></div>
+                            <div className="h-20 bg-gray-300 rounded"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Chatbot widget overlay */}
+                        <div 
+                          className={`absolute ${
+                            embedStyle.position === 'bottom-left' ? 'bottom-4 left-4' : 'bottom-4 right-4'
+                          } z-10`}
+                        >
+                          <button
+                            className={`w-14 h-14 flex items-center justify-center border-none cursor-pointer shadow-lg transition-all duration-300 hover:scale-105`}
+                            style={{
+                              backgroundColor: embedStyle.bubbleColor,
+                              borderRadius: embedStyle.buttonShape === 'square' ? '8px' : 
+                                embedStyle.buttonShape === 'rounded' ? '16px' : '50%'
+                            }}
+                          >
+                            <MessageSquare className="h-6 w-6 text-white" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    
-                    {/* Widget Button Preview */}
-                    <div 
-                      className={`absolute ${
-                        embedStyle.position === 'bottom-left' ? 'bottom-4 left-4' : 'bottom-4 right-4'
-                      } z-10`}
-                    >
-                      <button
-                        className={`w-14 h-14 flex items-center justify-center border-none cursor-pointer shadow-lg transition-all duration-300 hover:scale-105`}
-                        style={{
-                          backgroundColor: embedStyle.bubbleColor,
-                          borderRadius: embedStyle.buttonShape === 'square' ? '8px' : 
-                            embedStyle.buttonShape === 'rounded' ? '16px' : '50%'
+                    </TabsContent>
+
+                    {/* Live Website Preview */}
+                    <TabsContent value="live" className="space-y-4">
+                      {user?.website ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-medium text-gray-700">
+                              Preview on: {user.website}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(user.website, '_blank')}
+                              className="flex items-center space-x-1"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              <span>Open</span>
+                            </Button>
+                          </div>
+                          
+                          <div className="relative w-full h-96 border rounded-lg overflow-hidden bg-white">
+                            <iframe
+                              src={user.website}
+                              className="w-full h-full border-0"
+                              style={{ 
+                                transform: 'scale(0.4)', 
+                                transformOrigin: 'top left',
+                                width: '250%',
+                                height: '250%'
+                              }}
+                              sandbox="allow-scripts allow-same-origin"
+                              loading="lazy"
+                            />
+                            
+                            {/* Chatbot widget overlay */}
+                            <div 
+                              className={`absolute ${
+                                embedStyle.position === 'bottom-left' ? 'bottom-4 left-4' : 'bottom-4 right-4'
+                              } z-20`}
+                            >
+                              <button
+                                className={`w-14 h-14 flex items-center justify-center border-none cursor-pointer shadow-xl transition-all duration-300 hover:scale-105`}
+                                style={{
+                                  backgroundColor: embedStyle.bubbleColor,
+                                  borderRadius: embedStyle.buttonShape === 'square' ? '8px' : 
+                                    embedStyle.buttonShape === 'rounded' ? '16px' : '50%'
+                                }}
+                              >
+                                <MessageSquare className="h-6 w-6 text-white" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                            <p className="text-xs text-blue-800">
+                              <strong>Live Preview:</strong> This shows how your chatbot widget will appear on your actual website. 
+                              The iframe is scaled to fit the preview area.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg">
+                          <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No Website URL Found</h3>
+                          <p className="text-gray-600 mb-4">Add your website URL in settings to see the live preview</p>
+                          <Button
+                            variant="outline"
+                            onClick={() => window.open('/dashboard/settings', '_blank')}
+                            className="flex items-center space-x-2"
+                          >
+                            <Settings className="h-4 w-4" />
+                            <span>Go to Settings</span>
+                          </Button>
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+
+              {/* Separate Chat Interface Preview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Chat Interface Preview</CardTitle>
+                  <CardDescription>
+                    How the chat window will look when opened
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div 
+                    className="w-full max-w-sm mx-auto rounded-xl shadow-lg border overflow-hidden"
+                    style={{ 
+                      backgroundColor: embedStyle.chatBackgroundColor,
+                      fontFamily: embedStyle.assistantFontStyle === 'sans' ? '"Inter", sans-serif' :
+                        embedStyle.assistantFontStyle === 'serif' ? 'Georgia, serif' : 
+                        '"JetBrains Mono", monospace'
+                    }}
+                  >
+                    {/* Chat Header */}
+                    {embedStyle.showChatHeader && (
+                      <div 
+                        className="p-4 text-white flex items-center"
+                        style={{ 
+                          background: `linear-gradient(90deg, ${embedStyle.bubbleColor} 0%, ${embedStyle.userMessageBubbleColor} 100%)` 
                         }}
                       >
-                        <MessageSquare className="h-6 w-6 text-white" />
-                      </button>
-                    </div>
-                  </div>
+                        <h3 className="text-base font-medium">{embedStyle.chatHeaderTitle}</h3>
+                      </div>
+                    )}
 
-                  {/* Separate Chat Interface Preview */}
-                  <div className="mt-4">
-                    <div className="text-sm font-medium text-gray-700 mb-3">Chat Interface Preview:</div>
-                    <div 
-                      className="w-full max-w-sm mx-auto rounded-xl shadow-lg border overflow-hidden"
-                      style={{ 
-                        backgroundColor: embedStyle.chatBackgroundColor,
-                        fontFamily: embedStyle.assistantFontStyle === 'sans' ? '"Inter", sans-serif' :
-                          embedStyle.assistantFontStyle === 'serif' ? 'Georgia, serif' : 
-                          '"JetBrains Mono", monospace'
-                      }}
-                    >
-                      {/* Chat Header */}
-                      {embedStyle.showChatHeader && (
-                        <div 
-                          className="p-4 text-white flex items-center"
-                          style={{ 
-                            background: `linear-gradient(90deg, ${embedStyle.bubbleColor} 0%, ${embedStyle.userMessageBubbleColor} 100%)` 
-                          }}
-                        >
-                          <h3 className="text-base font-medium">{embedStyle.chatHeaderTitle}</h3>
+                    {/* Chat Messages */}
+                    <div className="p-4 space-y-3 min-h-[300px] max-h-[300px] overflow-y-auto">
+                      {/* Welcome Message */}
+                      {embedStyle.welcomeMessage && (
+                        <div className="flex items-start space-x-2">
+                          {embedStyle.showAssistantAvatar && (
+                            <div 
+                              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
+                              style={{ backgroundColor: embedStyle.bubbleColor }}
+                            >
+                              {embedStyle.assistantAvatarUrl ? (
+                                <img 
+                                  src={embedStyle.assistantAvatarUrl} 
+                                  alt="Avatar" 
+                                  className="w-full h-full rounded-full object-cover"
+                                />
+                              ) : (
+                                <User className="w-4 h-4 text-white" />
+                              )}
+                            </div>
+                          )}
+                          <div 
+                            className="max-w-[80%] px-3 py-2 text-sm text-gray-800"
+                            style={{ 
+                              backgroundColor: embedStyle.assistantMessageBubbleColor,
+                              borderRadius: `${embedStyle.messageBubbleRadius}px`
+                            }}
+                          >
+                            {embedStyle.welcomeMessage}
+                          </div>
                         </div>
                       )}
 
-                      {/* Chat Messages */}
-                      <div className="p-4 space-y-3 min-h-[300px] max-h-[300px] overflow-y-auto">
-                        {/* Welcome Message */}
-                        {embedStyle.welcomeMessage && (
-                          <div className="flex items-start space-x-2">
-                            {embedStyle.showAssistantAvatar && (
-                              <div 
-                                className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
-                                style={{ backgroundColor: embedStyle.bubbleColor }}
-                              >
-                                {embedStyle.assistantAvatarUrl ? (
-                                  <img 
-                                    src={embedStyle.assistantAvatarUrl} 
-                                    alt="Avatar" 
-                                    className="w-full h-full rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <User className="w-4 h-4 text-white" />
-                                )}
-                              </div>
-                            )}
-                            <div 
-                              className="max-w-[80%] px-3 py-2 text-sm text-gray-800"
-                              style={{ 
-                                backgroundColor: embedStyle.assistantMessageBubbleColor,
-                                borderRadius: `${embedStyle.messageBubbleRadius}px`
-                              }}
-                            >
-                              {embedStyle.welcomeMessage}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Sample User Message */}
-                        <div className="flex justify-end">
-                          <div 
-                            className="max-w-[80%] px-3 py-2 text-sm text-white"
-                            style={{ 
-                              backgroundColor: embedStyle.userMessageBubbleColor,
-                              borderRadius: `${embedStyle.messageBubbleRadius}px`
-                            }}
-                          >
-                            Hello! How can you help me?
-                          </div>
-                        </div>
-
-                        {/* Sample Assistant Response */}
-                        <div className="flex items-start space-x-2">
-                          {embedStyle.showAssistantAvatar && (
-                            <div 
-                              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
-                              style={{ backgroundColor: embedStyle.bubbleColor }}
-                            >
-                              {embedStyle.assistantAvatarUrl ? (
-                                <img 
-                                  src={embedStyle.assistantAvatarUrl} 
-                                  alt="Avatar" 
-                                  className="w-full h-full rounded-full object-cover"
-                                />
-                              ) : (
-                                <User className="w-4 h-4 text-white" />
-                              )}
-                            </div>
-                          )}
-                          <div 
-                            className="max-w-[80%] px-3 py-2 text-sm text-gray-800"
-                            style={{ 
-                              backgroundColor: embedStyle.assistantMessageBubbleColor,
-                              borderRadius: `${embedStyle.messageBubbleRadius}px`
-                            }}
-                          >
-                            I'm here to help! Feel free to ask me anything about our services.
-                          </div>
-                        </div>
-
-                        {/* Another sample exchange */}
-                        <div className="flex justify-end">
-                          <div 
-                            className="max-w-[80%] px-3 py-2 text-sm text-white"
-                            style={{ 
-                              backgroundColor: embedStyle.userMessageBubbleColor,
-                              borderRadius: `${embedStyle.messageBubbleRadius}px`
-                            }}
-                          >
-                            What are your business hours?
-                          </div>
-                        </div>
-
-                        <div className="flex items-start space-x-2">
-                          {embedStyle.showAssistantAvatar && (
-                            <div 
-                              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
-                              style={{ backgroundColor: embedStyle.bubbleColor }}
-                            >
-                              {embedStyle.assistantAvatarUrl ? (
-                                <img 
-                                  src={embedStyle.assistantAvatarUrl} 
-                                  alt="Avatar" 
-                                  className="w-full h-full rounded-full object-cover"
-                                />
-                              ) : (
-                                <User className="w-4 h-4 text-white" />
-                              )}
-                            </div>
-                          )}
-                          <div 
-                            className="max-w-[80%] px-3 py-2 text-sm text-gray-800"
-                            style={{ 
-                              backgroundColor: embedStyle.assistantMessageBubbleColor,
-                              borderRadius: `${embedStyle.messageBubbleRadius}px`
-                            }}
-                          >
-                            We're open Monday to Friday, 9 AM to 6 PM EST. Feel free to reach out anytime!
-                          </div>
+                      {/* Sample User Message */}
+                      <div className="flex justify-end">
+                        <div 
+                          className="max-w-[80%] px-3 py-2 text-sm text-white"
+                          style={{ 
+                            backgroundColor: embedStyle.userMessageBubbleColor,
+                            borderRadius: `${embedStyle.messageBubbleRadius}px`
+                          }}
+                        >
+                          Hello! How can you help me?
                         </div>
                       </div>
 
-                      {/* Chat Input */}
-                      <div className="p-4 border-t border-gray-200">
-                        <div className="flex items-center space-x-2">
-                          <input 
-                            type="text" 
-                            placeholder="Type your message..."
-                            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            value="Type your message..."
-                            readOnly
-                          />
-                          <button 
-                            className="p-2 rounded-lg"
-                            style={{ backgroundColor: embedStyle.userMessageBubbleColor }}
+                      {/* Sample Assistant Response */}
+                      <div className="flex items-start space-x-2">
+                        {embedStyle.showAssistantAvatar && (
+                          <div 
+                            className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
+                            style={{ backgroundColor: embedStyle.bubbleColor }}
                           >
-                            <Send className="h-4 w-4 text-white" />
-                          </button>
+                            {embedStyle.assistantAvatarUrl ? (
+                              <img 
+                                src={embedStyle.assistantAvatarUrl} 
+                                alt="Avatar" 
+                                className="w-full h-full rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-4 w-4 text-white" />
+                            )}
+                          </div>
+                        )}
+                        <div 
+                          className="max-w-[80%] px-3 py-2 text-sm text-gray-800"
+                          style={{ 
+                            backgroundColor: embedStyle.assistantMessageBubbleColor,
+                            borderRadius: `${embedStyle.messageBubbleRadius}px`
+                          }}
+                        >
+                          I'm here to help! Feel free to ask me anything about our services.
                         </div>
+                      </div>
+
+                      {/* Another sample exchange */}
+                      <div className="flex justify-end">
+                        <div 
+                          className="max-w-[80%] px-3 py-2 text-sm text-white"
+                          style={{ 
+                            backgroundColor: embedStyle.userMessageBubbleColor,
+                            borderRadius: `${embedStyle.messageBubbleRadius}px`
+                          }}
+                        >
+                          What are your business hours?
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-2">
+                        {embedStyle.showAssistantAvatar && (
+                          <div 
+                            className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
+                            style={{ backgroundColor: embedStyle.bubbleColor }}
+                          >
+                            {embedStyle.assistantAvatarUrl ? (
+                              <img 
+                                src={embedStyle.assistantAvatarUrl} 
+                                alt="Avatar" 
+                                className="w-full h-full rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-4 h-4 text-white" />
+                            )}
+                          </div>
+                        )}
+                        <div 
+                          className="max-w-[80%] px-3 py-2 text-sm text-gray-800"
+                          style={{ 
+                            backgroundColor: embedStyle.assistantMessageBubbleColor,
+                            borderRadius: `${embedStyle.messageBubbleRadius}px`
+                          }}
+                        >
+                          We're open Monday to Friday, 9 AM to 6 PM EST. Feel free to reach out anytime!
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Chat Input */}
+                    <div className="p-4 border-t border-gray-200">
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="text" 
+                          placeholder="Type your message..."
+                          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          value="Type your message..."
+                          readOnly
+                        />
+                        <button 
+                          className="p-2 rounded-lg"
+                          style={{ backgroundColor: embedStyle.userMessageBubbleColor }}
+                        >
+                          <Send className="h-4 w-4 text-white" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1402,15 +1493,4 @@ export default function AssistantViewPage() {
   );
 }
 
-function Label({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <label className={`text-sm font-medium ${className}`}>{children}</label>;
-}
-
-function Textarea({ className, ...props }: { className?: string; [key: string]: any }) {
-  return (
-    <textarea 
-      className={`w-full p-2 border rounded-md resize-none ${className}`} 
-      {...props} 
-    />
-  );
-} 
+ 
