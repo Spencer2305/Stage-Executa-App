@@ -27,6 +27,17 @@ export const metadata: Metadata = {
   keywords: ["AI chatbot", "knowledge base", "customer support", "artificial intelligence", "automation", "SaaS"],
   authors: [{ name: "Executa Team" }],
   creator: "Executa",
+  icons: {
+    icon: [
+      {
+        url: "/Executa-favicon.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/Executa-favicon.png",
+    apple: "/Executa-favicon.png",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
