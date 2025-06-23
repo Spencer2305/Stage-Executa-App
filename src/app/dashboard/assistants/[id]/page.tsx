@@ -59,7 +59,8 @@ import {
   Smartphone,
   RotateCcw,
   ImageIcon,
-  User
+  User,
+  AlertTriangle
 } from "lucide-react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -161,7 +162,7 @@ export default function AssistantViewPage() {
     chatHeaderTitle: assistant?.chatHeaderTitle || "AI Assistant",
     welcomeMessage: assistant?.welcomeMessage || ""
   });
-  const [embedCodeType, setEmbedCodeType] = useState<'styled' | 'raw'>('styled');
+  const [embedCodeType, setEmbedCodeType] = useState<'styled' | 'raw' | 'wordpress'>('styled');
   const [isSavingStyles, setIsSavingStyles] = useState(false);
 
   useEffect(() => {
@@ -559,6 +560,52 @@ export default function AssistantViewPage() {
     } catch (error) {
       console.error("Error copying embed code:", error);
       toast.error("Failed to copy embed code");
+    }
+  };
+
+  const downloadWordPressPlugin = async () => {
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      if (!token) {
+        toast.error("Authentication required");
+        return;
+      }
+
+      toast.success("Generating WordPress plugin...");
+
+      const response = await fetch(`/api/models/${assistantId}/wordpress-plugin`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate WordPress plugin');
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('content-disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
+        : `executa-ai-${assistant?.name?.toLowerCase().replace(/[^a-z0-9]/g, '-')}.zip`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success("WordPress plugin downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading WordPress plugin:", error);
+      toast.error("Failed to download WordPress plugin");
     }
   };
 
@@ -1466,10 +1513,11 @@ export default function AssistantViewPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Code Type Tabs */}
-              <Tabs value={embedCodeType} onValueChange={(value) => setEmbedCodeType(value as 'styled' | 'raw')}>
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs value={embedCodeType} onValueChange={(value) => setEmbedCodeType(value as 'styled' | 'raw' | 'wordpress')}>
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="styled">Styled Embed</TabsTrigger>
                   <TabsTrigger value="raw">Raw Embed</TabsTrigger>
+                  <TabsTrigger value="wordpress">WordPress Plugin</TabsTrigger>
                 </TabsList>
 
                 {/* Styled Embed Content */}
@@ -1518,6 +1566,88 @@ export default function AssistantViewPage() {
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                       <p className="text-xs text-blue-800">
                         <strong>Note:</strong> This embed includes no styling. You can target <code className="bg-blue-100 px-1 rounded">.executa-chat</code> via your own stylesheet for full customization.
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* WordPress Plugin Content */}
+                <TabsContent value="wordpress" className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0">
+                          <svg className="h-8 w-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21.469 0.298c-0.328-0.298-0.844-0.298-1.172 0l-1.797 1.625c-0.328 0.297-0.328 0.781 0 1.078l2.5 2.266c0.164 0.148 0.375 0.223 0.586 0.223s0.422-0.074 0.586-0.223c0.328-0.297 0.328-0.781 0-1.078l-0.414-0.375 0.711-0.641c0.328-0.297 0.328-0.781 0-1.078zM12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75-4.365-9.75-9.75-9.75zM12 19.5c-4.273 0-7.75-3.477-7.75-7.75s3.477-7.75 7.75-7.75 7.75 3.477 7.75 7.75-3.477 7.75-7.75 7.75z"/>
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            WordPress Plugin Export
+                          </h3>
+                          <p className="text-sm text-gray-600 mb-3">
+                            Generate a complete WordPress plugin that adds your AI assistant to any WordPress site. 
+                            The plugin includes all your current styling and settings.
+                          </p>
+                          <div className="space-y-2 text-sm text-gray-600">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-green-600">✓</span>
+                              <span>Includes all your current styling and configuration</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-green-600">✓</span>
+                              <span>WordPress admin panel for basic settings</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-green-600">✓</span>
+                              <span>No dashboard needed - uses your Executa.ai account</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-green-600">✓</span>
+                              <span>Mobile responsive and SEO friendly</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div>
+                        <h4 className="font-medium text-gray-900">Ready to Download</h4>
+                        <p className="text-sm text-gray-600">
+                          Plugin Name: <code className="bg-gray-100 px-1 rounded text-xs">executa-ai-{assistant?.name?.toLowerCase().replace(/[^a-z0-9]/g, '-')}.zip</code>
+                        </p>
+                      </div>
+                      <Button
+                        onClick={downloadWordPressPlugin}
+                        className="flex items-center space-x-2"
+                        size="lg"
+                      >
+                        <Download className="h-4 w-4" />
+                        <span>Download Plugin</span>
+                      </Button>
+                    </div>
+
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                      <div className="flex items-start space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-amber-800">
+                          <p className="font-medium mb-1">Installation Instructions:</p>
+                          <ol className="list-decimal list-inside space-y-1">
+                            <li>Download the plugin ZIP file</li>
+                            <li>Go to your WordPress admin → Plugins → Add New → Upload Plugin</li>
+                            <li>Upload the ZIP file and activate the plugin</li>
+                            <li>Visit Settings → {assistant?.name} AI to configure display options</li>
+                            <li>The chat widget will appear on your site automatically</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-xs text-blue-800">
+                        <strong>Note:</strong> The plugin connects to your Executa.ai assistant. To modify AI responses, training, or view analytics, 
+                        use your <a href={`https://app.executa.ai/dashboard/assistants/${assistantId}`} target="_blank" rel="noopener noreferrer" className="underline">Executa.ai dashboard</a>.
                       </p>
                     </div>
                   </div>

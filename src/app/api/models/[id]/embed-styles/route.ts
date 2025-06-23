@@ -103,21 +103,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authenticateRequest(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const assistantId = params.id;
 
-    // Get the assistant's embed styles
-    const assistant = await prisma.assistant.findFirst({
-      where: {
-        id: assistantId,
-        accountId: user.account.id,
-      },
+    // Fetch assistant embed settings
+    const assistant = await prisma.assistant.findUnique({
+      where: { id: assistantId },
       select: {
         id: true,
+        name: true,
         embedBubbleColor: true,
         embedButtonShape: true,
         embedFontStyle: true,
@@ -131,38 +124,42 @@ export async function GET(
         assistantAvatarUrl: true,
         showChatHeader: true,
         chatHeaderTitle: true,
-        welcomeMessage: true,
-      },
+        welcomeMessage: true
+      }
     });
 
     if (!assistant) {
-      return NextResponse.json({ error: 'Assistant not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Assistant not found' },
+        { status: 404 }
+      );
     }
 
+    // Return the styling configuration
     return NextResponse.json({
-      id: assistant.id,
-      embedBubbleColor: assistant.embedBubbleColor || "#3B82F6",
-      embedButtonShape: assistant.embedButtonShape || "rounded",
-      embedFontStyle: assistant.embedFontStyle || "system",
-      embedPosition: assistant.embedPosition || "bottom-right",
-      chatBackgroundColor: assistant.chatBackgroundColor || "#FFFFFF",
-      userMessageBubbleColor: assistant.userMessageBubbleColor || "#3B82F6",
-      assistantMessageBubbleColor: assistant.assistantMessageBubbleColor || "#F3F4F6",
-      assistantFontStyle: assistant.assistantFontStyle || "sans",
+      assistantId: assistant.id,
+      name: assistant.name,
+      bubbleColor: assistant.embedBubbleColor || '#3B82F6',
+      buttonShape: assistant.embedButtonShape || 'rounded',
+      fontStyle: assistant.embedFontStyle || 'system',
+      position: assistant.embedPosition || 'bottom-right',
+      chatBackgroundColor: assistant.chatBackgroundColor || '#FFFFFF',
+      userBubbleColor: assistant.userMessageBubbleColor || '#3B82F6',
+      assistantBubbleColor: assistant.assistantMessageBubbleColor || '#F3F4F6',
+      assistantFontStyle: assistant.assistantFontStyle || 'sans',
       messageBubbleRadius: assistant.messageBubbleRadius || 12,
       showAssistantAvatar: assistant.showAssistantAvatar !== false,
-      assistantAvatarUrl: assistant.assistantAvatarUrl || "",
+      assistantAvatarUrl: assistant.assistantAvatarUrl,
       showChatHeader: assistant.showChatHeader !== false,
-      chatHeaderTitle: assistant.chatHeaderTitle || "AI Assistant",
-      welcomeMessage: assistant.welcomeMessage || "",
+      chatTitle: assistant.chatHeaderTitle || 'AI Assistant',
+      welcomeMessage: assistant.welcomeMessage || 'Hello! How can I help you today?'
     });
+
   } catch (error) {
-    console.error('Error fetching embed styles:', error);
+    console.error('Error fetching assistant embed styles:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch embed styles' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 
