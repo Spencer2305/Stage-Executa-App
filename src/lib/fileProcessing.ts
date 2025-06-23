@@ -254,12 +254,20 @@ export async function uploadAndProcessFiles(
     // Get account details - accountId is now the internal database ID
     const account = await db.account.findUnique({
       where: { id: accountId },
-      select: { plan: true, s3BucketName: true, accountId: true }
+      include: {
+        users: {
+          select: { id: true },
+          take: 1
+        }
+      }
     });
 
     if (!account) {
       throw new Error('Account not found');
     }
+
+    // Get the first user ID from the account for session creation
+    const userId = account.users[0]?.id || 'system';
 
     console.log(`📊 Account plan: ${account.plan}`);
 
@@ -284,7 +292,7 @@ export async function uploadAndProcessFiles(
     console.log(`✅ All files validated successfully`);
 
     // Update processing session
-    const sessionId = processingSessionId || await createProcessingSession(accountId, 'system');
+    const sessionId = processingSessionId || await createProcessingSession(accountId, userId);
     await db.fileProcessingSession.update({
       where: { id: sessionId },
       data: {

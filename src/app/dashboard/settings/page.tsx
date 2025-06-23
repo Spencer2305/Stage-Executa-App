@@ -144,7 +144,8 @@ function IntegrationCard({
   popular = false,
   category,
   onConnect,
-  onDisconnect
+  onDisconnect,
+  onConfigure
 }: {
   id: string;
   name: string;
@@ -156,6 +157,7 @@ function IntegrationCard({
   category?: string;
   onConnect?: () => void;
   onDisconnect?: () => void;
+  onConfigure?: (id: string) => void;
 }) {
   return (
     <Card className="border border-gray-200 hover:shadow-md transition-shadow relative">
@@ -209,7 +211,7 @@ function IntegrationCard({
                 <Button variant="outline" size="sm" onClick={onDisconnect}>
                   Disconnect
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => onConfigure?.(id)}>
                   <SettingsIcon className="h-4 w-4 mr-1" />
                   Configure
                 </Button>
@@ -273,10 +275,94 @@ export default function SettingsPage() {
 
   const apiKey = "exec_sk_1234567890abcdef";
 
-  const [connectedIntegrations, setConnectedIntegrations] = useState(new Set(['gmail', 'slack']));
+  const [connectedIntegrations, setConnectedIntegrations] = useState(new Set(['slack']));
+  const [gmailStatus, setGmailStatus] = useState<{
+    connected: boolean;
+    email?: string;
+    loading?: boolean;
+  }>({ connected: false, loading: true });
 
-  const handleConnect = (integration: string) => {
-    setConnectedIntegrations(prev => new Set([...prev, integration]));
+  // Check Gmail integration status on load and handle OAuth callback
+  useEffect(() => {
+    checkGmailStatus();
+    
+    // Handle OAuth callback messages
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    const email = urlParams.get('email');
+    
+    if (success === 'gmail_connected' && email) {
+      toast.success(`Gmail connected successfully! (${decodeURIComponent(email)})`);
+      setGmailStatus({ connected: true, email: decodeURIComponent(email), loading: false });
+      setConnectedIntegrations(prev => new Set([...prev, 'gmail']));
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error === 'gmail_auth_failed') {
+      const message = urlParams.get('message');
+      toast.error(`Gmail connection failed: ${message ? decodeURIComponent(message) : 'Unknown error'}`);
+      setGmailStatus({ connected: false, loading: false });
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const checkGmailStatus = async () => {
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      const response = await fetch('/api/integrations/gmail/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setGmailStatus({
+          connected: data.connected,
+          email: data.email,
+          loading: false
+        });
+        
+        if (data.connected) {
+          setConnectedIntegrations(prev => new Set([...prev, 'gmail']));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check Gmail status:', error);
+      setGmailStatus({ connected: false, loading: false });
+    }
+  };
+
+  const handleConnect = async (integration: string) => {
+    if (integration === 'gmail') {
+      try {
+        setGmailStatus({ ...gmailStatus, loading: true });
+        
+        const token = localStorage.getItem('executa-auth-token');
+        const response = await fetch('/api/integrations/gmail/auth', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Redirect to Gmail OAuth
+          window.location.href = data.authUrl;
+        } else {
+          throw new Error('Failed to initiate Gmail connection');
+        }
+      } catch (error) {
+        console.error('Gmail connection error:', error);
+        toast.error('Failed to connect Gmail. Please try again.');
+        setGmailStatus({ connected: false, loading: false });
+      }
+    } else {
+      setConnectedIntegrations(prev => new Set([...prev, integration]));
+    }
   };
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -386,12 +472,50 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDisconnect = (integration: string) => {
-    setConnectedIntegrations(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(integration);
-      return newSet;
-    });
+  const handleDisconnect = async (integration: string) => {
+    if (integration === 'gmail') {
+      try {
+        const token = localStorage.getItem('executa-auth-token');
+        const response = await fetch('/api/integrations/gmail/status', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'disconnect' })
+        });
+
+        if (response.ok) {
+          setGmailStatus({ connected: false, loading: false });
+          setConnectedIntegrations(prev => {
+            const newSet = new Set(prev);
+            newSet.delete('gmail');
+            return newSet;
+          });
+          toast.success('Gmail disconnected successfully');
+        } else {
+          throw new Error('Failed to disconnect Gmail');
+        }
+      } catch (error) {
+        console.error('Gmail disconnection error:', error);
+        toast.error('Failed to disconnect Gmail. Please try again.');
+      }
+    } else {
+      setConnectedIntegrations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(integration);
+        return newSet;
+      });
+    }
+  };
+
+  const handleConfigure = (integration: string) => {
+          if (integration === 'gmail') {
+        // Open Gmail configuration dialog/modal
+        router.push('/dashboard/settings?tab=integrations&configure=gmail');
+    } else {
+      toast.info(`${integration} configuration coming soon!`);
+    }
   };
 
   const handleProfileSave = async () => {
@@ -505,7 +629,7 @@ export default function SettingsPage() {
         name: 'Gmail',
         description: 'Import emails and conversations to train your AI assistant with real customer interactions',
         icon: Mail,
-        connected: connectedIntegrations.has('gmail'),
+        connected: gmailStatus.connected,
         popular: true,
         category: 'Email'
       },
@@ -897,6 +1021,7 @@ export default function SettingsPage() {
                       {...integration}
                       onConnect={() => handleConnect(integration.id)}
                       onDisconnect={() => handleDisconnect(integration.id)}
+                      onConfigure={() => handleConfigure(integration.id)}
                     />
                   ))}
                 </div>

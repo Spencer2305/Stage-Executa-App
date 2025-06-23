@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
 
     const fileProcessingResult = await uploadAndProcessFiles(
       userAccount.account.id, // Use internal database ID for foreign key relationships
-      filesToProcess
+      filesToProcess,
+      undefined // No existing session ID
     );
 
     if (fileProcessingResult.status === 'ERROR' || fileProcessingResult.processedFiles === 0) {

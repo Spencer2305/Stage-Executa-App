@@ -34,11 +34,34 @@ export interface Model {
 export interface Document {
   id: string;
   name: string;
-  type: 'pdf' | 'txt' | 'docx' | 'gmail' | 'crm';
+  type: 'pdf' | 'txt' | 'docx' | 'gmail' | 'outlook' | 'imap' | 'crm';
   size: number;
   uploadedAt: Date | string;
   status: 'uploading' | 'processing' | 'completed' | 'error';
   content?: string;
+  // Email specific fields
+  emailMetadata?: {
+    messageId?: string;
+    threadId?: string;
+    from?: string;
+    to?: string[];
+    subject?: string;
+    date?: Date | string;
+    labels?: string[];
+  };
+}
+
+export interface EmailIntegration {
+  id: string;
+  provider: 'gmail' | 'outlook' | 'imap';
+  email: string;
+  refreshToken: string;
+  accessToken?: string;
+  lastSyncAt?: Date;
+  totalEmails?: number;
+  processedEmails?: number;
+  syncStatus: 'idle' | 'syncing' | 'error';
+  createdAt: Date;
 }
 
 export interface CreateModelRequest {
@@ -50,6 +73,7 @@ export interface CreateModelRequest {
     salesforce?: boolean;
     hubspot?: boolean;
   };
+  emailIntegrations?: EmailIntegration[];
 }
 
 export interface ModelSession {

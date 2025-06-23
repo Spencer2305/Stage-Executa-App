@@ -14,8 +14,11 @@ import {
   CheckCircle,
   Clock,
   Download,
-  Eye
+  Eye,
+  Mail
 } from "lucide-react";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { Document as ModelDocument } from "@/types/model";
 import { modelApi } from "@/utils/api";
 import { toast } from "sonner";
@@ -212,26 +215,20 @@ export default function KnowledgeBaseManager({
   };
 
   return (
-    <Card className="rounded-xl">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
-              <span>Knowledge Base</span>
-            </CardTitle>
-            <CardDescription>
-              {files.length} documents • Manage your assistant's knowledge
-            </CardDescription>
-          </div>
-          <Button onClick={handleFileSelect} disabled={isUploading} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Files
-          </Button>
+    <div className="h-full flex flex-col space-y-4">
+      {/* Header with Add Files button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-medium">Documents</h3>
+          <p className="text-sm text-muted-foreground">
+            {files.length} {files.length === 1 ? 'document' : 'documents'} • Upload and manage files
+          </p>
         </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
+        <Button onClick={handleFileSelect} disabled={isUploading} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Files
+        </Button>
+      </div>
         {/* File Upload Area */}
         <div
           className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
@@ -278,49 +275,79 @@ export default function KnowledgeBaseManager({
         />
 
         {/* Files List */}
-        {files.length > 0 ? (
-          <ScrollArea className="h-64">
-            <div className="space-y-3">
-              {files.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    {getFileIcon(file.type)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-sm font-medium truncate">
-                          {file.name}
-                        </span>
-                        {getStatusBadge(file.status)}
+        <div className="flex-1 overflow-hidden">
+          {files.length > 0 ? (
+            <ScrollArea className="h-full">
+              <div className="space-y-3">
+              {(() => {
+                const gmailFiles = files.filter(file => file.type === 'gmail' || file.name.startsWith('Gmail:'));
+                const otherFiles = files.filter(file => file.type !== 'gmail' && !file.name.startsWith('Gmail:'));
+
+                return (
+                  <>
+                    {/* Gmail Section */}
+                    {gmailFiles.length > 0 && (
+                      <div className="border rounded-lg p-3 bg-blue-50 border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <FontAwesomeIcon icon={faEnvelope} className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">Gmail</span>
+                          <Badge variant="outline" className="text-xs text-blue-700 border-blue-300">
+                            {gmailFiles.length} {gmailFiles.length === 1 ? 'email' : 'emails'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-blue-700 mb-2">
+                          Emails from your connected Gmail account
+                        </p>
+                        <div className="text-xs text-blue-600">
+                          Use the Email Knowledge Manager below for detailed email management
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span>{formatFileSize(file.size)}</span>
-                        <span>Uploaded {formatDate(file.uploadedAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-1">
-                    {file.content && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewFile(file)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveFile(file.id, file.name)}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+
+                    {/* Regular Files */}
+                    {otherFiles.map((file) => (
+                      <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          {getFileIcon(file.type)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="text-sm font-medium truncate">
+                                {file.name}
+                              </span>
+                              {getStatusBadge(file.status)}
+                            </div>
+                            <div className="flex items-center space-x-4 text-xs text-gray-500">
+                              <span>{formatFileSize(file.size)}</span>
+                              <span>Uploaded {formatDate(file.uploadedAt)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-1">
+                          {file.content && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewFile(file)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveFile(file.id, file.name)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           </ScrollArea>
         ) : (
@@ -330,7 +357,7 @@ export default function KnowledgeBaseManager({
             <p className="text-xs">Upload documents to get started</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+        </div>
+    </div>
   );
 } 

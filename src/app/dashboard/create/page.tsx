@@ -29,6 +29,7 @@ import {
   Rocket,
   Heart
 } from "lucide-react";
+import GmailIntegrationStep from "@/components/integrations/GmailIntegrationStep";
 
 export default function CreateAIPage() {
   const router = useRouter();
@@ -36,7 +37,6 @@ export default function CreateAIPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isCreated, setIsCreated] = useState(false);
   const [createdAssistantId, setCreatedAssistantId] = useState<string | null>(null);
-  const [gmailNotify, setGmailNotify] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -278,46 +278,11 @@ export default function CreateAIPage() {
 
       case 3:
         return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Integrations</Label>
-              <p className="text-sm text-muted-foreground">
-                Connect external data sources to enhance your assistant's knowledge.
-              </p>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-4 border rounded-lg opacity-50">
-                <div className="flex items-center space-x-3">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-sm">Gmail Integration</p>
-                    <p className="text-xs text-muted-foreground">
-                      Import emails to enhance knowledge base
-                    </p>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                  Coming Soon
-                </div>
-              </div>
-              
-              {/* Notification signup for Gmail */}
-              <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="gmail-notify"
-                  checked={gmailNotify}
-                  onChange={(e) => setGmailNotify(e.target.checked)}
-                  className="h-4 w-4 text-primary"
-                />
-                <label htmlFor="gmail-notify" className="text-sm text-blue-700 cursor-pointer">
-                  <Bell className="inline w-4 h-4 mr-1" />
-                  Notify me when Gmail integration is available
-                </label>
-              </div>
-            </div>
-          </div>
+          <GmailIntegrationStep 
+            onGmailStatusChange={(connected) => {
+              setFormData(prev => ({ ...prev, gmailIntegration: connected }));
+            }}
+          />
         );
 
       case 4:
@@ -349,6 +314,12 @@ export default function CreateAIPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Documents:</span>
                 <span className="font-medium">{formData.files.length} files</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Gmail Integration:</span>
+                <span className={`font-medium ${formData.gmailIntegration ? 'text-green-600' : 'text-gray-500'}`}>
+                  {formData.gmailIntegration ? '✓ Connected' : 'Not connected'}
+                </span>
               </div>
             </div>
 

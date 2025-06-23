@@ -23,6 +23,14 @@ model Account {
   billingEmail      String?  @map("billing_email")
   s3BucketName      String?  @map("s3_bucket_name") // Account-specific knowledge bucket
   openaiOrgId       String?  @map("openai_org_id") // Optional OpenAI organization
+  
+  // Stripe subscription fields
+  stripeCustomerId     String?  @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?  @unique @map("stripe_subscription_id")
+  subscriptionStatus   String?  @map("subscription_status") // active, past_due, canceled, etc.
+  currentPeriodStart   DateTime? @map("current_period_start")
+  currentPeriodEnd     DateTime? @map("current_period_end")
+  
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
   

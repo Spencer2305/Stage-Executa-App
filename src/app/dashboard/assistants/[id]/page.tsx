@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import KnowledgeBaseManager from "@/components/knowledge/KnowledgeBaseManager";
+import GmailIntegration from "@/components/knowledge/GmailIntegration";
+import EmailKnowledgeManager from "@/components/knowledge/EmailKnowledgeManager";
 import { Document as ModelDocument } from "@/types/model";
 import { 
   ArrowLeft, 
@@ -793,15 +795,15 @@ export default function AssistantViewPage() {
         </TabsContent>
 
         {/* Knowledge Tab */}
-        <TabsContent value="knowledge" className="space-y-6">
-          <Card>
-            <CardHeader>
+        <TabsContent value="knowledge" className="h-[calc(100vh-200px)]">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="flex-shrink-0">
               <CardTitle>Knowledge Base</CardTitle>
               <CardDescription>
                 Manage documents and data sources that train your assistant
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-hidden">
               {/* Upload Progress */}
               {isUploading && (
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -810,17 +812,48 @@ export default function AssistantViewPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-blue-900">Uploading...</p>
                       <Progress value={uploadProgress} className="mt-2" />
-          </div>
+                    </div>
                     <span className="text-sm text-blue-600">{uploadProgress}%</span>
                   </div>
                 </div>
               )}
               
-                             <KnowledgeBaseManager
-                 assistantId={assistantId}
-                 files={assistantFiles}
-                 onFilesUpdated={handleFilesUpdated}
-               />
+              {/* Knowledge Sub-tabs */}
+              <Tabs defaultValue="documents" className="h-full flex flex-col">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
+                  <TabsTrigger value="documents" className="flex items-center space-x-2">
+                    <FileText className="h-4 w-4" />
+                    <span>Documents</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="gmail-setup" className="flex items-center space-x-2">
+                    <Settings className="h-4 w-4" />
+                    <span>Gmail Setup</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="gmail-emails" className="flex items-center space-x-2">
+                    <Mail className="h-4 w-4" />
+                    <span>Gmail Emails</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Documents Tab */}
+                <TabsContent value="documents" className="flex-1 overflow-hidden">
+                  <KnowledgeBaseManager
+                    assistantId={assistantId}
+                    files={assistantFiles}
+                    onFilesUpdated={handleFilesUpdated}
+                  />
+                </TabsContent>
+
+                {/* Gmail Setup Tab */}
+                <TabsContent value="gmail-setup" className="flex-1 overflow-hidden">
+                  <GmailIntegration assistantId={assistantId} />
+                </TabsContent>
+
+                {/* Gmail Emails Tab */}
+                <TabsContent value="gmail-emails" className="flex-1 overflow-hidden">
+                  <EmailKnowledgeManager assistantId={assistantId} />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
