@@ -105,6 +105,13 @@ export default function SelectPlanPage() {
         throw new Error(data.error || 'Failed to create checkout session');
       }
 
+      // Handle development mode (no Stripe configured)
+      if (data.success && data.redirectUrl) {
+        toast.success(data.message || 'Plan upgraded successfully!');
+        router.push(data.redirectUrl);
+        return;
+      }
+
       // Redirect to Stripe Checkout
       const stripe = await stripePromise;
       if (stripe && data.sessionId) {
@@ -115,9 +122,11 @@ export default function SelectPlanPage() {
         if (error) {
           throw new Error(error.message);
         }
-      } else {
+      } else if (data.url) {
         // Fallback to direct URL redirect
         window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL provided');
       }
     } catch (error) {
       console.error('Plan selection error:', error);

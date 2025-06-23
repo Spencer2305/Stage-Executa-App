@@ -61,8 +61,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Database error during registration:', error);
+    
+    // Provide more specific error messages for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Detailed error:', errorMessage);
+    
     return NextResponse.json(
-      { error: 'Database error during registration' },
+      { 
+        error: 'Database error during registration',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     );
   }

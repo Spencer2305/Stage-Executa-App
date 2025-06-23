@@ -15,6 +15,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan type' }, { status: 400 });
     }
 
+    // Check if Stripe is configured
+      console.log('⚠️ Stripe not configured - simulating plan upgrade');
+      
+      // Update user's plan in database directly (for development)
+      const { db } = await import('@/lib/db');
+      await db.account.update({
+        where: { id: user.account.id },
+        data: { plan: planType as any }
+      });
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Plan upgraded successfully (development mode)',
+        redirectUrl: '/dashboard?welcome=true'
+      });
+    }
+
     const priceId = STRIPE_PRICE_IDS[planType as keyof typeof STRIPE_PRICE_IDS];
     if (!priceId || priceId === '') {
       return NextResponse.json({ error: 'Plan not available or not configured' }, { status: 400 });
