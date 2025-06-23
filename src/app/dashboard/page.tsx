@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 // Enhanced Onboarding for first-time users
@@ -605,10 +605,19 @@ export default function DashboardPage() {
   const { user } = useUserStore();
   const { models, isLoading, fetchModels } = useModelStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     fetchModels();
-  }, [fetchModels]);
+    if (searchParams.get('welcome') === 'true') {
+      setShowWelcome(true);
+      // Remove the welcome parameter from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('welcome');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [fetchModels, searchParams]);
 
   const totalConversations = models.reduce((total, model) => total + model.totalSessions, 0);
   const activeModels = models.filter(model => model.status === 'active');
@@ -616,6 +625,30 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="p-8 space-y-8 max-w-7xl mx-auto">
+        {/* Welcome Message for New Subscribers */}
+        {showWelcome && (
+          <Card className="border-green-200 bg-green-50">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+                <CardTitle className="text-green-800">Welcome to Executa Pro! 🎉</CardTitle>
+              </div>
+              <CardDescription className="text-green-700">
+                Your subscription is now active. You have access to all Pro features including 10 AI assistants, 
+                10,000 conversations per month, and priority support.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="bg-green-600 hover:bg-green-700">
+                <Link href="/dashboard/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First AI Assistant
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Header with enhanced styling */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>

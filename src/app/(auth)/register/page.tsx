@@ -63,10 +63,10 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      await register(formData.email, formData.password, formData.name);
+      const result = await register(formData.email, formData.password, formData.name);
       
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Redirect to plan selection or dashboard
+      router.push(result.redirectTo || "/dashboard");
     } catch (error: any) {
       console.error("Registration error:", error);
       const errorMessage = error.response?.data?.error || "Registration failed. Please try again.";

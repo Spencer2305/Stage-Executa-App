@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
       success: true,
       user,
       token,
-      message: 'Registration successful'
+      message: 'Registration successful',
+      redirectTo: '/select-plan'
     });
 
   } catch (error) {

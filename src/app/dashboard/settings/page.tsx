@@ -51,6 +51,7 @@ import { useUserStore } from "@/state/userStore";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { SubscriptionPlans } from "@/components/stripe/SubscriptionPlans";
 
 // Integration logo component with actual company logos
 function IntegrationLogo({ name, className = "w-8 h-8" }: { name: string, className?: string }) {
@@ -554,10 +555,35 @@ export default function SettingsPage() {
     }
   };
 
-  const handleManageSubscription = () => {
-    // For now, show a modal with subscription options
-    // In a real app, this would typically redirect to Stripe Customer Portal
-    setShowBillingDialog(true);
+  const handleManageSubscription = async () => {
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      if (!token) {
+        toast.error('Please log in to manage subscription');
+        return;
+      }
+
+      // Create customer portal session
+      const response = await fetch('/api/stripe/customer-portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to access billing portal');
+      }
+
+      // Redirect to Stripe Customer Portal
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('Customer portal error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to access billing portal');
+    }
   };
 
   const handleChangePlan = () => {
@@ -1166,52 +1192,56 @@ export default function SettingsPage() {
 
         {/* Billing Tab */}
         <TabsContent value="billing">
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing & Usage</CardTitle>
-              <CardDescription>
-                Manage your subscription and view usage statistics
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium">Current Plan</h4>
-                  <div className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium">Pro Plan</h5>
-                        <p className="text-sm text-gray-600">$29/month</p>
+          <div className="space-y-6">
+            <SubscriptionPlans 
+              currentPlan={user?.account?.plan as 'FREE' | 'PRO' | 'ENTERPRISE'}
+            />
+            
+            {/* Usage Statistics */}
+            {user?.account?.plan !== 'FREE' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Usage This Month</CardTitle>
+                  <CardDescription>
+                    Track your current usage across all features
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">AI Assistants</span>
+                        <span className="text-sm text-gray-600">1 / {user?.account?.plan === 'PRO' ? '10' : '∞'}</span>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">Active</Badge>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: '10%' }}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Messages</span>
+                        <span className="text-sm text-gray-600">1,247 / {user?.account?.plan === 'PRO' ? '10,000' : '∞'}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-green-600 h-2 rounded-full" style={{ width: '12%' }}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Storage</span>
+                        <span className="text-sm text-gray-600">2.1 GB / {user?.account?.plan === 'PRO' ? '10 GB' : '100 GB'}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-orange-600 h-2 rounded-full" style={{ width: '21%' }}></div>
+                      </div>
                     </div>
                   </div>
-                  <Button variant="outline" className="w-full" onClick={handleManageSubscription}>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Manage Subscription
-                  </Button>
-                </div>
-                
-                <div className="space-y-4">
-                  <h4 className="font-medium">Usage This Month</h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span>Messages</span>
-                      <span>1,247 / 10,000</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>API Calls</span>
-                      <span>8,932 / 50,000</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Storage</span>
-                      <span>2.1 GB / 10 GB</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
