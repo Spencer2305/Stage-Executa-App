@@ -1,0 +1,293 @@
+/* Executa AI WordPress Plugin - Enhanced CSS with Live Styling Support */
+
+/* Reset any theme interference */
+#executa-ai-chat-widget,
+#executa-ai-chat-widget * {
+    box-sizing: border-box !important;
+}
+
+/* Ensure widget container doesn't interfere */
+#executa-ai-chat-widget {
+    position: relative !important;
+    z-index: 999999 !important;
+    pointer-events: none !important;
+}
+
+/* Allow interaction with widget elements */
+#executa-ai-chat-widget > * {
+    pointer-events: auto !important;
+}
+
+/* Enhanced chat bubble styling with hover effects */
+#executa-chat-bubble {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#executa-chat-bubble:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4) !important;
+}
+
+#executa-chat-bubble:active {
+    transform: scale(0.95) !important;
+}
+
+/* Enhanced chat interface styling */
+#executa-chat-interface {
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Enhanced scrollbar styling for chat messages */
+#chat-messages {
+    scrollbar-width: thin !important;
+    scrollbar-color: #cbd5e1 #f1f5f9 !important;
+}
+
+#chat-messages::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+#chat-messages::-webkit-scrollbar-track {
+    background: #f1f5f9 !important;
+    border-radius: 3px !important;
+}
+
+#chat-messages::-webkit-scrollbar-thumb {
+    background: #cbd5e1 !important;
+    border-radius: 3px !important;
+}
+
+#chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8 !important;
+}
+
+/* Enhanced input styling with focus states */
+#chat-input {
+    transition: all 0.2s ease !important;
+}
+
+#chat-input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Enhanced send button styling */
+#chat-send {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#chat-send:hover {
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+#chat-send:active {
+    transform: scale(0.95) !important;
+}
+
+/* Enhanced close button styling */
+#close-chat {
+    transition: all 0.2s ease !important;
+}
+
+#close-chat:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+    transform: rotate(90deg) !important;
+}
+
+/* Pulse animation for typing indicator */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Message animations */
+.message-enter {
+    animation: messageSlideIn 0.3s ease-out !important;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Avatar styling enhancements */
+.assistant-avatar {
+    transition: all 0.2s ease !important;
+}
+
+.assistant-avatar:hover {
+    transform: scale(1.1) !important;
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 480px) {
+    #executa-chat-interface {
+        width: calc(100vw - 20px) !important;
+        height: calc(100vh - 100px) !important;
+        max-height: 500px !important;
+        bottom: 80px !important;
+        right: 10px !important;
+        left: 10px !important;
+        border-radius: 16px !important;
+    }
+    
+    #executa-chat-bubble {
+        bottom: 15px !important;
+        right: 15px !important;
+        width: 55px !important;
+        height: 55px !important;
+        font-size: 22px !important;
+    }
+    
+    /* Adjust header on mobile */
+    #executa-chat-interface [style*="background: linear-gradient"] {
+        padding: 12px 16px !important;
+        font-size: 15px !important;
+    }
+    
+    /* Adjust input area on mobile */
+    #executa-chat-interface [style*="border-top: 1px solid"] {
+        padding: 12px !important;
+    }
+    
+    #chat-input {
+        font-size: 16px !important; /* Prevents zoom on iOS */
+        padding: 10px 14px !important;
+    }
+    
+    #chat-send {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 16px !important;
+    }
+}
+
+/* Tablet responsiveness */
+@media (max-width: 768px) and (min-width: 481px) {
+    #executa-chat-interface {
+        width: 380px !important;
+        height: 480px !important;
+    }
+}
+
+/* Enhanced dark mode support (respects system preferences) */
+@media (prefers-color-scheme: dark) {
+    #executa-chat-interface {
+        box-shadow: 0 8px 30px rgba(0,0,0,0.6) !important;
+    }
+    
+    #chat-messages::-webkit-scrollbar-track {
+        background: #374151 !important;
+    }
+    
+    #chat-messages::-webkit-scrollbar-thumb {
+        background: #6b7280 !important;
+    }
+    
+    #chat-messages::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af !important;
+    }
+}
+
+/* Enhanced accessibility features */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus styles for keyboard navigation */
+#executa-chat-bubble:focus,
+#chat-send:focus,
+#close-chat:focus {
+    outline: 2px solid #3b82f6 !important;
+    outline-offset: 2px !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    #executa-chat-bubble,
+    #chat-send {
+        border: 2px solid currentColor !important;
+    }
+    
+    #chat-input {
+        border: 3px solid #000 !important;
+    }
+}
+
+/* Ensure proper layering for any theme conflicts */
+#executa-chat-bubble {
+    z-index: 999999 !important;
+    isolation: isolate !important;
+}
+
+#executa-chat-interface {
+    z-index: 999998 !important;
+    isolation: isolate !important;
+}
+
+/* Prevent text selection on UI elements */
+#executa-chat-bubble,
+#chat-send,
+#close-chat {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+/* Enhanced loading state styling */
+.executa-loading {
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.executa-loading::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent) !important;
+    animation: shimmer 1.5s infinite !important;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Print styles (hide widget when printing) */
+@media print {
+    #executa-ai-chat-widget {
+        display: none !important;
+    }
+}

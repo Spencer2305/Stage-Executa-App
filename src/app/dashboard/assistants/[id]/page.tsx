@@ -122,7 +122,7 @@ export default function AssistantViewPage() {
   const assistantId = params.id as string;
   const initialTab = searchParams.get('tab') || 'overview';
   
-  const { models, deleteModel, fetchModels, refreshModel, isLoading } = useModelStore();
+  const { models, deleteModel, fetchModels, refreshModel, isLoading, updateModel } = useModelStore();
   const { user, isLoading: userLoading } = useUserStore();
   const assistant = models.find(m => m.id === assistantId);
   
@@ -221,10 +221,10 @@ export default function AssistantViewPage() {
     }
   }, [assistant?.documents]);
 
-  // Load embed styles when assistant is loaded
+  // Load embed styles when assistant is loaded or when embed properties change
   useEffect(() => {
     if (assistant) {
-      setEmbedStyle({
+      const newEmbedStyle = {
         bubbleColor: assistant.embedBubbleColor || "#3B82F6",
         buttonShape: assistant.embedButtonShape || "rounded",
         fontStyle: assistant.embedFontStyle || "system",
@@ -235,13 +235,36 @@ export default function AssistantViewPage() {
         assistantFontStyle: assistant.assistantFontStyle || "sans",
         messageBubbleRadius: assistant.messageBubbleRadius || 12,
         showAssistantAvatar: assistant.showAssistantAvatar !== false,
-                 assistantAvatarIcon: assistant.assistantAvatarUrl || "robot",
+        assistantAvatarIcon: assistant.assistantAvatarUrl || "robot",
         showChatHeader: assistant.showChatHeader !== false,
         chatHeaderTitle: assistant.chatHeaderTitle || "AI Assistant",
         welcomeMessage: assistant.welcomeMessage || ""
-      });
+      };
+      
+      // Only update if the embed styles have actually changed
+      // This prevents unnecessary state resets during saves
+      const hasChanged = JSON.stringify(embedStyle) !== JSON.stringify(newEmbedStyle);
+      if (hasChanged) {
+        console.log('Updating embed styles from assistant data:', newEmbedStyle);
+        setEmbedStyle(newEmbedStyle);
+      }
     }
-  }, [assistant]);
+  }, [
+    assistant?.embedBubbleColor, 
+    assistant?.embedButtonShape, 
+    assistant?.embedFontStyle, 
+    assistant?.embedPosition,
+    assistant?.chatBackgroundColor,
+    assistant?.userMessageBubbleColor,
+    assistant?.assistantMessageBubbleColor,
+    assistant?.assistantFontStyle,
+    assistant?.messageBubbleRadius,
+    assistant?.showAssistantAvatar,
+    assistant?.assistantAvatarUrl,
+    assistant?.showChatHeader,
+    assistant?.chatHeaderTitle,
+    assistant?.welcomeMessage
+  ]); // Only depend on the actual embed style properties
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
@@ -378,8 +401,30 @@ export default function AssistantViewPage() {
 
       toast.success("Embed styles saved successfully!");
       
-      // Refresh the assistant data to get the latest saved values
-      await refreshModel(assistantId);
+      // Update the assistant in the store immediately with the saved values
+      // This prevents the useEffect from overwriting our current state
+      if (data.assistant) {
+        updateModel(assistantId, {
+          embedBubbleColor: data.assistant.embedBubbleColor,
+          embedButtonShape: data.assistant.embedButtonShape,
+          embedFontStyle: data.assistant.embedFontStyle,
+          embedPosition: data.assistant.embedPosition,
+          chatBackgroundColor: data.assistant.chatBackgroundColor,
+          userMessageBubbleColor: data.assistant.userMessageBubbleColor,
+          assistantMessageBubbleColor: data.assistant.assistantMessageBubbleColor,
+          assistantFontStyle: data.assistant.assistantFontStyle,
+          messageBubbleRadius: data.assistant.messageBubbleRadius,
+          showAssistantAvatar: data.assistant.showAssistantAvatar,
+          assistantAvatarUrl: data.assistant.assistantAvatarUrl,
+          showChatHeader: data.assistant.showChatHeader,
+          chatHeaderTitle: data.assistant.chatHeaderTitle,
+          welcomeMessage: data.assistant.welcomeMessage,
+          updatedAt: new Date(data.assistant.updatedAt)
+        });
+      }
+      
+      // No need to call refreshModel since we just updated the store directly
+      // await refreshModel(assistantId);
     } catch (error) {
       console.error("Error saving embed styles:", error);
       toast.error("Failed to save embed styles");
