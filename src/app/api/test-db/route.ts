@@ -1,14 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { PrismaClient } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🧪 Database test started');
+    console.log('🧪 Database diagnostic started');
+    console.log('1. Environment check:');
+    console.log('   NODE_ENV:', process.env.NODE_ENV);
+    console.log('   DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    console.log('   DATABASE_URL preview:', process.env.DATABASE_URL?.substring(0, 30) + '...');
     
-    // Test basic database connection
-    const userCount = await db.user.count();
-    console.log('👥 Total users in database:', userCount);
+    console.log('2. Creating Prisma client...');
+    const prisma = new PrismaClient({
+      log: ['error', 'warn', 'info'],
+    });
+    console.log('   Prisma client created successfully');
+    
+    console.log('3. Testing database connection...');
+    console.log('   Available models:', Object.keys(prisma).filter(key => !key.startsWith('$') && !key.startsWith('_')));
+    
+    // Use the correct model name based on new schema
+    const userCount = await prisma.user.count();
+    console.log('👥 SUCCESS: Total users in database:', userCount);
     
     // Authenticate user if token provided
     const user = await authenticateRequest(request);
@@ -16,7 +29,7 @@ export async function GET(request: NextRequest) {
       console.log('👤 Authenticated user:', user.id, user.email);
       
       // Try to fetch the user from database
-      const dbUser = await db.user.findUnique({
+      const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
         select: {
           id: true,
