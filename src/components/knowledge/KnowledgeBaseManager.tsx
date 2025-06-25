@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   FileText, 
   Upload, 
@@ -14,11 +15,14 @@ import {
   CheckCircle,
   Clock,
   Download,
-  Eye
+  Eye,
+  RefreshCw,
+  Cloud
 } from "lucide-react";
 import { Document as ModelDocument } from "@/types/model";
 import { modelApi } from "@/utils/api";
 import { toast } from "sonner";
+import axios from "axios";
 
 interface KnowledgeBaseManagerProps {
   assistantId: string;
@@ -34,6 +38,9 @@ export default function KnowledgeBaseManager({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatFileSize = (bytes: number) => {
@@ -44,7 +51,9 @@ export default function KnowledgeBaseManager({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'Unknown';
+    
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(dateObj.getTime())) return 'Invalid Date';
     
@@ -211,6 +220,43 @@ export default function KnowledgeBaseManager({
     }
   };
 
+  const handleSyncFromIntegration = async (integration: string) => {
+    setIsSyncing(true);
+    setSyncProgress(0);
+    setShowSyncDialog(false);
+
+    try {
+      console.log(`🔄 Syncing files from ${integration} for assistant ${assistantId}`);
+      
+      // Use axios with authentication like other API calls
+      const token = localStorage.getItem('executa-auth-token');
+      const response = await axios.post(`/api/assistants/${assistantId}/sync-simple`, 
+        { integration },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      const result = response.data;
+      
+      // Update the files list
+      onFilesUpdated(result.files);
+      
+      toast.success(`Successfully synced ${result.syncedFiles} files from ${integration}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Error syncing from ${integration}:`, error);
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+      toast.error(`Failed to sync files from ${integration}: ${errorMessage}`);
+    } finally {
+      setIsSyncing(false);
+      setSyncProgress(0);
+    }
+  };
+
   return (
     <Card className="rounded-xl">
       <CardHeader>
@@ -224,10 +270,45 @@ export default function KnowledgeBaseManager({
               {files.length} documents • Manage your assistant's knowledge
             </CardDescription>
           </div>
-          <Button onClick={handleFileSelect} disabled={isUploading} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Files
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" disabled={isUploading || isSyncing} size="sm">
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                  {isSyncing ? 'Syncing...' : 'Sync Knowledge'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Sync from Integrations</DialogTitle>
+                  <DialogDescription>
+                    Choose a connected service to sync files from
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-start space-x-3 h-12"
+                    onClick={() => handleSyncFromIntegration('dropbox')}
+                    disabled={isSyncing}
+                  >
+                    <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                      <Cloud className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium">Dropbox</div>
+                      <div className="text-sm text-gray-500">Sync all files from your Dropbox</div>
+                    </div>
+                  </Button>
+                  {/* Future integrations can be added here */}
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button onClick={handleFileSelect} disabled={isUploading || isSyncing} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Files
+            </Button>
+          </div>
         </div>
       </CardHeader>
       

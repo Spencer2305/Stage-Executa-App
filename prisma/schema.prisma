@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,60 +7,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Account management for multi-tenant architecture
 model Account {
-  id                String   @id @default(cuid())
-  name              String
-  slug              String   @unique // URL-friendly identifier
-  accountId         String   @unique @map("account_id") // For billing and AWS resource naming
-  plan              Plan     @default(FREE)
-  billingEmail      String?  @map("billing_email")
-  s3BucketName      String?  @map("s3_bucket_name") // Account-specific knowledge bucket
-  openaiOrgId       String?  @map("openai_org_id") // Optional OpenAI organization
-  
-  // Stripe subscription fields
-  stripeCustomerId     String?  @unique @map("stripe_customer_id")
-  stripeSubscriptionId String?  @unique @map("stripe_subscription_id")
-  subscriptionStatus   String?  @map("subscription_status") // active, past_due, canceled, etc.
-  currentPeriodStart   DateTime? @map("current_period_start")
-  currentPeriodEnd     DateTime? @map("current_period_end")
-  
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  
-  // Relations
-  users             User[]
-  assistants        Assistant[]
-  knowledgeFiles    KnowledgeFile[]
-  fileSessions      FileProcessingSession[]
-  
+  id                   String                  @id @default(cuid())
+  name                 String
+  slug                 String                  @unique
+  accountId            String                  @unique @map("account_id")
+  plan                 Plan                    @default(FREE)
+  billingEmail         String?                 @map("billing_email")
+  s3BucketName         String?                 @map("s3_bucket_name")
+  openaiOrgId          String?                 @map("openai_org_id")
+  stripeCustomerId     String?                 @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?                 @unique @map("stripe_subscription_id")
+  subscriptionStatus   String?                 @map("subscription_status")
+  currentPeriodStart   DateTime?               @map("current_period_start")
+  currentPeriodEnd     DateTime?               @map("current_period_end")
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+  assistants           Assistant[]
+  dropboxConnections   DropboxConnection[]
+  fileSessions         FileProcessingSession[]
+  knowledgeFiles       KnowledgeFile[]
+  users                User[]
+
   @@map("accounts")
 }
 
-// User authentication and account management
 model User {
-  id                String   @id @default(cuid())
-  accountId         String   @map("account_id")
-  email             String   @unique
-  passwordHash      String   @map("password_hash")
-  name              String
-  avatar            String?
-  bio               String?
-  company           String?
-  website           String?
-  role              UserRole @default(MEMBER)
-  emailVerified     Boolean  @default(false) @map("email_verified")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  
-  // Relations
-  account           Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  sessions          Session[]
-  
+  id            String    @id @default(cuid())
+  accountId     String    @map("account_id")
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String
+  avatar        String?
+  bio           String?
+  company       String?
+  website       String?
+  role          UserRole  @default(MEMBER)
+  emailVerified Boolean   @default(false) @map("email_verified")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  sessions      Session[]
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
   @@map("users")
 }
 
-// User sessions for JWT management
 model Session {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
@@ -75,140 +60,149 @@ model Session {
   createdAt DateTime @default(now()) @map("created_at")
   userAgent String?  @map("user_agent")
   ipAddress String?  @map("ip_address")
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("sessions")
 }
 
-// File processing sessions to track batch uploads
 model FileProcessingSession {
-  id               String                     @id @default(cuid())
-  accountId        String                     @map("account_id")
-  userId           String                     @map("user_id")
-  sessionName      String?                    @map("session_name")
-  status           FileProcessingSessionStatus @default(PENDING)
-  totalFiles       Int                        @default(0) @map("total_files")
-  processedFiles   Int                        @default(0) @map("processed_files")
-  errorFiles       Int                        @default(0) @map("error_files")
-  startedAt        DateTime?                  @map("started_at")
-  completedAt      DateTime?                  @map("completed_at")
-  createdAt        DateTime                   @default(now()) @map("created_at")
-  
-  // Relations
-  account          Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  files            KnowledgeFile[]
-  
+  id             String                      @id @default(cuid())
+  accountId      String                      @map("account_id")
+  userId         String                      @map("user_id")
+  sessionName    String?                     @map("session_name")
+  status         FileProcessingSessionStatus @default(PENDING)
+  totalFiles     Int                         @default(0) @map("total_files")
+  processedFiles Int                         @default(0) @map("processed_files")
+  errorFiles     Int                         @default(0) @map("error_files")
+  startedAt      DateTime?                   @map("started_at")
+  completedAt    DateTime?                   @map("completed_at")
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  account        Account                     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  files          KnowledgeFile[]
+
   @@map("file_processing_sessions")
 }
 
-// Knowledge files uploaded by users (now account-specific)
 model KnowledgeFile {
-  id                      String                    @id @default(cuid())
-  accountId               String                    @map("account_id")
-  processingSessionId     String?                   @map("processing_session_id")
-  originalName            String                    @map("original_name")
-  s3Key                   String                    @map("s3_key") // Full S3 path within account bucket
-  s3Bucket                String                    @map("s3_bucket") // Account-specific bucket name
-  fileType                String                    @map("file_type")
-  fileSize                BigInt                    @map("file_size")
-  mimeType                String?                   @map("mime_type")
-  checksum                String?                   // For deduplication
-  status                  KnowledgeFileStatus       @default(UPLOADED)
-  
-  // OpenAI integration
-  openaiFileId            String?                   @map("openai_file_id")
-  vectorStoreId           String?                   @map("vector_store_id")
-  
-  // Processing metadata
-  extractedText           String?                   @map("extracted_text") @db.Text
-  textLength              Int?                      @map("text_length")
-  pageCount               Int?                      @map("page_count")
-  processingStartedAt     DateTime?                 @map("processing_started_at")
-  processingCompletedAt   DateTime?                 @map("processing_completed_at")
-  processingError         String?                   @map("processing_error")
-  
-  createdAt               DateTime                  @default(now()) @map("created_at")
-  updatedAt               DateTime                  @updatedAt @map("updated_at")
-  
-  // Relations
-  account                 Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  processingSession       FileProcessingSession? @relation(fields: [processingSessionId], references: [id])
-  assistantFiles          AssistantFile[]
-  
+  id                    String                 @id @default(cuid())
+  accountId             String                 @map("account_id")
+  processingSessionId   String?                @map("processing_session_id")
+  originalName          String                 @map("original_name")
+  s3Key                 String                 @map("s3_key")
+  s3Bucket              String                 @map("s3_bucket")
+  fileType              String                 @map("file_type")
+  fileSize              BigInt                 @map("file_size")
+  mimeType              String?                @map("mime_type")
+  checksum              String?
+  status                KnowledgeFileStatus    @default(UPLOADED)
+  openaiFileId          String?                @map("openai_file_id")
+  vectorStoreId         String?                @map("vector_store_id")
+  extractedText         String?                @map("extracted_text")
+  textLength            Int?                   @map("text_length")
+  pageCount             Int?                   @map("page_count")
+  processingStartedAt   DateTime?              @map("processing_started_at")
+  processingCompletedAt DateTime?              @map("processing_completed_at")
+  processingError       String?                @map("processing_error")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  assistantFiles        AssistantFile[]
+  account               Account                @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  processingSession     FileProcessingSession? @relation(fields: [processingSessionId], references: [id])
+
   @@index([accountId, status])
   @@index([s3Key])
   @@index([checksum])
   @@map("knowledge_files")
 }
 
-// AI Assistants created by users (now account-specific)
 model Assistant {
-  id                String            @id @default(cuid())
-  accountId         String            @map("account_id")
-  name              String
-  description       String?
-  instructions      String?           @db.Text // System instructions for the assistant
-  status            AssistantStatus   @default(DRAFT)
-  
-  // OpenAI integration
-  openaiAssistantId String?           @map("openai_assistant_id")
-  vectorStoreId     String?           @map("vector_store_id")
-  model             String?           @default("gpt-4-turbo") // OpenAI model to use
-  
-  // API access
-  apiKey            String?           @map("api_key")
-  embedUrl          String?           @map("embed_url")
-  isPublic          Boolean           @default(false) @map("is_public")
-  
-  // Embed widget styling
-  embedBubbleColor  String?           @default("#3B82F6") @map("embed_bubble_color")
-  embedButtonShape  String?           @default("rounded") @map("embed_button_shape") // square, rounded, pill
-  embedFontStyle    String?           @default("system") @map("embed_font_style") // system, sans, serif, monospace
-  embedPosition     String?           @default("bottom-right") @map("embed_position") // bottom-left, bottom-right
-  
-  // Full chat UI styling
-  chatBackgroundColor    String?      @default("#FFFFFF") @map("chat_background_color")
-  userMessageBubbleColor String?      @default("#3B82F6") @map("user_message_bubble_color")  
-  assistantMessageBubbleColor String? @default("#F3F4F6") @map("assistant_message_bubble_color")
-  assistantFontStyle     String?      @default("sans") @map("assistant_font_style") // sans, serif, monospace
-  messageBubbleRadius    Int?         @default(12) @map("message_bubble_radius") // 0-24px
-  showAssistantAvatar    Boolean?     @default(true) @map("show_assistant_avatar")
-  assistantAvatarUrl     String?      @map("assistant_avatar_url")
-  showChatHeader         Boolean?     @default(true) @map("show_chat_header")
-  chatHeaderTitle        String?      @default("AI Assistant") @map("chat_header_title")
-  welcomeMessage         String?      @map("welcome_message")
-  
-  // Usage tracking
-  totalSessions     Int               @default(0) @map("total_sessions")
-  totalMessages     Int               @default(0) @map("total_messages")
-  
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  lastTrained       DateTime?         @map("last_trained")
-  
-  // Relations
-  account           Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  files             AssistantFile[]
-  
+  id                          String          @id @default(cuid())
+  accountId                   String          @map("account_id")
+  name                        String
+  description                 String?
+  instructions                String?
+  status                      AssistantStatus @default(DRAFT)
+  openaiAssistantId           String?         @map("openai_assistant_id")
+  vectorStoreId               String?         @map("vector_store_id")
+  model                       String?         @default("gpt-4-turbo")
+  apiKey                      String?         @map("api_key")
+  embedUrl                    String?         @map("embed_url")
+  isPublic                    Boolean         @default(false) @map("is_public")
+  embedBubbleColor            String?         @default("#3B82F6") @map("embed_bubble_color")
+  embedButtonShape            String?         @default("rounded") @map("embed_button_shape")
+  embedFontStyle              String?         @default("system") @map("embed_font_style")
+  embedPosition               String?         @default("bottom-right") @map("embed_position")
+  chatBackgroundColor         String?         @default("#FFFFFF") @map("chat_background_color")
+  userMessageBubbleColor      String?         @default("#3B82F6") @map("user_message_bubble_color")
+  assistantMessageBubbleColor String?         @default("#F3F4F6") @map("assistant_message_bubble_color")
+  assistantFontStyle          String?         @default("sans") @map("assistant_font_style")
+  messageBubbleRadius         Int?            @default(12) @map("message_bubble_radius")
+  showAssistantAvatar         Boolean?        @default(true) @map("show_assistant_avatar")
+  assistantAvatarUrl          String?         @map("assistant_avatar_url")
+  showChatHeader              Boolean?        @default(true) @map("show_chat_header")
+  chatHeaderTitle             String?         @default("AI Assistant") @map("chat_header_title")
+  welcomeMessage              String?         @map("welcome_message")
+  totalSessions               Int             @default(0) @map("total_sessions")
+  totalMessages               Int             @default(0) @map("total_messages")
+  createdAt                   DateTime        @default(now()) @map("created_at")
+  updatedAt                   DateTime        @updatedAt @map("updated_at")
+  lastTrained                 DateTime?       @map("last_trained")
+  files                       AssistantFile[]
+  account                     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
   @@index([accountId, status])
   @@map("assistants")
 }
 
-// Junction table linking assistants to knowledge files
 model AssistantFile {
-  assistantId String @map("assistant_id")
-  fileId      String @map("file_id")
-  addedAt     DateTime @default(now()) @map("added_at")
-  
-  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
-  file      KnowledgeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  
+  assistantId String        @map("assistant_id")
+  fileId      String        @map("file_id")
+  addedAt     DateTime      @default(now()) @map("added_at")
+  assistant   Assistant     @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  file        KnowledgeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
   @@id([assistantId, fileId])
   @@map("assistant_files")
 }
 
-// Enums
+model DropboxConnection {
+  id               String               @id @default(cuid())
+  accountId        String               @map("account_id")
+  userId           String               @map("user_id")
+  accessToken      String               @map("access_token")
+  refreshToken     String?              @map("refresh_token")
+  expiresAt        DateTime?            @map("expires_at")
+  dropboxAccountId String               @map("dropbox_account_id")
+  dropboxEmail     String               @map("dropbox_email")
+  displayName      String               @map("display_name")
+  isActive         Boolean              @default(true) @map("is_active")
+  lastSyncAt       DateTime?            @map("last_sync_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  account          Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  syncSessions     DropboxSyncSession[]
+
+  @@unique([accountId, dropboxAccountId])
+  @@map("dropbox_connections")
+}
+
+model DropboxSyncSession {
+  id             String                   @id @default(cuid())
+  connectionId   String                   @map("connection_id")
+  status         DropboxSyncSessionStatus @default(PENDING)
+  totalFiles     Int                      @default(0) @map("total_files")
+  processedFiles Int                      @default(0) @map("processed_files")
+  errorFiles     Int                      @default(0) @map("error_files")
+  syncedFiles    Int                      @default(0) @map("synced_files")
+  skippedFiles   Int                      @default(0) @map("skipped_files")
+  errorMessage   String?                  @map("error_message")
+  startedAt      DateTime                 @default(now()) @map("started_at")
+  completedAt    DateTime?                @map("completed_at")
+  connection     DropboxConnection        @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@map("dropbox_sync_sessions")
+}
+
 enum Plan {
   FREE
   PRO
@@ -240,5 +234,12 @@ enum AssistantStatus {
   DRAFT
   TRAINING
   ACTIVE
+  ERROR
+}
+
+enum DropboxSyncSessionStatus {
+  PENDING
+  SYNCING
+  COMPLETED
   ERROR
 }

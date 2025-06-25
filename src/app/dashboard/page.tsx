@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import CreateAssistantDialog from "@/components/models/CreateAssistantDialog";
+
 import { 
   Bot, 
   Plus, 
@@ -45,7 +45,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 // Enhanced Onboarding for first-time users
-function FirstTimeUserOnboarding() {
+function FirstTimeUserOnboarding({ router }: { router: any }) {
   const [completedSteps, setCompletedSteps] = useState([false, false, false]);
 
   return (
@@ -81,12 +81,13 @@ function FirstTimeUserOnboarding() {
             <p className="text-gray-600 mb-4 leading-relaxed">
               Give your assistant a name and personality that perfectly represents your business and brand.
             </p>
-            <CreateAssistantDialog>
-              <Button className="bg-blue-600 hover:bg-blue-700 shadow-sm font-medium">
-                <Plus className="mr-2 h-4 w-4" />
-                Start Building
-              </Button>
-            </CreateAssistantDialog>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 shadow-sm font-medium"
+              onClick={() => router.push('/dashboard/create')}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Start Building
+            </Button>
           </div>
         </div>
 
@@ -660,12 +661,13 @@ export default function DashboardPage() {
             </p>
           </div>
           {models.length > 0 && (
-          <CreateAssistantDialog>
-              <Button className="bg-blue-600 hover:bg-blue-700 shadow-sm text-base font-medium px-6 py-3 h-auto">
-                <Plus className="mr-2 h-5 w-5" />
-                Build AI Assistant
-            </Button>
-          </CreateAssistantDialog>
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700 shadow-sm text-base font-medium px-6 py-3 h-auto"
+            onClick={() => router.push('/dashboard/create')}
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Build AI Assistant
+          </Button>
           )}
         </div>
 
@@ -782,7 +784,7 @@ export default function DashboardPage() {
 
         {/* Content: Onboarding or Assistant Grid */}
                 {models.length === 0 ? (
-          <FirstTimeUserOnboarding />
+          <FirstTimeUserOnboarding router={router} />
         ) : (
           <>
             {/* Enhanced Progress Banner */}
@@ -817,12 +819,14 @@ export default function DashboardPage() {
                   <h2 className="text-2xl font-bold text-gray-900 font-kanit uppercase tracking-wide">Your AI Assistants</h2>
                   <p className="text-gray-600 mt-1">Manage and monitor your AI-powered assistants</p>
           </div>
-                <CreateAssistantDialog>
-                  <Button variant="outline" className="font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Assistant
-                  </Button>
-                </CreateAssistantDialog>
+                <Button 
+                  variant="outline" 
+                  className="font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                  onClick={() => router.push('/dashboard/create')}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Assistant
+                </Button>
               </div>
               
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">

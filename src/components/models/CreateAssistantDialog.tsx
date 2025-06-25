@@ -24,7 +24,9 @@ import {
   Check,
   Bot,
   FileText,
-  Loader2
+  Loader2,
+  Cloud,
+  Plus
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +43,7 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
     description: "",
     files: [] as File[],
     gmailIntegration: false,
+    useDropboxSync: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dragActive, setDragActive] = useState(false);
@@ -105,8 +108,8 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
     }
 
     if (step === 2) {
-      if (formData.files.length === 0) {
-        newErrors.files = "Please upload at least one document";
+      if (formData.files.length === 0 && !formData.useDropboxSync) {
+        newErrors.files = "Please upload files or choose to sync from Dropbox";
       }
     }
 
@@ -144,6 +147,7 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
         description: "",
         files: [],
         gmailIntegration: false,
+        useDropboxSync: false,
       });
       setCurrentStep(1);
       setErrors({});
@@ -206,70 +210,126 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Upload Documents *</Label>
-              <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                  dragActive
-                    ? "border-primary bg-primary/5"
-                    : errors.files
-                    ? "border-destructive"
-                    : "border-muted-foreground/25"
-                }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">
-                    Drag and drop files here, or{" "}
-                    <label className="text-primary cursor-pointer hover:underline">
-                      browse
-                      <input
-                        type="file"
-                        multiple
-                        accept=".pdf,.docx,.doc,.txt,.md"
-                        onChange={(e) => e.target.files && handleFiles(e.target.files)}
-                        className="hidden"
-                      />
-                    </label>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Supports PDF, DOC, DOCX, TXT, and MD files (max 10 files)
-                  </p>
-                </div>
-              </div>
-              {errors.files && (
-                <p className="text-sm text-destructive">{errors.files}</p>
-              )}
+              <Label>Knowledge Base *</Label>
+              <p className="text-sm text-muted-foreground">
+                Choose how to add knowledge to your assistant
+              </p>
             </div>
 
-            {formData.files.length > 0 && (
-              <div className="space-y-2">
-                <Label>Uploaded Files ({formData.files.length})</Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {formData.files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                      <div className="flex items-center space-x-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium truncate">{file.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({(file.size / 1024).toFixed(1)}KB)
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+            {/* Option Selection */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant={!formData.useDropboxSync ? "default" : "outline"}
+                className="h-20 flex-col space-y-2"
+                onClick={() => setFormData(prev => ({ ...prev, useDropboxSync: false }))}
+              >
+                <Upload className="h-6 w-6" />
+                <span className="text-sm">Upload Files</span>
+              </Button>
+              
+              <Button
+                variant={formData.useDropboxSync ? "default" : "outline"}
+                className="h-20 flex-col space-y-2"
+                onClick={() => setFormData(prev => ({ ...prev, useDropboxSync: true }))}
+              >
+                <Cloud className="h-6 w-6" />
+                <span className="text-sm">Sync from Dropbox</span>
+              </Button>
+            </div>
+
+            {/* Upload Files Section */}
+            {!formData.useDropboxSync && (
+              <div className="space-y-3">
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    dragActive
+                      ? "border-primary bg-primary/5"
+                      : errors.files
+                      ? "border-destructive"
+                      : "border-muted-foreground/25"
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">
+                      Drag and drop files here, or{" "}
+                      <label className="text-primary cursor-pointer hover:underline">
+                        browse
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,.docx,.doc,.txt,.md"
+                          onChange={(e) => e.target.files && handleFiles(e.target.files)}
+                          className="hidden"
+                        />
+                      </label>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Supports PDF, DOC, DOCX, TXT, and MD files (max 10 files)
+                    </p>
+                  </div>
+                </div>
+
+                {formData.files.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Uploaded Files ({formData.files.length})</Label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {formData.files.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium truncate">{file.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              ({(file.size / 1024).toFixed(1)}KB)
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dropbox Sync Section */}
+            {formData.useDropboxSync && (
+              <div className="space-y-3">
+                <div className="border rounded-lg p-6 text-center">
+                  <Cloud className="mx-auto h-12 w-12 text-primary mb-4" />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Sync from Dropbox</p>
+                    <p className="text-xs text-muted-foreground">
+                      Your assistant will be created first, then you can sync files from your connected Dropbox account in the knowledge base section.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold mt-0.5">
+                      i
+                    </div>
+                    <div className="text-xs text-blue-700">
+                      <strong>Note:</strong> Make sure you have connected your Dropbox account in Settings before proceeding.
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
+
+            {errors.files && (
+              <p className="text-sm text-destructive">{errors.files}</p>
             )}
           </div>
         );
@@ -330,8 +390,13 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Documents:</span>
-                <span className="font-medium">{formData.files.length} files</span>
+                <span className="text-muted-foreground">Knowledge:</span>
+                <span className="font-medium">
+                  {formData.useDropboxSync 
+                    ? "Sync from Dropbox" 
+                    : `${formData.files.length} uploaded files`
+                  }
+                </span>
               </div>
             </div>
 

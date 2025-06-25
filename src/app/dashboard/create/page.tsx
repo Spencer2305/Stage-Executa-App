@@ -27,7 +27,8 @@ import {
   Bell,
   Sparkles,
   Rocket,
-  Heart
+  Heart,
+  Cloud
 } from "lucide-react";
 
 export default function CreateAIPage() {
@@ -42,6 +43,7 @@ export default function CreateAIPage() {
     description: "",
     files: [] as File[],
     gmailIntegration: false,
+    useDropboxSync: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dragActive, setDragActive] = useState(false);
@@ -97,8 +99,8 @@ export default function CreateAIPage() {
     }
 
     if (step === 2) {
-      if (formData.files.length === 0) {
-        newErrors.files = "Please upload at least one document";
+      if (formData.files.length === 0 && !formData.useDropboxSync) {
+        newErrors.files = "Please upload files or choose to sync from Dropbox";
       }
     }
 
@@ -124,6 +126,7 @@ export default function CreateAIPage() {
         name: formData.name,
         description: formData.description,
         documents: formData.files,
+        useDropboxSync: formData.useDropboxSync,
         integrations: {
           gmail: formData.gmailIntegration,
         },
@@ -206,14 +209,26 @@ export default function CreateAIPage() {
 
       case 2:
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <Label>Upload Documents *</Label>
+              <Label>Knowledge Base *</Label>
+              <p className="text-sm text-muted-foreground">
+                Add knowledge to your assistant by uploading files or connecting integrations
+              </p>
+            </div>
+
+            {/* Upload Files Section - Always Visible */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Upload className="h-5 w-5 text-primary" />
+                <Label className="text-base font-medium">Upload Files</Label>
+              </div>
+              
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                   dragActive
                     ? "border-primary bg-primary/5"
-                    : errors.files
+                    : errors.files && formData.files.length === 0 && !formData.useDropboxSync
                     ? "border-destructive"
                     : "border-muted-foreground/25"
                 }`}
@@ -222,8 +237,8 @@ export default function CreateAIPage() {
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <div className="space-y-2">
+                <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
+                <div className="space-y-1">
                   <p className="text-sm font-medium">
                     Drag and drop files here, or{" "}
                     <label className="text-primary cursor-pointer hover:underline">
@@ -242,36 +257,132 @@ export default function CreateAIPage() {
                   </p>
                 </div>
               </div>
-              {errors.files && (
-                <p className="text-sm text-destructive">{errors.files}</p>
+
+              {formData.files.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Uploaded Files ({formData.files.length})</Label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {formData.files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium truncate">{file.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({(file.size / 1024).toFixed(1)}KB)
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
-            {formData.files.length > 0 && (
-              <div className="space-y-2">
-                <Label>Uploaded Files ({formData.files.length})</Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {formData.files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                      <div className="flex items-center space-x-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium truncate">{file.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({(file.size / 1024).toFixed(1)}KB)
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+            {/* Integrations Section */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Cloud className="h-5 w-5 text-primary" />
+                <Label className="text-base font-medium">Available Integrations</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Connect your accounts to sync files automatically
+              </p>
+
+              {/* Dropbox Integration */}
+              <div 
+                className={`border rounded-lg p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
+                  formData.useDropboxSync ? 'border-primary bg-primary/5' : 'border-muted'
+                }`}
+                onClick={() => setFormData(prev => ({ ...prev, useDropboxSync: !prev.useDropboxSync }))}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <Cloud className="h-5 w-5 text-white" />
                     </div>
-                  ))}
+                    <div>
+                      <p className="font-medium text-sm">Dropbox</p>
+                      <p className="text-xs text-muted-foreground">
+                        Sync files from your Dropbox account
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      formData.useDropboxSync 
+                        ? 'border-primary bg-primary' 
+                        : 'border-muted-foreground'
+                    }`}>
+                      {formData.useDropboxSync && <Check className="h-2.5 w-2.5 text-white" />}
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Gmail Integration - Coming Soon */}
+              <div className="border rounded-lg p-4 opacity-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
+                      <Mail className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Gmail</p>
+                      <p className="text-xs text-muted-foreground">
+                        Import emails to enhance knowledge base
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                    Coming Soon
+                  </div>
+                </div>
+              </div>
+
+              {/* Other Integrations - Coming Soon */}
+              <div className="border rounded-lg p-4 opacity-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Google Drive</p>
+                      <p className="text-xs text-muted-foreground">
+                        Sync documents from Google Drive
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                    Coming Soon
+                  </div>
+                </div>
+              </div>
+
+              {formData.useDropboxSync && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold mt-0.5">
+                      i
+                    </div>
+                    <div className="text-xs text-blue-700">
+                      <strong>Note:</strong> Files from your connected Dropbox account will be automatically synced when the assistant is created. Make sure you have connected your Dropbox account in Settings first.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {errors.files && (
+              <p className="text-sm text-destructive">{errors.files}</p>
             )}
           </div>
         );
@@ -347,8 +458,13 @@ export default function CreateAIPage() {
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Documents:</span>
-                <span className="font-medium">{formData.files.length} files</span>
+                <span className="text-muted-foreground">Knowledge:</span>
+                <span className="font-medium">
+                  {formData.useDropboxSync 
+                    ? "Sync from Dropbox" 
+                    : `${formData.files.length} uploaded files`
+                  }
+                </span>
               </div>
             </div>
 
@@ -512,7 +628,7 @@ export default function CreateAIPage() {
                       {isLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Creating...
+                          {formData.useDropboxSync ? "Creating & Syncing..." : "Creating..."}
                         </>
                       ) : (
                         "Create Assistant"

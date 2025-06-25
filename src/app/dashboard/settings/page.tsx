@@ -265,6 +265,59 @@ export default function SettingsPage() {
     }
   }, [user]);
 
+  // Check for success/error messages and fetch integration status
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+
+    if (success === 'dropbox_connected') {
+      toast.success('🎉 Dropbox connected successfully! Your files will be synced shortly.');
+      // Clean up URL
+      window.history.replaceState({}, '', '/dashboard/settings');
+    } else if (error) {
+      const errorMessages: { [key: string]: string } = {
+        dropbox_auth_denied: 'Dropbox connection was cancelled.',
+        dropbox_missing_params: 'Invalid Dropbox response. Please try again.',
+        dropbox_invalid_state: 'Security validation failed. Please try again.',
+        dropbox_auth_mismatch: 'Authentication error. Please try again.',
+        account_not_found: 'Account not found. Please contact support.',
+        dropbox_callback_failed: 'Dropbox connection failed. Please try again.'
+      };
+      toast.error(errorMessages[error] || 'Connection failed. Please try again.');
+      // Clean up URL
+      window.history.replaceState({}, '', '/dashboard/settings');
+    }
+
+    // Fetch current integration status
+    fetchIntegrationStatus();
+  }, []);
+
+  const fetchIntegrationStatus = async () => {
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      const response = await fetch('/api/integrations/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const connected = new Set(['gmail', 'slack']); // Keep demo integrations
+        
+        // Add real connected integrations
+        if (data.integrations.dropbox) {
+          connected.add('dropbox');
+        }
+        
+        setConnectedIntegrations(connected);
+      }
+    } catch (error) {
+      console.error('Failed to fetch integration status:', error);
+    }
+  };
+
   const [notifications, setNotifications] = useState({
     emailUpdates: true,
     securityAlerts: true,
@@ -276,8 +329,34 @@ export default function SettingsPage() {
 
   const [connectedIntegrations, setConnectedIntegrations] = useState(new Set(['gmail', 'slack']));
 
-  const handleConnect = (integration: string) => {
-    setConnectedIntegrations(prev => new Set([...prev, integration]));
+  const handleConnect = async (integration: string) => {
+    if (integration === 'dropbox') {
+      try {
+        // Get auth URL from your API
+        const token = localStorage.getItem('executa-auth-token');
+        const response = await fetch('/api/integrations/dropbox/auth', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to initialize Dropbox connection');
+        }
+        
+        const data = await response.json();
+        
+        // Redirect to Dropbox OAuth
+        window.location.href = data.authUrl;
+        
+      } catch (error) {
+        console.error('Dropbox connection error:', error);
+        toast.error('Failed to connect to Dropbox. Please try again.');
+      }
+    } else {
+      // For other integrations, just update local state for demo
+      setConnectedIntegrations(prev => new Set([...prev, integration]));
+    }
   };
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
