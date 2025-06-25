@@ -206,15 +206,9 @@ function IntegrationCard({
                 Coming Soon
               </Button>
             ) : connected ? (
-              <>
-                <Button variant="outline" size="sm" onClick={onDisconnect}>
-                  Disconnect
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <SettingsIcon className="h-4 w-4 mr-1" />
-                  Configure
-                </Button>
-              </>
+              <Button variant="outline" size="sm" onClick={onDisconnect}>
+                Disconnect
+              </Button>
             ) : (
               <Button size="sm" onClick={onConnect} className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-1" />
