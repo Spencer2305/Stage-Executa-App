@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Kanit } from "next/font/google";
+import { Geist, Geist_Mono, Plus_Jakarta_Sans, Inter, Kanit } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import AuthProvider from "@/components/providers/AuthProvider";
 import { Toaster } from "sonner";
+import { NotificationProvider, NotificationContainer } from "@/components/ui/notification";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,6 +14,18 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-heading",
+  subsets: ["latin"],
+  weight: ["200", "300", "400", "500", "600", "700", "800"],
+});
+
+const inter = Inter({
+  variable: "--font-body", 
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const kanit = Kanit({
@@ -73,12 +86,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${kanit.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${plusJakartaSans.variable} ${inter.variable} ${kanit.variable} antialiased`}
       >
         <AuthProvider>
-          <Navbar />
-          {children}
-          <Toaster />
+          <NotificationProvider>
+            <Navbar />
+            {children}
+            <NotificationContainer />
+            <Toaster />
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

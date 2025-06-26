@@ -18,7 +18,11 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        'kanit': ['Kanit', 'sans-serif'],
+        'heading': ['var(--font-heading)', 'Plus Jakarta Sans', 'sans-serif'],
+        'body': ['var(--font-body)', 'Inter', 'sans-serif'],
+        'sans': ['var(--font-body)', 'Inter', 'sans-serif'], // Set Inter as default sans font
+        // Keep legacy fonts for backward compatibility
+        'kanit': ['var(--font-kanit)', 'Kanit', 'sans-serif'],
         'heebo': ['Heebo', 'sans-serif'],
       },
       colors: {

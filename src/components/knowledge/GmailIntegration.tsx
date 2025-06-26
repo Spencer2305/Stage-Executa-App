@@ -137,10 +137,11 @@ export default function GmailIntegration({ assistantId }: GmailIntegrationProps)
           </div>
           
           <div className="flex space-x-3">
-            <Link href="/dashboard/settings?tab=integrations">
+            <Link href="/dashboard/settings?tab=integrations" target="_blank">
               <Button className="flex-1">
                 <Settings className="h-4 w-4 mr-2" />
                 Connect Gmail
+                <ExternalLink className="h-3 w-3 ml-2" />
               </Button>
             </Link>
           </div>
@@ -196,7 +197,7 @@ export default function GmailIntegration({ assistantId }: GmailIntegrationProps)
             {syncing ? 'Syncing...' : 'Sync Now'}
           </Button>
           
-          <Link href="/dashboard/settings?tab=integrations">
+          <Link href="/dashboard/settings?tab=integrations" target="_blank">
             <Button variant="outline">
               <ExternalLink className="h-4 w-4 mr-2" />
               Settings

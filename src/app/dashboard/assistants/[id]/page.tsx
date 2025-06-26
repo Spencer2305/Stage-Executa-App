@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { useNotification } from "@/components/ui/notification";
 import KnowledgeBaseManager from "@/components/knowledge/KnowledgeBaseManager";
 import GmailIntegration from "@/components/knowledge/GmailIntegration";
 import EmailKnowledgeManager from "@/components/knowledge/EmailKnowledgeManager";
@@ -126,9 +127,18 @@ export default function AssistantViewPage() {
   
   const { models, deleteModel, fetchModels, refreshModel, isLoading, updateModel } = useModelStore();
   const { user, isLoading: userLoading } = useUserStore();
+  const { showSuccess, showError } = useNotification();
   const assistant = models.find(m => m.id === assistantId);
   
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Update URL when tab changes
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', newTab);
+    window.history.replaceState({}, '', url.toString());
+  };
   const [message, setMessage] = useState("");
   const [chatThreadId, setChatThreadId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -733,7 +743,7 @@ export default function AssistantViewPage() {
             </Button>
               <div>
             <div className="flex items-center space-x-3">
-              <h1 className="text-2xl font-bold text-gray-900 font-kanit uppercase tracking-wide">{assistant.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 font-kanit tracking-wide">{assistant.name}</h1>
               <Badge className={`border ${getStatusColor(assistant.status)}`}>
                     {getStatusText(assistant.status)}
                   </Badge>
@@ -748,7 +758,7 @@ export default function AssistantViewPage() {
 
 
       {/* Tabbed Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
@@ -951,7 +961,11 @@ export default function AssistantViewPage() {
               )}
               
               {/* Knowledge Sub-tabs */}
-              <Tabs defaultValue="documents" className="h-full flex flex-col">
+              <Tabs defaultValue={searchParams.get('subtab') || "documents"} className="h-full flex flex-col" onValueChange={(value) => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('subtab', value);
+                window.history.replaceState({}, '', url.toString());
+              }}>
                 <TabsList className="grid w-full grid-cols-3 mb-4">
                   <TabsTrigger value="documents" className="flex items-center space-x-2">
                     <FileText className="h-4 w-4" />

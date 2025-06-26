@@ -68,7 +68,7 @@ function FirstTimeUserOnboarding({ router }: { router: any }) {
       </CardHeader>
       <CardContent className="relative space-y-6">
         {/* Step 1 */}
-        <div className="flex items-start space-x-4 p-5 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-start space-x-4 p-5 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-100 shadow-sm">
           <div className="flex-shrink-0">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
               completedSteps[0] ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white'
@@ -221,24 +221,16 @@ function DeploymentBadges({ isActive }: { isActive: boolean }) {
   );
 }
 
-// Enhanced Assistant Card Component
+// Enhanced Assistant Card Component with improved hierarchy and full clickability
 function AssistantCard({ model }: { model: any }) {
+  const router = useRouter();
+  
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(dateObj.getTime())) return 'Never';
     return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(
       Math.floor((dateObj.getTime() - Date.now()) / (1000 * 60 * 60 * 24)), 'day'
     );
-  };
-
-  const handleCopyEmbed = async () => {
-    const embedCode = `<script src="https://cdn.executa.ai/widget.js" data-assistant-id="${model?.id || 'unknown'}"></script>`;
-    try {
-      await navigator.clipboard.writeText(embedCode);
-      toast.success("Embed code copied to clipboard!");
-    } catch (err) {
-      toast.error("Failed to copy embed code");
-    }
   };
 
   const getStatusColor = (status?: string) => {
@@ -259,287 +251,129 @@ function AssistantCard({ model }: { model: any }) {
     }
   };
 
+  const getAccuracyColor = (status?: string) => {
+    if (status === 'active') return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+    return 'text-gray-600 bg-gray-50 border-gray-200';
+  };
+
   // Mock metrics
   const accuracy = model?.status === 'active' ? '98%' : '--';
   const sessions = model?.totalSessions || 0;
-  const lastInteraction = model?.status === 'active' ? formatDate(new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)) : 'Never';
+  const documentCount = model?.documents?.length || 0;
+
+  const handleCardClick = () => {
+    router.push(`/dashboard/assistants/${model?.id || 'unknown'}`);
+  };
 
   return (
-    <Card className="border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-300 group bg-white">
+    <Card 
+      className="border border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+      onClick={handleCardClick}
+    >
       <CardContent className="p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-5">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="font-semibold text-xl text-gray-900 group-hover:text-blue-600 transition-colors">
-                {model?.name || 'Untitled Assistant'}
-              </h3>
-              <Badge className={`text-xs font-medium border ${getStatusColor(model?.status)} px-2.5 py-1`}>
-                <Circle className="w-2 h-2 mr-1.5 fill-current" />
-                {getStatusText(model?.status)}
-              </Badge>
+        {/* Header with improved hierarchy */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
+                <Bot className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                  {model?.name || 'Untitled Assistant'}
+                </h3>
+                <Badge className={`text-xs font-semibold border ${getStatusColor(model?.status)} px-3 py-1`}>
+                  <Circle className="w-2 h-2 mr-1.5 fill-current" />
+                  {getStatusText(model?.status)}
+                </Badge>
+              </div>
             </div>
-            {model?.description && (
-              <p className="text-gray-600 leading-relaxed">{model.description}</p>
-            )}
+          </div>
+          
+          {model?.description && (
+            <p className="text-gray-600 leading-relaxed text-sm ml-15">
+              {model.description}
+            </p>
+          )}
+        </div>
+
+        {/* Key Metrics with Visual Hierarchy */}
+        <div className="mb-6">
+          <div className="grid grid-cols-3 gap-4">
+            {/* Accuracy - Highlighted as most important */}
+            <div className="text-center">
+              <div className={`inline-flex items-center justify-center w-full py-3 px-2 rounded-xl border ${getAccuracyColor(model?.status)} mb-2`}>
+                <div className="text-2xl font-bold">{accuracy}</div>
+              </div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Accuracy</div>
+            </div>
+            
+            {/* Sessions */}
+            <div className="text-center">
+              <div className="py-3 px-2 mb-2">
+                <div className="text-xl font-bold text-gray-900">{sessions}</div>
+              </div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sessions</div>
+            </div>
+            
+            {/* Documents */}
+            <div className="text-center">
+              <div className="py-3 px-2 mb-2">
+                <div className="text-xl font-bold text-gray-900">{documentCount}</div>
+              </div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Documents</div>
+            </div>
           </div>
         </div>
 
-        {/* Training and Deployment Info */}
-        <div className="space-y-4 mb-5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Training Source</span>
+        {/* Training Source and Deployment - Compact */}
+        <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+          <div>
+            <span className="text-gray-500 font-medium block mb-2">Training Source</span>
             <TrainingSourceBadges documents={model?.documents || []} />
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Deployment</span>
+          <div>
+            <span className="text-gray-500 font-medium block mb-2">Deployment</span>
             <DeploymentBadges isActive={model?.status === 'active'} />
           </div>
         </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-3 gap-4 mb-5 p-4 bg-gray-50/80 rounded-xl border border-gray-100">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{accuracy}</div>
-                  <div className="text-xs font-medium text-gray-500 mt-0.5">Accuracy</div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Percentage of helpful responses</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{sessions}</div>
-                  <div className="text-xs font-medium text-gray-500 mt-0.5">Sessions</div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Total conversations with users</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <div className="text-center">
-            <div className="text-xl font-bold text-gray-900">
-              {lastInteraction === 'Never' ? '--' : lastInteraction}
-            </div>
-            <div className="text-xs font-medium text-gray-500 mt-0.5">Last Active</div>
-          </div>
-        </div>
-
-        {/* Status Messages */}
+        {/* Status Messages - Only show if important */}
         {model?.status !== 'active' && (
-          <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-            <div className="flex items-start gap-2">
-              <Target className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-amber-600 flex-shrink-0" />
               <p className="text-sm text-amber-800 font-medium">
-                Ready to deploy? Activate your assistant to start collecting insights and helping users.
+                Ready to activate
               </p>
             </div>
           </div>
         )}
 
         {sessions === 0 && model?.status === 'active' && (
-          <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <div className="flex items-start gap-2">
-              <Activity className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-blue-600 flex-shrink-0" />
               <p className="text-sm text-blue-800 font-medium">
-                Your assistant is live but hasn't received any conversations yet. Share the link to get started!
+                Live but no conversations yet
               </p>
             </div>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <Link href={`/dashboard/assistants/${model?.id || 'unknown'}`}>
-            <Button variant="outline" size="sm" className="w-full h-10 font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Test Chat
-            </Button>
-          </Link>
-          <Link href={`/dashboard/assistants/${model?.id || 'unknown'}`}>
-            <Button variant="outline" size="sm" className="w-full h-10 font-medium hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 transition-colors">
-              <Upload className="mr-2 h-4 w-4" />
-              Add Knowledge
-            </Button>
-          </Link>
-          <Button variant="outline" size="sm" className="w-full h-10 font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors" onClick={handleCopyEmbed}>
-            <Copy className="mr-2 h-4 w-4" />
-            Copy Embed
-          </Button>
-          <Link href={`/dashboard/assistants/${model?.id || 'unknown'}`}>
-            <Button variant="outline" size="sm" className="w-full h-10 font-medium hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 transition-colors">
-              <Edit className="mr-2 h-4 w-4" />
-              Settings
-            </Button>
-          </Link>
+        {/* Click indicator */}
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+          <div className="text-sm text-gray-500">
+            Click to manage assistant
+          </div>
+          <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-200" />
         </div>
       </CardContent>
     </Card>
   );
 }
 
-// AI Suggestions Component with sleek design
-function AISuggestionsSection({ models, router }: { models: any[], router: any }) {
-  const [showSuggestions, setShowSuggestions] = useState(true);
 
-  if (!showSuggestions) {
-    return null;
-  }
-
-  const suggestions = [
-    {
-      id: 1,
-      type: 'optimization',
-      title: 'Optimize Response Time',
-      description: 'Your assistants could respond 23% faster with knowledge base refinement',
-      action: 'Review Knowledge Base',
-      icon: Rocket,
-      priority: 'high',
-      estimated: '5 min',
-      route: '/dashboard/files'
-    },
-    {
-      id: 2,
-      type: 'integration',
-      title: 'Connect Gmail Integration',
-      description: 'Add Gmail to expand your assistant\'s knowledge with email conversations',
-      action: 'Connect Gmail',
-      icon: Mail,
-      priority: 'medium',
-      estimated: '2 min',
-      route: '/dashboard/settings'
-    },
-    {
-      id: 3,
-      type: 'analytics',
-      title: 'View Conversation Insights',
-      description: 'Discover patterns in user questions to improve your assistant',
-      action: 'View Analytics',
-      icon: BarChart3,
-      priority: 'medium',
-      estimated: '3 min',
-      route: '/dashboard/analytics'
-    },
-    {
-      id: 4,
-      type: 'deployment',
-      title: 'Deploy to Website',
-      description: 'Add your assistant to your website to help visitors 24/7',
-      action: 'Get Embed Code',
-      icon: Globe,
-      priority: 'high',
-      estimated: '1 min',
-      route: models.length > 0 ? `/dashboard/assistants/${models[0]?.id}` : '/dashboard/create'
-    }
-  ];
-
-  return (
-    <div className="space-y-6">
-      {/* Smart Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-1">
-            AI Suggestions
-          </h2>
-          <p className="text-sm text-gray-600">Personalized recommendations to enhance your assistants</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-200/50 rounded-full">
-            <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
-            <span className="text-xs font-medium text-gray-700">AI Powered</span>
-          </div>
-          <button
-            onClick={() => setShowSuggestions(false)}
-            className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
-            title="Dismiss suggestions"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Compact Suggestions List */}
-      <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
-        {suggestions.map((suggestion, index) => {
-          const IconComponent = suggestion.icon;
-          
-          return (
-            <div key={suggestion.id} className="p-4 group cursor-pointer" onClick={() => router.push(suggestion.route)}>
-              <div className="flex items-center space-x-4">
-                {/* Priority Indicator */}
-                <div className="flex-shrink-0">
-                  <div className={`w-3 h-3 rounded-full ${
-                    suggestion.priority === 'high' 
-                      ? 'bg-orange-400' 
-                      : 'bg-blue-400'
-                  }`}></div>
-                </div>
-
-                {/* Icon */}
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
-                    <IconComponent className="w-5 h-5 text-gray-600" />
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <h3 className="text-sm font-medium text-gray-900">
-                      {suggestion.title}
-                    </h3>
-                    {suggestion.priority === 'high' && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                        High Impact
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {suggestion.description}
-                  </p>
-                </div>
-
-                {/* Time and Action */}
-                <div className="flex-shrink-0 text-right">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-xs text-gray-500">
-                      {suggestion.estimated}
-                    </div>
-                    <div className="flex items-center space-x-1 text-blue-600 group-hover:text-blue-700">
-                      <span className="text-sm font-medium">{suggestion.action}</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Progress Indicator */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-          <span>Complete suggestions to boost performance by 35%</span>
-        </div>
-        <div className="text-xs">
-          {suggestions.filter(s => s.priority === 'high').length} high impact • {suggestions.length} total
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const { user } = useUserStore();
@@ -563,7 +397,7 @@ export default function DashboardPage() {
   const activeModels = models.filter(model => model?.status === 'active');
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-white">
       <div className="p-8 space-y-8 max-w-7xl mx-auto">
         {/* Welcome Message for New Subscribers */}
         {showWelcome && (
@@ -592,8 +426,8 @@ export default function DashboardPage() {
         {/* Header with enhanced styling */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 leading-tight font-kanit uppercase tracking-wide">
-              Welcome back, {user?.name?.split(' ')[0] || 'there'}!
+            <h1 className="text-4xl font-bold text-gray-900 leading-tight font-kanit tracking-wide">
+              Welcome Back, {user?.name?.split(' ')[0] || 'There'}!
             </h1>
             <p className="text-gray-600 mt-2 text-lg leading-relaxed">
               Building AI solutions for everyone and every business with ease
@@ -612,9 +446,9 @@ export default function DashboardPage() {
 
         {/* Enhanced Stats Overview */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow bg-white">
+          <Card className="border border-gray-200 shadow-sm bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+              <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
                 Total Assistants
                 <TooltipProvider>
                   <Tooltip>
@@ -638,9 +472,9 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow bg-white">
+          <Card className="border border-gray-200 shadow-sm bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+              <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
                 Conversations
                 <TooltipProvider>
                   <Tooltip>
@@ -661,9 +495,9 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow bg-white">
+          <Card className="border border-gray-200 shadow-sm bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+              <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
                 Success Rate
                 <TooltipProvider>
                   <Tooltip>
@@ -695,9 +529,9 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow bg-white">
+          <Card className="border border-gray-200 shadow-sm bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">This Month</CardTitle>
+              <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">This Month</CardTitle>
               <Activity className="h-5 w-5 text-orange-600" />
             </CardHeader>
             <CardContent>
@@ -718,8 +552,7 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* AI Suggestions Section */}
-        {models.length > 0 && <AISuggestionsSection models={models} router={router} />}
+
 
         {/* Content: Onboarding or Assistant Grid */}
                 {models.length === 0 ? (
@@ -755,7 +588,7 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-kanit uppercase tracking-wide">Your AI Assistants</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-heading tracking-wide">Your AI Assistants</h2>
                   <p className="text-gray-600 mt-1">Manage and monitor your AI-powered assistants</p>
           </div>
                 <Button 
@@ -768,7 +601,7 @@ export default function DashboardPage() {
                 </Button>
               </div>
               
-              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {models.map((model) => (
                   <AssistantCard key={model.id} model={model} />
                 ))}

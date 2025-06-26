@@ -18,13 +18,15 @@ import {
   Eye,
   Mail,
   RefreshCw,
-  Cloud
+  Cloud,
+  AlertTriangle
 } from "lucide-react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { Document as ModelDocument } from "@/types/model";
 import { modelApi } from "@/utils/api";
 import { toast } from "sonner";
+import { useNotification } from "@/components/ui/notification";
 import axios from "axios";
 
 interface KnowledgeBaseManagerProps {
@@ -38,12 +40,18 @@ export default function KnowledgeBaseManager({
   files, 
   onFilesUpdated 
 }: KnowledgeBaseManagerProps) {
+  const { showSuccess, showError } = useNotification();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
+  
+  // Confirmation dialog state
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [fileToRemove, setFileToRemove] = useState<{id: string, name: string} | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatFileSize = (bytes: number) => {
@@ -159,11 +167,11 @@ export default function KnowledgeBaseManager({
       // Update the files list
       onFilesUpdated(result.files);
       
-      toast.success(`Successfully added ${result.newFiles} files to knowledge base`);
+      showSuccess(`Successfully added ${result.newFiles} files to knowledge base`);
       
     } catch (error) {
       console.error('❌ Error uploading files:', error);
-      toast.error('Failed to upload files. Please try again.');
+      showError('Failed to upload files. Please try again.');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -171,28 +179,40 @@ export default function KnowledgeBaseManager({
   };
 
   const handleRemoveFile = async (fileId: string, fileName: string) => {
-    if (!window.confirm(`Are you sure you want to remove "${fileName}" from the knowledge base?`)) {
-      return;
-    }
+    // Show custom confirmation dialog instead of window.confirm
+    setFileToRemove({ id: fileId, name: fileName });
+    setShowConfirmDialog(true);
+  };
 
+  const confirmRemoveFile = async () => {
+    if (!fileToRemove) return;
+    
     try {
-      console.log(`🗑️ Removing file ${fileId} from assistant ${assistantId}`);
+      console.log(`🗑️ Removing file ${fileToRemove.id} from assistant ${assistantId}`);
       
-      const result = await modelApi.removeFile(assistantId, fileId);
+      const result = await modelApi.removeFile(assistantId, fileToRemove.id);
       
       // Update the files list
       onFilesUpdated(result.remainingFiles);
       
-      toast.success(
+      showSuccess(
         result.deletedCompletely 
-          ? `File "${fileName}" completely deleted`
-          : `File "${fileName}" removed from this assistant`
+          ? `File "${fileToRemove.name}" completely deleted`
+          : `File "${fileToRemove.name}" removed from this assistant`
       );
       
     } catch (error) {
       console.error('❌ Error removing file:', error);
-      toast.error('Failed to remove file. Please try again.');
+      showError('Failed to remove file. Please try again.');
+    } finally {
+      setShowConfirmDialog(false);
+      setFileToRemove(null);
     }
+  };
+
+  const cancelRemoveFile = () => {
+    setShowConfirmDialog(false);
+    setFileToRemove(null);
   };
 
   const handleViewFile = (file: ModelDocument) => {
@@ -219,7 +239,7 @@ export default function KnowledgeBaseManager({
         newWindow.document.close();
       }
     } else {
-      toast.error('No content available for preview');
+      showError('No content available for preview');
     }
   };
 
@@ -248,12 +268,12 @@ export default function KnowledgeBaseManager({
       // Update the files list
       onFilesUpdated(result.files);
       
-      toast.success(`Successfully synced ${result.syncedFiles} files from ${integration}`);
+      showSuccess(`Successfully synced ${result.syncedFiles} files from ${integration}`);
       
     } catch (error: any) {
       console.error(`❌ Error syncing from ${integration}:`, error);
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
-      toast.error(`Failed to sync files from ${integration}: ${errorMessage}`);
+      showError(`Failed to sync files from ${integration}: ${errorMessage}`);
     } finally {
       setIsSyncing(false);
       setSyncProgress(0);
@@ -404,6 +424,33 @@ export default function KnowledgeBaseManager({
           </div>
         )}
         </div>
+
+      {/* Custom Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Remove File
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove <strong>"{fileToRemove?.name}"</strong> from the knowledge base?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={cancelRemoveFile}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmRemoveFile}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Remove File
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

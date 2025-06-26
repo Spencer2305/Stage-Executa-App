@@ -123,7 +123,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
+    <main className="flex flex-col min-h-screen bg-white">
       {/* Hero Section - Clean and Centered */}
       <section className="relative py-24 lg:py-32 overflow-hidden">
         {/* Clean background */}
@@ -192,7 +192,7 @@ export default function Home() {
             {/* Centered Content */}
             <motion.div className="space-y-8" variants={staggerChild}>
               <motion.div 
-                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-medium shadow-lg font-heebo"
+                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-medium shadow-lg font-body"
                 variants={staggerChild}
                 whileHover={{ scale: 1.05 }}
               >
@@ -205,7 +205,7 @@ export default function Home() {
             
               {/* Professional headline */}
               <motion.h1 
-                className="text-5xl md:text-6xl lg:text-7xl font-kanit font-bold tracking-tight leading-tight uppercase"
+                className="text-5xl md:text-6xl lg:text-7xl font-kanit font-bold tracking-tight leading-tight"
                 variants={staggerChild}
               >
                 <span className="block text-slate-900 mb-2">
@@ -221,7 +221,7 @@ export default function Home() {
               
               {/* Professional description */}
               <motion.p 
-                className="text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto font-heebo"
+                className="text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto font-body"
                 variants={staggerChild}
               >
                 Create intelligent AI solutions that transform your business. From customer support chatbots to knowledge assistants and onboarding guides - deploy any AI assistant that learns from your data.
@@ -232,14 +232,14 @@ export default function Home() {
                 className="flex flex-col sm:flex-row items-center justify-center gap-4"
                 variants={staggerChild}
               >
-                <Button asChild size="lg" className="bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 font-heebo">
+                <Button asChild size="lg" className="bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 font-body">
                   <Link href="/register">
                     <Rocket className="mr-2 h-5 w-5" />
                     Start Building Now
                   </Link>
                 </Button>
                 
-                <Button asChild variant="outline" size="lg" className="border-brand-300 text-brand-700 hover:bg-brand-50 hover:text-brand-700 px-8 py-4 text-lg font-semibold font-heebo">
+                <Button asChild variant="outline" size="lg" className="border-brand-300 text-brand-700 hover:bg-brand-50 hover:text-brand-700 px-8 py-4 text-lg font-semibold font-body">
                   <Link href="#demo">
                     <Play className="mr-2 h-5 w-5" />
                     Watch Demo
@@ -273,7 +273,7 @@ export default function Home() {
       {/* Enterprise Features Section */}
       <motion.section 
         id="features" 
-        className="py-32 bg-slate-50 relative overflow-hidden"
+        className="py-32 bg-white relative overflow-hidden"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-200px" }}
@@ -307,7 +307,7 @@ export default function Home() {
             variants={fadeInUp}
           >
             <motion.h2 
-              className="text-4xl md:text-6xl font-kanit font-bold tracking-tight mb-6 uppercase"
+              className="text-4xl md:text-6xl font-heading font-bold tracking-tight mb-6"
               style={{ color: "#6400fe" }}
             >
               Enterprise Features
@@ -399,7 +399,7 @@ export default function Home() {
                         />
                         <feature.icon className="h-8 w-8 text-white relative z-10" />
                       </motion.div>
-                      <CardTitle className="text-2xl group-hover:text-purple-700 transition-colors duration-300">{feature.title}</CardTitle>
+                      <CardTitle className="text-2xl">{feature.title}</CardTitle>
                     </CardHeader>
                     <CardContent className="relative z-10">
                       <CardDescription className="text-base leading-relaxed text-gray-600 group-hover:text-gray-700">
@@ -428,7 +428,7 @@ export default function Home() {
              variants={fadeInUp}
            >
              <motion.h2 
-               className="text-4xl md:text-6xl font-kanit font-bold tracking-tight mb-6 uppercase"
+               className="text-4xl md:text-6xl font-heading font-bold tracking-tight mb-6"
                style={{
                  background: "linear-gradient(135deg, #4f46e5 0%, #6400fe 100%)",
                  WebkitBackgroundClip: "text",
@@ -566,7 +566,7 @@ export default function Home() {
             variants={fadeInUp}
           >
             <motion.h2 
-              className="text-4xl md:text-5xl lg:text-6xl font-kanit font-bold tracking-tight text-slate-900 mb-6 uppercase"
+              className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold tracking-tight text-slate-900 mb-6"
             >
               Seamless 
               <motion.span 
@@ -714,7 +714,7 @@ export default function Home() {
 
        {/* Professional Stats Section */}
       <motion.section 
-         className="py-32 bg-slate-50 relative overflow-hidden"
+         className="py-32 bg-white relative overflow-hidden"
         initial="hidden"
         whileInView="visible"
          viewport={{ once: true }}
@@ -727,7 +727,7 @@ export default function Home() {
              className="mx-auto max-w-4xl text-center mb-20"
             variants={fadeInUp}
           >
-             <h2 className="text-4xl md:text-6xl font-kanit font-bold tracking-tight text-slate-900 mb-6 uppercase">
+             <h2 className="text-4xl md:text-6xl font-heading font-bold tracking-tight text-slate-900 mb-6">
                Trusted by Industry Leaders
                <span className="bg-gradient-to-r from-brand-600 to-purple-600 bg-clip-text text-transparent block">
                  Worldwide
@@ -784,7 +784,7 @@ export default function Home() {
                    className="group h-full"
                 >
                    <motion.div className="h-full">
-                     <Card className="relative border border-slate-200 bg-white hover:bg-slate-50 transition-all duration-500 rounded-2xl overflow-hidden group-hover:shadow-xl group-hover:shadow-brand-500/10 h-full">
+                     <Card className="relative border border-slate-200 bg-white transition-all duration-500 rounded-2xl overflow-hidden group-hover:shadow-xl group-hover:shadow-brand-500/10 h-full">
                        <CardContent className="p-6 text-center relative z-10 flex flex-col justify-center h-full min-h-[280px]">
                          <motion.div 
                            className={`w-16 h-16 rounded-xl bg-gradient-to-br ${stat.gradient} p-4 mb-6 mx-auto shadow-lg`}
@@ -832,7 +832,7 @@ export default function Home() {
              variants={fadeInUp}
            >
              <motion.h2 
-               className="text-4xl md:text-6xl font-kanit font-bold tracking-tight mb-6 uppercase"
+               className="text-4xl md:text-6xl font-heading font-bold tracking-tight mb-6"
                style={{
                  background: "linear-gradient(135deg, #1e40af 0%, #6400fe 100%)",
                  WebkitBackgroundClip: "text",
@@ -857,7 +857,7 @@ export default function Home() {
                transition={{ type: "spring", stiffness: 300, damping: 30 }}
              >
                {/* Header */}
-               <div className="relative flex items-center justify-between p-6 border-b border-slate-200 bg-slate-50">
+               <div className="relative flex items-center justify-between p-6 border-b border-slate-200 bg-blue-50">
                  <div className="flex items-center space-x-3">
                    <motion.div 
                      className="w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center shadow-lg"
@@ -891,10 +891,10 @@ export default function Home() {
                    animate={{ opacity: 1, y: 0 }}
                    transition={{ delay: 0.5 }}
                  >
-                   <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                     <Users className="w-4 h-4 text-gray-600" />
+                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                     <Users className="w-4 h-4 text-blue-600" />
                    </div>
-                   <div className="flex-1 bg-gray-50 rounded-2xl rounded-tl-sm p-4 max-w-xs">
+                   <div className="flex-1 bg-blue-50 rounded-2xl rounded-tl-sm p-4 max-w-xs">
                      <p className="text-sm text-gray-700">What makes Executa different from other AI chatbot platforms?</p>
                    </div>
                  </motion.div>
@@ -929,10 +929,10 @@ export default function Home() {
                    animate={{ opacity: 1, y: 0 }}
                    transition={{ delay: 1.5 }}
                  >
-                   <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                     <Users className="w-4 h-4 text-gray-600" />
+                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                     <Users className="w-4 h-4 text-blue-600" />
                    </div>
-                   <div className="flex-1 bg-gray-50 rounded-2xl rounded-tl-sm p-4 max-w-xs">
+                   <div className="flex-1 bg-blue-50 rounded-2xl rounded-tl-sm p-4 max-w-xs">
                      <p className="text-sm text-gray-700">How accurate are the responses?</p>
                    </div>
                  </motion.div>
@@ -982,7 +982,7 @@ export default function Home() {
                    <input 
                      type="text" 
                      placeholder="Ask me anything about Executa..."
-                     className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
                    />
                    <motion.button 
                      className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-xl hover:shadow-lg transition-all duration-200"
@@ -1004,7 +1004,7 @@ export default function Home() {
        {/* Professional Pricing Section */}
       <motion.section 
         id="pricing"
-        className="py-32 bg-slate-50 relative overflow-hidden"
+        className="py-32 bg-white relative overflow-hidden"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
@@ -1016,7 +1016,7 @@ export default function Home() {
             variants={fadeInUp}
           >
             <motion.h2 
-              className="text-4xl md:text-6xl font-kanit font-bold tracking-tight mb-6 uppercase"
+              className="text-4xl md:text-6xl font-heading font-bold tracking-tight mb-6"
               style={{
                 background: "linear-gradient(135deg, #4f46e5 0%, #6400fe 100%)",
                 WebkitBackgroundClip: "text",
@@ -1171,7 +1171,7 @@ export default function Home() {
 
       {/* Professional CTA Section */}
       <motion.section 
-         className="py-24 bg-slate-50 relative overflow-hidden"
+         className="py-24 bg-white relative overflow-hidden"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
@@ -1186,13 +1186,13 @@ export default function Home() {
       >
              <div className="space-y-6">
               <motion.h2 
-                 className="text-4xl md:text-6xl lg:text-7xl font-kanit font-bold tracking-tight text-slate-900 leading-tight uppercase"
+                 className="text-4xl md:text-6xl lg:text-7xl font-heading font-bold tracking-tight text-slate-900 leading-tight"
                >
                  Ready to Build 
                  <motion.span 
                    className="block bg-gradient-to-r from-brand-600 to-purple-600 bg-clip-text text-transparent"
                  >
-                   your AI solution?
+                   Your AI Solution?
                  </motion.span>
               </motion.h2>
                

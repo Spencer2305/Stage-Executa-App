@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
   Bot, 
@@ -41,7 +42,9 @@ import {
   Lightbulb,
   Globe,
   Filter,
-  Users
+  Users,
+  ArrowRight,
+  AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
 
@@ -136,6 +139,10 @@ export default function MyAIsPage() {
   const { models, isLoading, fetchModels, deleteModel } = useModelStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  
+  // Confirmation dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [assistantToDelete, setAssistantToDelete] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     fetchModels();
@@ -219,14 +226,27 @@ export default function MyAIsPage() {
   };
 
   const handleDeleteAssistant = async (assistantId: string, assistantName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${assistantName}"? This action cannot be undone.`)) {
-      try {
-        await deleteModel(assistantId);
-        // Success toast is already handled in the store
-      } catch (error) {
-        // Error toast is already handled in the store
-      }
+    setAssistantToDelete({ id: assistantId, name: assistantName });
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteAssistant = async () => {
+    if (!assistantToDelete) return;
+    
+    try {
+      await deleteModel(assistantToDelete.id);
+      // Success toast is already handled in the store
+    } catch (error) {
+      // Error toast is already handled in the store
+    } finally {
+      setShowDeleteDialog(false);
+      setAssistantToDelete(null);
     }
+  };
+
+  const cancelDeleteAssistant = () => {
+    setShowDeleteDialog(false);
+    setAssistantToDelete(null);
   };
 
   const handleSettingsClick = (assistantId: string) => {
@@ -251,7 +271,7 @@ export default function MyAIsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold font-kanit uppercase tracking-wide">My AI Assistants</h1>
+            <h1 className="text-3xl font-bold font-kanit tracking-wide">My AI Assistants</h1>
             <p className="text-muted-foreground mt-1">
               Manage and monitor your AI assistants
             </p>
@@ -375,112 +395,157 @@ export default function MyAIsPage() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredModels.map((model) => (
-              <Card key={model.id} className="rounded-2xl hover:shadow-lg transition-all duration-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Bot className="h-5 w-5 text-primary" />
+            {filteredModels.map((model) => {
+              const getAccuracyColor = (status?: string) => {
+                if (status === 'active') return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                return 'text-gray-600 bg-gray-50 border-gray-200';
+              };
+
+              const accuracy = model?.status === 'active' ? '98%' : '--';
+              const sessions = model?.totalSessions || 0;
+              const documentCount = model?.documents?.length || 0;
+
+              const handleCardClick = () => {
+                router.push(`/dashboard/assistants/${model?.id || 'unknown'}`);
+              };
+
+              return (
+                <Card 
+                  key={model.id}
+                  className="border border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg transition-all duration-200 cursor-pointer group rounded-2xl"
+                  onClick={handleCardClick}
+                >
+                  <CardContent className="p-6">
+                    {/* Header with improved hierarchy */}
+                    <div className="mb-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <Bot className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                              {model?.name || 'Untitled Assistant'}
+                            </h3>
+                            <Badge variant="outline" className={`text-xs font-semibold border ${getStatusColor(model?.status)} px-3 py-1`}>
+                              <Circle className="w-2 h-2 mr-1.5 fill-current" />
+                              {getStatusText(model?.status)}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {model?.description && (
+                        <p className="text-gray-600 leading-relaxed text-sm ml-15">
+                          {model.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Key Metrics with Visual Hierarchy */}
+                    <div className="mb-6">
+                      <div className="grid grid-cols-3 gap-4">
+                        {/* Accuracy - Highlighted as most important */}
+                        <div className="text-center">
+                          <div className={`inline-flex items-center justify-center w-full py-3 px-2 rounded-xl border ${getAccuracyColor(model?.status)} mb-2`}>
+                            <div className="text-2xl font-bold">{accuracy}</div>
+                          </div>
+                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Accuracy</div>
+                        </div>
+                        
+                        {/* Sessions */}
+                        <div className="text-center">
+                          <div className="py-3 px-2 mb-2">
+                            <div className="text-xl font-bold text-gray-900">{sessions}</div>
+                          </div>
+                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sessions</div>
+                        </div>
+                        
+                        {/* Documents */}
+                        <div className="text-center">
+                          <div className="py-3 px-2 mb-2">
+                            <div className="text-xl font-bold text-gray-900">{documentCount}</div>
+                          </div>
+                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Documents</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Training Source and Deployment - Compact */}
+                    <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                      <div>
+                        <span className="text-gray-500 font-medium block mb-2">Training Source</span>
+                        <TrainingSourceBadges documents={model?.documents || []} />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">{model.name}</CardTitle>
-                        <Badge variant="outline" className={getStatusColor(model.status)}>
-                          {getStatusText(model.status)}
-                        </Badge>
+                        <span className="text-gray-500 font-medium block mb-2">Deployment</span>
+                        <DeploymentBadges isActive={model?.status === 'active'} />
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleViewAssistant(model.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEditAssistant(model.id)}>
-                          <Edit3 className="mr-2 h-4 w-4" />
-                          Edit Assistant
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleViewAnalytics(model.id)}>
-                          <BarChart3 className="mr-2 h-4 w-4" />
-                          View Analytics
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleCopyEmbedCode(model.id)}>
-                          <Copy className="mr-2 h-4 w-4" />
-                          Copy Embed Code
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenInNewTab(model.id)}>
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          Open in New Tab
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteAssistant(model.id, model.name)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Assistant
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  {model.description && (
-                    <CardDescription className="mt-2">
-                      {model.description}
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-2xl font-bold text-primary">{model.totalSessions}</p>
-                      <p className="text-xs text-muted-foreground">Sessions</p>
+
+                    {/* Status Messages - Only show if important */}
+                    {model?.status !== 'active' && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+                        <div className="flex items-center gap-2">
+                          <Target className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <p className="text-sm text-amber-800 font-medium">
+                            Ready to activate
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {sessions === 0 && model?.status === 'active' && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          <p className="text-sm text-blue-800 font-medium">
+                            Live but no conversations yet
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Click indicator */}
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                      <div className="text-sm text-gray-500">
+                        Click to manage assistant
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-200" />
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold text-green-600">{model.documents.length}</p>
-                      <p className="text-xs text-muted-foreground">Documents</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-blue-600">98%</p>
-                      <p className="text-xs text-muted-foreground">Accuracy</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Created {formatDate(model.createdAt)}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <Link href={`/dashboard/assistants/${model.id}`}>
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Link>
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1" 
-                      onClick={() => handleSettingsClick(model.id)}
-                    >
-                      <Settings className="h-4 w-4 mr-1" />
-                      Edit Assistant
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                Delete Assistant
+              </DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete <strong>"{assistantToDelete?.name}"</strong>? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="outline" onClick={cancelDeleteAssistant}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteAssistant}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete Assistant
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

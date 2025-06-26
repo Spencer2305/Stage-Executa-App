@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar } from "@/components/ui/avatar";
 import { 
   User, 
@@ -45,12 +46,14 @@ import {
   X,
   Check,
   Star,
-  Zap as ZapIcon
+  Zap as ZapIcon,
+  AlertTriangle
 } from "lucide-react";
 import { useUserStore } from "@/state/userStore";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useNotification } from "@/components/ui/notification";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SubscriptionPlans } from "@/components/stripe/SubscriptionPlans";
 
 // Integration logo component with actual company logos
@@ -159,7 +162,7 @@ function IntegrationCard({
   onDisconnect?: () => void;
 }) {
   return (
-    <Card className="border border-gray-200 hover:shadow-md transition-shadow relative">
+    <Card className="border border-gray-200 relative">
       {popular && (
         <div className="absolute -top-2 -right-2">
           <Badge className="bg-green-500 text-white text-xs px-2 py-1">Popular</Badge>
@@ -224,7 +227,9 @@ function IntegrationCard({
 
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, updateUser, getCurrentUser } = useUserStore();
+  const { showSuccess, showError } = useNotification();
   const [showApiKey, setShowApiKey] = useState(false);
   const [profile, setProfile] = useState({
     name: user?.name || "",
@@ -245,6 +250,18 @@ export default function SettingsPage() {
   const [passwordChanging, setPasswordChanging] = useState(false);
   const [showBillingDialog, setShowBillingDialog] = useState(false);
   const [showPlanChangeDialog, setShowPlanChangeDialog] = useState(false);
+  
+  // Tab management with URL sync
+  const initialTab = searchParams.get('tab') || 'profile';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Update URL when tab changes
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', newTab);
+    window.history.replaceState({}, '', url.toString());
+  };
 
   // Update profile state when user changes
   useEffect(() => {
@@ -267,11 +284,11 @@ export default function SettingsPage() {
     const email = urlParams.get('email');
 
     if (success === 'dropbox_connected') {
-      toast.success('🎉 Dropbox connected successfully! Your files will be synced shortly.');
+      showSuccess('🎉 Dropbox connected successfully! Your files will be synced shortly.');
       // Clean up URL
       window.history.replaceState({}, '', '/dashboard/settings');
     } else if (success === 'gmail_connected') {
-      toast.success(`🎉 Gmail connected successfully! ${email ? `Connected as ${email}` : 'You can now sync emails.'}`);
+      showSuccess(`🎉 Gmail connected successfully! ${email ? `Connected as ${email}` : 'You can now sync emails.'}`);
       // Clean up URL
       window.history.replaceState({}, '', '/dashboard/settings');
     } else if (error) {
@@ -284,7 +301,7 @@ export default function SettingsPage() {
         account_not_found: 'Account not found. Please contact support.',
         dropbox_callback_failed: 'Dropbox connection failed. Please try again.'
       };
-      toast.error(errorMessages[error] || 'Connection failed. Please try again.');
+      showError(errorMessages[error] || 'Connection failed. Please try again.');
       // Clean up URL
       window.history.replaceState({}, '', '/dashboard/settings');
     }
@@ -360,7 +377,7 @@ export default function SettingsPage() {
         if (!response.ok) {
           const errorData = await response.json();
           if (response.status === 503) {
-            toast.error('Dropbox integration not configured on this server');
+            showError('Dropbox integration not configured on this server');
             return;
           }
           throw new Error(errorData.message || 'Failed to initialize Dropbox connection');
@@ -373,7 +390,7 @@ export default function SettingsPage() {
         
       } catch (error) {
         console.error('Dropbox connection error:', error);
-        toast.error('Failed to connect to Dropbox. Please try again.');
+        showError('Failed to connect to Dropbox. Please try again.');
       }
     } else if (integration === 'gmail') {
       try {
@@ -400,7 +417,7 @@ export default function SettingsPage() {
         
       } catch (error) {
         console.error('Gmail connection error:', error);
-        toast.error('Failed to connect to Gmail. Please try again.');
+        showError('Failed to connect to Gmail. Please try again.');
       }
     } else {
       // For other integrations, just update local state for demo
@@ -469,11 +486,11 @@ export default function SettingsPage() {
         getCurrentUser();
       }, 500);
       
-      toast.success('Avatar updated successfully!');
+      showSuccess('Avatar updated successfully!');
 
     } catch (error) {
       console.error('Avatar upload error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to upload avatar');
+      showError(error instanceof Error ? error.message : 'Failed to upload avatar');
     } finally {
       setAvatarUploading(false);
       // Reset the input
@@ -481,10 +498,13 @@ export default function SettingsPage() {
     }
   };
 
+  const [showAvatarRemoveDialog, setShowAvatarRemoveDialog] = useState(false);
+
   const handleAvatarRemove = async () => {
-    if (!confirm('Are you sure you want to remove your profile picture?')) {
-      return;
-    }
+    setShowAvatarRemoveDialog(true);
+  };
+
+  const confirmAvatarRemove = async () => {
 
     setAvatarUploading(true);
 
@@ -505,13 +525,14 @@ export default function SettingsPage() {
 
       // Update user in store
       updateUser({ avatar: undefined });
-      toast.success('Avatar removed successfully!');
+      showSuccess('Avatar removed successfully!');
 
     } catch (error) {
       console.error('Avatar removal error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to remove avatar');
+      showError(error instanceof Error ? error.message : 'Failed to remove avatar');
     } finally {
       setAvatarUploading(false);
+      setShowAvatarRemoveDialog(false);
     }
   };
 
@@ -577,11 +598,11 @@ export default function SettingsPage() {
 
       // Update user in store
       updateUser(data.user);
-      toast.success('Profile updated successfully!');
+      showSuccess('Profile updated successfully!');
 
     } catch (error) {
       console.error('Profile update error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update profile');
+      showError(error instanceof Error ? error.message : 'Failed to update profile');
     } finally {
       setProfileSaving(false);
     }
@@ -908,11 +929,11 @@ export default function SettingsPage() {
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 font-kanit uppercase tracking-wide">Settings</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 font-kanit tracking-wide">Settings</h1>
         <p className="text-gray-600 mt-2">Manage your account settings and preferences</p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
@@ -1521,6 +1542,34 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Avatar Remove Confirmation Dialog */}
+      <Dialog open={showAvatarRemoveDialog} onOpenChange={setShowAvatarRemoveDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Remove Profile Picture
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove your profile picture? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setShowAvatarRemoveDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmAvatarRemove}
+              disabled={avatarUploading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {avatarUploading ? 'Removing...' : 'Remove Picture'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

@@ -159,11 +159,12 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
   }));
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-white">
+      <div className="p-8 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-kanit uppercase tracking-wide">Analytics</h1>
+          <h1 className="text-3xl font-bold text-gray-900 font-kanit tracking-wide">Analytics</h1>
           <p className="text-gray-600 mt-1">
             Monitor performance and insights across all your AI assistants
           </p>
@@ -467,7 +468,7 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
           ) : (
             <div className="space-y-4">
               {assistantData.map((assistant) => (
-                <div key={assistant.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div key={assistant.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-white hover:shadow-md transition-all duration-200">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                       <Bot className="h-5 w-5 text-primary" />
@@ -541,6 +542,7 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
           )}
                  </CardContent>
        </Card>
+      </div>
      </div>
    );
  } 

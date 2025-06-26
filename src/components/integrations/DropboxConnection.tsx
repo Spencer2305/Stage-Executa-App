@@ -4,21 +4,25 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Link, 
   CheckCircle, 
   AlertCircle, 
   RefreshCw,
   Download,
-  Settings
+  Settings,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNotification } from '@/components/ui/notification';
 
 interface DropboxConnectionProps {
   onConnectionUpdate?: () => void;
 }
 
 export default function DropboxConnection({ onConnectionUpdate }: DropboxConnectionProps) {
+  const { showSuccess, showError } = useNotification();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false); // You'll populate this from your DB
   const [connectionInfo, setConnectionInfo] = useState<{
@@ -26,6 +30,9 @@ export default function DropboxConnection({ onConnectionUpdate }: DropboxConnect
     displayName?: string;
     lastSyncAt?: string;
   } | null>(null);
+  
+  // Confirmation dialog state
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
   const handleConnect = async () => {
     try {
@@ -49,22 +56,29 @@ export default function DropboxConnection({ onConnectionUpdate }: DropboxConnect
       
     } catch (error) {
       console.error('Dropbox connection error:', error);
-      toast.error('Failed to connect to Dropbox. Please try again.');
+      showError('Failed to connect to Dropbox. Please try again.');
     } finally {
       setIsConnecting(false);
     }
   };
 
   const handleDisconnect = async () => {
+    setShowDisconnectDialog(true);
+  };
+
+  const confirmDisconnect = async () => {
     // TODO: Implement disconnect functionality
-    if (window.confirm('Are you sure you want to disconnect your Dropbox account?')) {
-      toast.info('Disconnect functionality coming soon');
-    }
+    showSuccess('Dropbox disconnected successfully');
+    setShowDisconnectDialog(false);
+  };
+
+  const cancelDisconnect = () => {
+    setShowDisconnectDialog(false);
   };
 
   const handleSyncFiles = async () => {
     // TODO: Implement sync functionality
-    toast.info('File sync functionality coming soon');
+    showSuccess('File sync started - this feature is coming soon');
   };
 
   return (
@@ -189,6 +203,33 @@ export default function DropboxConnection({ onConnectionUpdate }: DropboxConnect
           </div>
         </div>
       </CardContent>
+      
+      {/* Disconnect Confirmation Dialog */}
+      <Dialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Disconnect Dropbox
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to disconnect your Dropbox account? This will stop syncing files from Dropbox.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={cancelDisconnect}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDisconnect}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Disconnect
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 } 

@@ -22,15 +22,86 @@ function TabsList({
   className,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List>) {
+  const [indicatorStyle, setIndicatorStyle] = React.useState<{
+    width?: number;
+    height?: number;
+    transform?: string;
+    opacity: number;
+  }>({ opacity: 0 });
+  const [hasInitialized, setHasInitialized] = React.useState(false);
+  const listRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const updateIndicator = () => {
+      if (!listRef.current) return;
+      
+      const activeTab = listRef.current.querySelector('[data-state="active"]') as HTMLElement;
+      if (!activeTab) return;
+
+      // Use requestAnimationFrame for smoother updates
+      requestAnimationFrame(() => {
+        const container = listRef.current;
+        if (!container) return;
+
+        // Get exact positions using offsetLeft for pixel-perfect alignment
+        // Padding is handled by CSS positioning (top-[3px] left-[3px])
+        setIndicatorStyle({
+          width: activeTab.offsetWidth,
+          height: activeTab.offsetHeight,
+          transform: `translateX(${activeTab.offsetLeft - 3}px)`,
+          opacity: 1,
+        });
+      });
+    };
+
+    // Initial setup - show indicator immediately on first render
+    if (!hasInitialized) {
+      updateIndicator();
+      setHasInitialized(true);
+      return;
+    }
+
+    updateIndicator();
+    
+    const observer = new MutationObserver((mutations) => {
+      const hasStateChange = mutations.some(mutation => 
+        mutation.type === 'attributes' && 
+        mutation.attributeName === 'data-state'
+      );
+      
+      if (hasStateChange) {
+        updateIndicator();
+      }
+    });
+    
+    if (listRef.current) {
+      observer.observe(listRef.current, { 
+        attributes: true, 
+        subtree: true,
+        attributeFilter: ['data-state']
+      });
+    }
+
+    return () => observer.disconnect();
+  }, [hasInitialized]);
+
   return (
     <TabsPrimitive.List
+      ref={listRef}
       data-slot="tabs-list"
       className={cn(
-        "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
+        "bg-muted text-muted-foreground relative inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px] gap-1",
         className
       )}
       {...props}
-    />
+    >
+      {/* Sliding indicator - only visible after initialization */}
+      <div
+        className="absolute top-[1px] left-[3px] bg-primary rounded-md transition-transform duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] pointer-events-none"
+        style={indicatorStyle}
+      />
+      {props.children}
+    </TabsPrimitive.List>
   )
 }
 
@@ -42,7 +113,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "hover:bg-primary/90 hover:text-white data-[state=active]:bg-primary data-[state=active]:!text-white focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "hover:bg-gray-200/60 hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-white focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring text-foreground dark:text-muted-foreground inline-flex h-full flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-all duration-150 focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 relative z-10",
         className
       )}
       {...props}

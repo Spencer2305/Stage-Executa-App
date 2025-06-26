@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FileUpload from '@/components/files/FileUpload';
@@ -16,7 +17,20 @@ import {
 
 export default function FilesPage() {
   const { user } = useUserStore();
+  const searchParams = useSearchParams();
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  
+  // Tab management with URL sync
+  const initialTab = searchParams.get('tab') || 'upload';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Update URL when tab changes
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', newTab);
+    window.history.replaceState({}, '', url.toString());
+  };
 
   const handleUploadComplete = (files: any[]) => {
     setUploadedFiles(prev => [...prev, ...files]);
@@ -50,7 +64,7 @@ export default function FilesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold font-kanit uppercase tracking-wide">Knowledge Files</h1>
+            <h1 className="text-3xl font-bold font-kanit tracking-wide">Knowledge Files</h1>
             <p className="text-muted-foreground mt-1">
               Upload and manage your knowledge base files
             </p>
@@ -85,7 +99,7 @@ export default function FilesPage() {
           </Card>
         )}
 
-        <Tabs defaultValue="upload" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList>
             <TabsTrigger value="upload" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />

@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-white">
       {/* Sidebar */}
       <div className="w-64 bg-slate-900 text-white flex flex-col">
         {/* Logo */}
@@ -82,8 +82,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   href={item.href}
                   className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                     isActive(item.href)
-                      ? "bg-primary text-white"
-                      : "text-slate-300 hover:text-white hover:bg-slate-800"
+                      ? "bg-primary text-white shadow-md hover:bg-primary/90 hover:text-white"
+                      : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/60"
                   }`}
                 >
                   <Icon className="mr-3 h-5 w-5" />
@@ -116,7 +116,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             variant="ghost"
             size="sm"
             onClick={logout}
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
+            className="w-full justify-start text-slate-300 hover:text-slate-100 hover:bg-slate-800/60"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Sign out
@@ -127,7 +127,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 pt-8">
+        <main className="flex-1 overflow-y-auto bg-white pt-8">
           {children}
         </main>
       </div>
