@@ -118,7 +118,6 @@ model KnowledgeFile {
 }
 
 model Assistant {
-<<<<<<< HEAD
   id                          String            @id @default(cuid())
   accountId                   String            @map("account_id")
   name                        String
