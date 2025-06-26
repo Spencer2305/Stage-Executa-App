@@ -264,9 +264,14 @@ export default function SettingsPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const success = urlParams.get('success');
     const error = urlParams.get('error');
+    const email = urlParams.get('email');
 
     if (success === 'dropbox_connected') {
       toast.success('🎉 Dropbox connected successfully! Your files will be synced shortly.');
+      // Clean up URL
+      window.history.replaceState({}, '', '/dashboard/settings');
+    } else if (success === 'gmail_connected') {
+      toast.success(`🎉 Gmail connected successfully! ${email ? `Connected as ${email}` : 'You can now sync emails.'}`);
       // Clean up URL
       window.history.replaceState({}, '', '/dashboard/settings');
     } else if (error) {
@@ -275,6 +280,7 @@ export default function SettingsPage() {
         dropbox_missing_params: 'Invalid Dropbox response. Please try again.',
         dropbox_invalid_state: 'Security validation failed. Please try again.',
         dropbox_auth_mismatch: 'Authentication error. Please try again.',
+        gmail_auth_failed: 'Gmail connection failed. Please try again.',
         account_not_found: 'Account not found. Please contact support.',
         dropbox_callback_failed: 'Dropbox connection failed. Please try again.'
       };
@@ -298,7 +304,24 @@ export default function SettingsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        const connected = new Set(['gmail', 'slack']); // Keep demo integrations
+        const connected = new Set(['slack']); // Keep demo integrations (except Gmail)
+        
+        // Check real Gmail integration status
+        try {
+          const gmailResponse = await fetch('/api/integrations/gmail/status', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (gmailResponse.ok) {
+            const gmailData = await gmailResponse.json();
+            if (gmailData.connected) {
+              connected.add('gmail');
+            }
+          }
+        } catch (gmailError) {
+          console.log('Gmail status check failed:', gmailError);
+        }
         
         // Add real connected integrations
         if (data.integrations.dropbox) {
@@ -321,7 +344,7 @@ export default function SettingsPage() {
 
   const apiKey = "exec_sk_1234567890abcdef";
 
-  const [connectedIntegrations, setConnectedIntegrations] = useState(new Set(['gmail', 'slack']));
+  const [connectedIntegrations, setConnectedIntegrations] = useState(new Set(['slack']));
 
   const handleConnect = async (integration: string) => {
     if (integration === 'dropbox') {
@@ -351,6 +374,33 @@ export default function SettingsPage() {
       } catch (error) {
         console.error('Dropbox connection error:', error);
         toast.error('Failed to connect to Dropbox. Please try again.');
+      }
+    } else if (integration === 'gmail') {
+      try {
+        const token = localStorage.getItem('executa-auth-token');
+        const response = await fetch('/api/integrations/gmail/auth', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to initialize Gmail connection');
+        }
+        
+        const data = await response.json();
+        
+        if (data.authUrl) {
+          // Redirect to Google OAuth
+          window.location.href = data.authUrl;
+        } else {
+          throw new Error('No auth URL received');
+        }
+        
+      } catch (error) {
+        console.error('Gmail connection error:', error);
+        toast.error('Failed to connect to Gmail. Please try again.');
       }
     } else {
       // For other integrations, just update local state for demo
@@ -465,12 +515,40 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDisconnect = (integration: string) => {
-    setConnectedIntegrations(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(integration);
-      return newSet;
-    });
+  const handleDisconnect = async (integration: string) => {
+    if (integration === 'gmail') {
+      try {
+        const token = localStorage.getItem('executa-auth-token');
+        const response = await fetch('/api/integrations/gmail/status', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'disconnect' })
+        });
+
+        if (response.ok) {
+          setConnectedIntegrations(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(integration);
+            return newSet;
+          });
+          toast.success('Gmail disconnected successfully');
+        } else {
+          throw new Error('Failed to disconnect Gmail');
+        }
+      } catch (error) {
+        console.error('Disconnect error:', error);
+        toast.error('Failed to disconnect Gmail');
+      }
+    } else {
+      setConnectedIntegrations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(integration);
+        return newSet;
+      });
+    }
   };
 
   const handleProfileSave = async () => {

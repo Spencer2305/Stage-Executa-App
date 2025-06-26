@@ -51,9 +51,8 @@ export async function POST(request: NextRequest) {
       useDropboxSyncRaw: formData.get('useDropboxSync')
     });
     
-    // Write to debug log
-    const fs = require('fs');
-    fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - Form data: name=${name}, files=${files.length}, useDropboxSync=${useDropboxSync}, raw=${formData.get('useDropboxSync')}\n`);
+    // Debug logging (removed file write for serverless compatibility)
+    console.log(`📝 Debug: Form data details - name=${name}, files=${files.length}, useDropboxSync=${useDropboxSync}, raw=${formData.get('useDropboxSync')}`);
 
     console.log(`📝 Assistant details:`, {
       name,
@@ -344,21 +343,10 @@ Your primary job is to be a knowledgeable assistant based on the uploaded docume
       console.log(`🔄 Auto-syncing Dropbox files for assistant: ${assistant.id}`);
       
       try {
-        // Check if user has a Dropbox connection
-        const dropboxConnection = await db.dropboxConnection.findFirst({
-          where: {
-            accountId: userAccount.account.id,
-            isActive: true
-          }
-        });
-
-        if (dropboxConnection) {
-          console.log('✅ Dropbox connection found, will sync files in background...');
-          // Note: Actual sync would happen in a background job
-          // For now, just log that sync is available
-        } else {
-          console.log('⚠️ No active Dropbox connection found for auto-sync');
-        }
+        // TODO: Fix Prisma client type issue with DropboxConnection
+        // For now, skip actual Dropbox connection check to avoid blocking assistant creation
+        console.log('⚠️ Dropbox sync enabled but connection check temporarily disabled');
+        console.log('✅ Assistant created successfully (Dropbox sync will be handled separately)');
       } catch (dropboxError) {
         console.error('Dropbox sync check error:', dropboxError);
         // Don't fail assistant creation if Dropbox check fails

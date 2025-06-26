@@ -327,24 +327,13 @@ export default function CreateAIPage() {
                 </div>
               </div>
 
-              {/* Gmail Integration - Coming Soon */}
-              <div className="border rounded-lg p-4 opacity-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
-                      <Mail className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Gmail</p>
-                      <p className="text-xs text-muted-foreground">
-                        Import emails to enhance knowledge base
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                    Coming Soon
-                  </div>
-                </div>
+              {/* Gmail Integration - Live */}
+              <div className="border rounded-lg p-4">
+                <GmailIntegrationStep 
+                  onGmailStatusChange={(connected) => {
+                    setFormData(prev => ({ ...prev, gmailIntegration: connected }));
+                  }}
+                />
               </div>
 
               {/* Other Integrations - Coming Soon */}

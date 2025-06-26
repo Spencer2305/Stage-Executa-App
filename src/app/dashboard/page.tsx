@@ -232,7 +232,7 @@ function AssistantCard({ model }: { model: any }) {
   };
 
   const handleCopyEmbed = async () => {
-    const embedCode = `<script src="https://cdn.executa.ai/widget.js" data-assistant-id="${model.id}"></script>`;
+    const embedCode = `<script src="https://cdn.executa.ai/widget.js" data-assistant-id="${model?.id || 'unknown'}"></script>`;
     try {
       await navigator.clipboard.writeText(embedCode);
       toast.success("Embed code copied to clipboard!");
@@ -241,7 +241,7 @@ function AssistantCard({ model }: { model: any }) {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     switch (status) {
       case 'active': return 'text-emerald-700 bg-emerald-50 border-emerald-200';
       case 'training': return 'text-amber-700 bg-amber-50 border-amber-200';
@@ -250,7 +250,7 @@ function AssistantCard({ model }: { model: any }) {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status?: string) => {
     switch (status) {
       case 'active': return 'Live';
       case 'training': return 'Training';
@@ -260,9 +260,9 @@ function AssistantCard({ model }: { model: any }) {
   };
 
   // Mock metrics
-  const accuracy = model.status === 'active' ? '98%' : '--';
-  const sessions = model.totalSessions || 0;
-  const lastInteraction = model.status === 'active' ? formatDate(new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)) : 'Never';
+  const accuracy = model?.status === 'active' ? '98%' : '--';
+  const sessions = model?.totalSessions || 0;
+  const lastInteraction = model?.status === 'active' ? formatDate(new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)) : 'Never';
 
   return (
     <Card className="border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-300 group bg-white">
@@ -272,14 +272,14 @@ function AssistantCard({ model }: { model: any }) {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="font-semibold text-xl text-gray-900 group-hover:text-blue-600 transition-colors">
-                {model.name}
+                {model?.name || 'Untitled Assistant'}
               </h3>
-              <Badge className={`text-xs font-medium border ${getStatusColor(model.status)} px-2.5 py-1`}>
+              <Badge className={`text-xs font-medium border ${getStatusColor(model?.status)} px-2.5 py-1`}>
                 <Circle className="w-2 h-2 mr-1.5 fill-current" />
-                {getStatusText(model.status)}
+                {getStatusText(model?.status)}
               </Badge>
             </div>
-            {model.description && (
+            {model?.description && (
               <p className="text-gray-600 leading-relaxed">{model.description}</p>
             )}
           </div>
@@ -289,11 +289,11 @@ function AssistantCard({ model }: { model: any }) {
         <div className="space-y-4 mb-5">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Training Source</span>
-            <TrainingSourceBadges documents={model.documents} />
+            <TrainingSourceBadges documents={model?.documents || []} />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Deployment</span>
-            <DeploymentBadges isActive={model.status === 'active'} />
+            <DeploymentBadges isActive={model?.status === 'active'} />
           </div>
         </div>
 
@@ -336,7 +336,7 @@ function AssistantCard({ model }: { model: any }) {
         </div>
 
         {/* Status Messages */}
-        {model.status !== 'active' && (
+        {model?.status !== 'active' && (
           <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl">
             <div className="flex items-start gap-2">
               <Target className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -347,7 +347,7 @@ function AssistantCard({ model }: { model: any }) {
           </div>
         )}
 
-        {sessions === 0 && model.status === 'active' && (
+        {sessions === 0 && model?.status === 'active' && (
           <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-xl">
             <div className="flex items-start gap-2">
               <Activity className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -360,13 +360,13 @@ function AssistantCard({ model }: { model: any }) {
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-3">
-          <Link href={`/dashboard/assistants/${model.id}`}>
+          <Link href={`/dashboard/assistants/${model?.id || 'unknown'}`}>
             <Button variant="outline" size="sm" className="w-full h-10 font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors">
               <MessageSquare className="mr-2 h-4 w-4" />
               Test Chat
             </Button>
           </Link>
-          <Link href={`/dashboard/assistants/${model.id}`}>
+          <Link href={`/dashboard/assistants/${model?.id || 'unknown'}`}>
             <Button variant="outline" size="sm" className="w-full h-10 font-medium hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 transition-colors">
               <Upload className="mr-2 h-4 w-4" />
               Add Knowledge
@@ -376,7 +376,7 @@ function AssistantCard({ model }: { model: any }) {
             <Copy className="mr-2 h-4 w-4" />
             Copy Embed
           </Button>
-          <Link href={`/dashboard/assistants/${model.id}`}>
+          <Link href={`/dashboard/assistants/${model?.id || 'unknown'}`}>
             <Button variant="outline" size="sm" className="w-full h-10 font-medium hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 transition-colors">
               <Edit className="mr-2 h-4 w-4" />
               Settings
@@ -395,6 +395,7 @@ function AISuggestionsSection({ models, router }: { models: any[], router: any }
   if (!showSuggestions) {
     return null;
   }
+
   const suggestions = [
     {
       id: 1,
@@ -403,9 +404,9 @@ function AISuggestionsSection({ models, router }: { models: any[], router: any }
       description: 'Your assistants could respond 23% faster with knowledge base refinement',
       action: 'Review Knowledge Base',
       icon: Rocket,
-      color: 'blue',
       priority: 'high',
-      estimated: '5 min'
+      estimated: '5 min',
+      route: '/dashboard/files'
     },
     {
       id: 2,
@@ -414,9 +415,9 @@ function AISuggestionsSection({ models, router }: { models: any[], router: any }
       description: 'Add Gmail to expand your assistant\'s knowledge with email conversations',
       action: 'Connect Gmail',
       icon: Mail,
-      color: 'red',
       priority: 'medium',
-      estimated: '2 min'
+      estimated: '2 min',
+      route: '/dashboard/settings'
     },
     {
       id: 3,
@@ -425,9 +426,9 @@ function AISuggestionsSection({ models, router }: { models: any[], router: any }
       description: 'Discover patterns in user questions to improve your assistant',
       action: 'View Analytics',
       icon: BarChart3,
-      color: 'purple',
       priority: 'medium',
-      estimated: '3 min'
+      estimated: '3 min',
+      route: '/dashboard/analytics'
     },
     {
       id: 4,
@@ -436,168 +437,106 @@ function AISuggestionsSection({ models, router }: { models: any[], router: any }
       description: 'Add your assistant to your website to help visitors 24/7',
       action: 'Get Embed Code',
       icon: Globe,
-      color: 'green',
       priority: 'high',
-      estimated: '1 min'
+      estimated: '1 min',
+      route: models.length > 0 ? `/dashboard/assistants/${models[0]?.id}` : '/dashboard/create'
     }
   ];
 
-  const getColorClasses = (color: string) => {
-    switch (color) {
-      case 'blue':
-        return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          icon: 'text-blue-600',
-          button: 'bg-blue-600 hover:bg-blue-700'
-        };
-      case 'red':
-        return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          icon: 'text-red-600',
-          button: 'bg-red-600 hover:bg-red-700'
-        };
-      case 'purple':
-        return {
-          bg: 'bg-purple-50',
-          border: 'border-purple-200',
-          icon: 'text-purple-600',
-          button: 'bg-purple-600 hover:bg-purple-700'
-        };
-      case 'green':
-        return {
-          bg: 'bg-green-50',
-          border: 'border-green-200',
-          icon: 'text-green-600',
-          button: 'bg-green-600 hover:bg-green-700'
-        };
-      default:
-        return {
-          bg: 'bg-gray-50',
-          border: 'border-gray-200',
-          icon: 'text-gray-600',
-          button: 'bg-gray-600 hover:bg-gray-700'
-        };
-    }
-  };
-
   return (
     <div className="space-y-6">
+      {/* Smart Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 font-kanit uppercase tracking-wide">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">
             AI Suggestions
           </h2>
-          <p className="text-gray-600 mt-1">Personalized recommendations to enhance your assistants</p>
+          <p className="text-sm text-gray-600">Personalized recommendations to enhance your assistants</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium px-3 py-1">
-            <Sparkles className="w-3 h-3 mr-1" />
-            AI Powered
-          </Badge>
+          <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-200/50 rounded-full">
+            <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
+            <span className="text-xs font-medium text-gray-700">AI Powered</span>
+          </div>
           <button
             onClick={() => setShowSuggestions(false)}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200"
-            title="Dismiss all suggestions"
+            className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+            title="Dismiss suggestions"
           >
-            <X className="w-4 h-4 text-gray-600" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Quick Win Banner */}
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-emerald-100 rounded-full">
-            <Target className="w-5 h-5 text-emerald-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-emerald-900">Quick Win</h3>
-            <p className="text-emerald-700 text-sm">Complete these suggestions to boost performance by 35%</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Suggestions Grid with improved spacing and sizing */}
-      <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-        {suggestions.map((suggestion) => {
-          const colors = getColorClasses(suggestion.color);
+      {/* Compact Suggestions List */}
+      <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+        {suggestions.map((suggestion, index) => {
           const IconComponent = suggestion.icon;
           
           return (
-            <Card key={suggestion.id} className={`border ${colors.border} ${colors.bg} hover:shadow-lg transition-all duration-300 group relative overflow-hidden min-h-[320px] flex flex-col`}>
-              {/* High Impact badge */}
-              {suggestion.priority === 'high' && (
-                <div className="absolute top-3 left-3 z-10">
-                  <Badge className="bg-orange-500 text-white text-xs px-2 py-1 font-medium">
-                    High Impact
-                  </Badge>
+            <div key={suggestion.id} className="p-4 group cursor-pointer" onClick={() => router.push(suggestion.route)}>
+              <div className="flex items-center space-x-4">
+                {/* Priority Indicator */}
+                <div className="flex-shrink-0">
+                  <div className={`w-3 h-3 rounded-full ${
+                    suggestion.priority === 'high' 
+                      ? 'bg-orange-400' 
+                      : 'bg-blue-400'
+                  }`}></div>
                 </div>
-              )}
-              
-              <CardContent className="p-6 h-full flex flex-col">
-                {/* Icon at top */}
-                <div className="flex justify-center mb-4">
-                  <div className={`p-3 rounded-xl ${colors.bg} ring-2 ring-white shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                    <IconComponent className={`h-6 w-6 ${colors.icon}`} />
+
+                {/* Icon */}
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
+                    <IconComponent className="w-5 h-5 text-gray-600" />
                   </div>
                 </div>
-                
+
                 {/* Content */}
-                <div className="flex-1 text-center">
-                  <h3 className="font-semibold text-gray-900 text-base leading-tight mb-3">
-                    {suggestion.title}
-                  </h3>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <h3 className="text-sm font-medium text-gray-900">
+                      {suggestion.title}
+                    </h3>
+                    {suggestion.priority === 'high' && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        High Impact
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-600 leading-relaxed">
                     {suggestion.description}
                   </p>
                 </div>
-                
-                {/* Bottom section with time and button */}
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <Clock className="w-3 h-3" />
-                    <span>{suggestion.estimated}</span>
+
+                {/* Time and Action */}
+                <div className="flex-shrink-0 text-right">
+                  <div className="flex items-center space-x-3">
+                    <div className="text-xs text-gray-500">
+                      {suggestion.estimated}
+                    </div>
+                    <div className="flex items-center space-x-1 text-blue-600 group-hover:text-blue-700">
+                      <span className="text-sm font-medium">{suggestion.action}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
                   </div>
-                  
-                  <Button 
-                    size="sm" 
-                    className={`${colors.button} text-white shadow-sm font-medium px-4 py-2 h-auto text-xs group-hover:scale-105 transition-transform duration-300`}
-                    onClick={() => {
-                      switch(suggestion.id) {
-                        case 1: // Optimize Response Time - go to files/knowledge base
-                          router.push('/dashboard/files');
-                          break;
-                        case 2: // Connect Gmail Integration - go to settings integrations
-                          router.push('/dashboard/settings');
-                          break;
-                        case 3: // View Conversation Insights - go to analytics
-                          router.push('/dashboard/analytics');
-                          break;
-                        case 4: // Deploy to Website - go to specific assistant
-                          if (models.length > 0) {
-                            router.push(`/dashboard/assistants/${models[0].id}`);
-                          } else {
-                            router.push('/dashboard/create');
-                          }
-                          break;
-                        default:
-                          break;
-                      }
-                    }}
-                  >
-                    {suggestion.action}
-                    <ChevronRight className="w-3 h-3 ml-1" />
-                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
 
-
+      {/* Progress Indicator */}
+      <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className="flex items-center space-x-2">
+          <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+          <span>Complete suggestions to boost performance by 35%</span>
+        </div>
+        <div className="text-xs">
+          {suggestions.filter(s => s.priority === 'high').length} high impact • {suggestions.length} total
+        </div>
+      </div>
     </div>
   );
 }
@@ -620,8 +559,8 @@ export default function DashboardPage() {
     }
   }, [fetchModels, searchParams]);
 
-  const totalConversations = models.reduce((total, model) => total + model.totalSessions, 0);
-  const activeModels = models.filter(model => model.status === 'active');
+  const totalConversations = models.reduce((total, model) => total + (model?.totalSessions || 0), 0);
+  const activeModels = models.filter(model => model?.status === 'active');
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -788,7 +727,7 @@ export default function DashboardPage() {
         ) : (
           <>
             {/* Enhanced Progress Banner */}
-            {models.some(m => m.status !== 'active') && (
+            {models.some(m => m?.status !== 'active') && (
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-start space-x-4">

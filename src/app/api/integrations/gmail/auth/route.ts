@@ -16,7 +16,7 @@ console.log('Gmail OAuth Config:', {
   nextAuthUrl: process.env.NEXTAUTH_URL
 });
 
-export async function GET(request: NextRequest) {
+async function handleGmailAuth(request: NextRequest) {
   try {
     // Authenticate user
     const user = await authenticateRequest(request);
@@ -50,4 +50,12 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  return handleGmailAuth(request);
+}
+
+export async function POST(request: NextRequest) {
+  return handleGmailAuth(request);
 } 
