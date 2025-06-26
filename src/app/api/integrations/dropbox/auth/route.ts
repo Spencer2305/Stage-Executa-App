@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { getDropboxAuthUrl } from '@/lib/dropbox';
+import { getDropboxAuthUrl, isDropboxConfigured } from '@/lib/dropbox';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if Dropbox is configured
+    if (!isDropboxConfigured()) {
+      return NextResponse.json({ 
+        error: 'Dropbox integration not configured',
+        message: 'Please configure DROPBOX_APP_KEY and DROPBOX_APP_SECRET environment variables'
+      }, { status: 503 });
+    }
+
     // Authenticate user
     const user = await authenticateRequest(request);
     if (!user) {

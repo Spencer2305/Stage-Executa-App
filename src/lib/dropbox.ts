@@ -1,17 +1,30 @@
 import { Dropbox } from 'dropbox';
 import { DropboxFile, DropboxAuthResult, DropboxFileFilter } from '@/types/dropbox';
 
+// Check if Dropbox is configured
+export function isDropboxConfigured(): boolean {
+  return !!(process.env.DROPBOX_APP_KEY && process.env.DROPBOX_APP_SECRET);
+}
+
 // Initialize Dropbox client
 export function createDropboxClient(accessToken?: string) {
+  if (!isDropboxConfigured()) {
+    throw new Error('Dropbox integration not configured. Please set DROPBOX_APP_KEY and DROPBOX_APP_SECRET environment variables.');
+  }
+  
   return new Dropbox({
     clientId: process.env.DROPBOX_APP_KEY!,
-    clientSecret: process.env.DROPBOX_APP_SECRET,
+    clientSecret: process.env.DROPBOX_APP_SECRET!,
     accessToken: accessToken,
   });
 }
 
 // Get authorization URL for OAuth flow
 export function getDropboxAuthUrl(state?: string): string {
+  if (!isDropboxConfigured()) {
+    throw new Error('Dropbox integration not configured');
+  }
+  
   const clientId = process.env.DROPBOX_APP_KEY!;
   const redirectUri = `${process.env.NEXTAUTH_URL}/api/integrations/dropbox/callback`;
   

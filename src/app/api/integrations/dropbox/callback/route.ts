@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { exchangeCodeForToken } from '@/lib/dropbox';
+import { exchangeCodeForToken, isDropboxConfigured } from '@/lib/dropbox';
 import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   console.log('🔥 DROPBOX CALLBACK HIT!', request.url);
   try {
+    // Check if Dropbox is configured
+    if (!isDropboxConfigured()) {
+      return NextResponse.redirect(
+        new URL(`/dashboard/settings?error=dropbox_not_configured`, request.url)
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');

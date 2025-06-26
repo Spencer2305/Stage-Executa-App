@@ -145,8 +145,7 @@ function IntegrationCard({
   popular = false,
   category,
   onConnect,
-  onDisconnect,
-  onConfigure
+  onDisconnect
 }: {
   id: string;
   name: string;
@@ -158,7 +157,6 @@ function IntegrationCard({
   category?: string;
   onConnect?: () => void;
   onDisconnect?: () => void;
-  onConfigure?: (id: string) => void;
 }) {
   return (
     <Card className="border border-gray-200 hover:shadow-md transition-shadow relative">
@@ -323,18 +321,39 @@ export default function SettingsPage() {
 
   const apiKey = "exec_sk_1234567890abcdef";
 
-  const [connectedIntegrations, setConnectedIntegrations] = useState(new Set(['slack']));
-  const [gmailStatus, setGmailStatus] = useState<{
-    connected: boolean;
-    email?: string;
-    loading?: boolean;
-  }>({ connected: false, loading: true });
+  const [connectedIntegrations, setConnectedIntegrations] = useState(new Set(['gmail', 'slack']));
 
   const handleConnect = async (integration: string) => {
-    // For all integrations, just update local state for demo
-    if (integration === 'gmail') {
-      toast.success('Gmail integration coming soon!');
+    if (integration === 'dropbox') {
+      try {
+        // Get auth URL from your API
+        const token = localStorage.getItem('executa-auth-token');
+        const response = await fetch('/api/integrations/dropbox/auth', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (response.status === 503) {
+            toast.error('Dropbox integration not configured on this server');
+            return;
+          }
+          throw new Error(errorData.message || 'Failed to initialize Dropbox connection');
+        }
+        
+        const data = await response.json();
+        
+        // Redirect to Dropbox OAuth
+        window.location.href = data.authUrl;
+        
+      } catch (error) {
+        console.error('Dropbox connection error:', error);
+        toast.error('Failed to connect to Dropbox. Please try again.');
+      }
     } else {
+      // For other integrations, just update local state for demo
       setConnectedIntegrations(prev => new Set([...prev, integration]));
     }
   };
@@ -446,50 +465,12 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDisconnect = async (integration: string) => {
-    if (integration === 'gmail') {
-      try {
-        const token = localStorage.getItem('executa-auth-token');
-        const response = await fetch('/api/integrations/gmail/status', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ action: 'disconnect' })
-        });
-
-        if (response.ok) {
-          setGmailStatus({ connected: false, loading: false });
-          setConnectedIntegrations(prev => {
-            const newSet = new Set(prev);
-            newSet.delete('gmail');
-            return newSet;
-          });
-          toast.success('Gmail disconnected successfully');
-        } else {
-          throw new Error('Failed to disconnect Gmail');
-        }
-      } catch (error) {
-        console.error('Gmail disconnection error:', error);
-        toast.error('Failed to disconnect Gmail. Please try again.');
-      }
-    } else {
-      setConnectedIntegrations(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(integration);
-        return newSet;
-      });
-    }
-  };
-
-  const handleConfigure = (integration: string) => {
-          if (integration === 'gmail') {
-        // Open Gmail configuration dialog/modal
-        router.push('/dashboard/settings?tab=integrations&configure=gmail');
-    } else {
-      toast.info(`${integration} configuration coming soon!`);
-    }
+  const handleDisconnect = (integration: string) => {
+    setConnectedIntegrations(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(integration);
+      return newSet;
+    });
   };
 
   const handleProfileSave = async () => {
@@ -628,7 +609,7 @@ export default function SettingsPage() {
         name: 'Gmail',
         description: 'Import emails and conversations to train your AI assistant with real customer interactions',
         icon: Mail,
-        connected: gmailStatus.connected,
+        connected: connectedIntegrations.has('gmail'),
         popular: true,
         category: 'Email'
       },
@@ -1020,7 +1001,6 @@ export default function SettingsPage() {
                       {...integration}
                       onConnect={() => handleConnect(integration.id)}
                       onDisconnect={() => handleDisconnect(integration.id)}
-                      onConfigure={() => handleConfigure(integration.id)}
                     />
                   ))}
                 </div>
