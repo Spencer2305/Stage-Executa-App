@@ -130,13 +130,16 @@ export async function uploadFileToAccountBucket(
   const s3Key = `knowledge-files/${Date.now()}-${fileName}`;
 
   try {
+    // Encode filename for HTTP header compatibility (base64 to handle special characters)
+    const encodedFilename = Buffer.from(fileName, 'utf8').toString('base64');
+    
     const uploadParams: AWS.S3.PutObjectRequest = {
       Bucket: bucketName,
       Key: s3Key,
       Body: file,
       ContentType: mimeType,
       Metadata: {
-        'original-filename': fileName,
+        'original-filename-encoded': encodedFilename,
         'checksum': checksum,
         'account-id': accountId,
         'upload-timestamp': new Date().toISOString()
