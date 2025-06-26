@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     // Check if Dropbox is configured
     if (!isDropboxConfigured()) {
       return NextResponse.redirect(
-        new URL(`/dashboard/settings?error=dropbox_not_configured`, request.url)
+        new URL(`/dashboard/settings?error=dropbox_not_configured`, process.env.NEXTAUTH_URL)
       );
     }
 
@@ -23,13 +23,13 @@ export async function GET(request: NextRequest) {
     // Check for OAuth errors
     if (error) {
       return NextResponse.redirect(
-        new URL(`/dashboard/settings?error=dropbox_auth_denied`, request.url)
+        new URL(`/dashboard/settings?error=dropbox_auth_denied`, process.env.NEXTAUTH_URL)
       );
     }
     
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL(`/dashboard/settings?error=dropbox_missing_params`, request.url)
+        new URL(`/dashboard/settings?error=dropbox_missing_params`, process.env.NEXTAUTH_URL)
       );
     }
     
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     const storedState = request.cookies.get('dropbox_oauth_state')?.value;
     if (!storedState || storedState !== state) {
       return NextResponse.redirect(
-        new URL(`/dashboard/settings?error=dropbox_invalid_state`, request.url)
+        new URL(`/dashboard/settings?error=dropbox_invalid_state`, process.env.NEXTAUTH_URL)
       );
     }
     
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     
     if (!userAccount?.account) {
       return NextResponse.redirect(
-        new URL(`/dashboard/settings?error=account_not_found`, request.url)
+        new URL(`/dashboard/settings?error=account_not_found`, process.env.NEXTAUTH_URL)
       );
     }
     
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
     
     // Clear the state cookie
     const response = NextResponse.redirect(
-      new URL('/dashboard/settings?success=dropbox_connected', request.url)
+      new URL('/dashboard/settings?success=dropbox_connected', process.env.NEXTAUTH_URL)
     );
     response.cookies.delete('dropbox_oauth_state');
     
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Dropbox callback error:', error);
     return NextResponse.redirect(
-      new URL(`/dashboard/settings?error=dropbox_callback_failed`, request.url)
+      new URL(`/dashboard/settings?error=dropbox_callback_failed`, process.env.NEXTAUTH_URL)
     );
   }
 } 
