@@ -25,6 +25,7 @@ model Account {
   updatedAt            DateTime                @updatedAt @map("updated_at")
   assistants           Assistant[]
   dropboxConnections   DropboxConnection[]
+  slackConnections     SlackConnection[]
   fileSessions         FileProcessingSession[]
   knowledgeFiles       KnowledgeFile[]
   users                User[]
@@ -116,39 +117,40 @@ model KnowledgeFile {
 }
 
 model Assistant {
-  id                          String          @id @default(cuid())
-  accountId                   String          @map("account_id")
+  id                          String            @id @default(cuid())
+  accountId                   String            @map("account_id")
   name                        String
   description                 String?
   instructions                String?
-  status                      AssistantStatus @default(DRAFT)
-  openaiAssistantId           String?         @map("openai_assistant_id")
-  vectorStoreId               String?         @map("vector_store_id")
-  model                       String?         @default("gpt-4-turbo")
-  apiKey                      String?         @map("api_key")
-  embedUrl                    String?         @map("embed_url")
-  isPublic                    Boolean         @default(false) @map("is_public")
-  embedBubbleColor            String?         @default("#3B82F6") @map("embed_bubble_color")
-  embedButtonShape            String?         @default("rounded") @map("embed_button_shape")
-  embedFontStyle              String?         @default("system") @map("embed_font_style")
-  embedPosition               String?         @default("bottom-right") @map("embed_position")
-  chatBackgroundColor         String?         @default("#FFFFFF") @map("chat_background_color")
-  userMessageBubbleColor      String?         @default("#3B82F6") @map("user_message_bubble_color")
-  assistantMessageBubbleColor String?         @default("#F3F4F6") @map("assistant_message_bubble_color")
-  assistantFontStyle          String?         @default("sans") @map("assistant_font_style")
-  messageBubbleRadius         Int?            @default(12) @map("message_bubble_radius")
-  showAssistantAvatar         Boolean?        @default(true) @map("show_assistant_avatar")
-  assistantAvatarUrl          String?         @map("assistant_avatar_url")
-  showChatHeader              Boolean?        @default(true) @map("show_chat_header")
-  chatHeaderTitle             String?         @default("AI Assistant") @map("chat_header_title")
-  welcomeMessage              String?         @map("welcome_message")
-  totalSessions               Int             @default(0) @map("total_sessions")
-  totalMessages               Int             @default(0) @map("total_messages")
-  createdAt                   DateTime        @default(now()) @map("created_at")
-  updatedAt                   DateTime        @updatedAt @map("updated_at")
-  lastTrained                 DateTime?       @map("last_trained")
+  status                      AssistantStatus   @default(DRAFT)
+  openaiAssistantId           String?           @map("openai_assistant_id")
+  vectorStoreId               String?           @map("vector_store_id")
+  model                       String?           @default("gpt-4-turbo")
+  apiKey                      String?           @map("api_key")
+  embedUrl                    String?           @map("embed_url")
+  isPublic                    Boolean           @default(false) @map("is_public")
+  embedBubbleColor            String?           @default("#3B82F6") @map("embed_bubble_color")
+  embedButtonShape            String?           @default("rounded") @map("embed_button_shape")
+  embedFontStyle              String?           @default("system") @map("embed_font_style")
+  embedPosition               String?           @default("bottom-right") @map("embed_position")
+  chatBackgroundColor         String?           @default("#FFFFFF") @map("chat_background_color")
+  userMessageBubbleColor      String?           @default("#3B82F6") @map("user_message_bubble_color")
+  assistantMessageBubbleColor String?           @default("#F3F4F6") @map("assistant_message_bubble_color")
+  assistantFontStyle          String?           @default("sans") @map("assistant_font_style")
+  messageBubbleRadius         Int?              @default(12) @map("message_bubble_radius")
+  showAssistantAvatar         Boolean?          @default(true) @map("show_assistant_avatar")
+  assistantAvatarUrl          String?           @map("assistant_avatar_url")
+  showChatHeader              Boolean?          @default(true) @map("show_chat_header")
+  chatHeaderTitle             String?           @default("AI Assistant") @map("chat_header_title")
+  welcomeMessage              String?           @map("welcome_message")
+  totalSessions               Int               @default(0) @map("total_sessions")
+  totalMessages               Int               @default(0) @map("total_messages")
+  createdAt                   DateTime          @default(now()) @map("created_at")
+  updatedAt                   DateTime          @updatedAt @map("updated_at")
+  lastTrained                 DateTime?         @map("last_trained")
   files                       AssistantFile[]
-  account                     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  slackConnections            SlackConnection[]
+  account                     Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId, status])
   @@map("assistants")
@@ -201,6 +203,30 @@ model DropboxSyncSession {
   connection     DropboxConnection        @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@map("dropbox_sync_sessions")
+}
+
+model SlackConnection {
+  id                String    @id @default(cuid())
+  accountId         String    @map("account_id")
+  assistantId       String    @map("assistant_id")
+  teamId            String    @map("team_id")
+  teamName          String    @map("team_name")
+  teamDomain        String?   @map("team_domain")
+  userId            String    @map("user_id")
+  userName          String    @map("user_name")
+  botToken          String    @map("bot_token")
+  botUserId         String    @map("bot_user_id")
+  botScopes         String    @map("bot_scopes")
+  isActive          Boolean   @default(true) @map("is_active")
+  lastMessageAt     DateTime? @map("last_message_at")
+  totalMessages     Int       @default(0) @map("total_messages")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  account           Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant         Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, assistantId])
+  @@map("slack_connections")
 }
 
 enum Plan {

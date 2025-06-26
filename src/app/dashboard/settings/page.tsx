@@ -628,6 +628,7 @@ export default function SettingsPage() {
         description: 'Add your AI assistant to Discord servers for community support and engagement',
         icon: MessageSquare,
         connected: connectedIntegrations.has('discord'),
+        comingSoon: true,
         category: 'Chat'
       },
       {
@@ -636,6 +637,7 @@ export default function SettingsPage() {
         description: 'Integrate with Teams for enterprise communication and collaboration',
         icon: MessageSquare,
         connected: connectedIntegrations.has('microsoft-teams'),
+        comingSoon: true,
         category: 'Enterprise'
       },
       {
@@ -656,6 +658,7 @@ export default function SettingsPage() {
         icon: Database,
         connected: connectedIntegrations.has('drive'),
         popular: true,
+        comingSoon: true,
         category: 'Cloud Storage'
       },
       {
@@ -702,6 +705,7 @@ export default function SettingsPage() {
         icon: Users,
         connected: connectedIntegrations.has('hubspot'),
         popular: true,
+        comingSoon: true,
         category: 'CRM'
       },
       {
@@ -710,6 +714,7 @@ export default function SettingsPage() {
         description: 'Connect to Salesforce for comprehensive customer relationship management',
         icon: BarChart3,
         connected: connectedIntegrations.has('salesforce'),
+        comingSoon: true,
         category: 'Enterprise CRM'
       },
       {
@@ -727,6 +732,7 @@ export default function SettingsPage() {
         description: 'Connect to Zendesk for customer support ticket management and automation',
         icon: HelpCircle,
         connected: connectedIntegrations.has('zendesk'),
+        comingSoon: true,
         category: 'Support'
       }
     ],
@@ -737,6 +743,7 @@ export default function SettingsPage() {
         description: 'Help users schedule meetings and manage appointments through your assistant',
         icon: Calendar,
         connected: connectedIntegrations.has('calendly'),
+        comingSoon: true,
         category: 'Scheduling'
       },
       {
@@ -745,6 +752,7 @@ export default function SettingsPage() {
         description: 'Manage boards, cards, and project workflows through AI assistance',
         icon: Briefcase,
         connected: connectedIntegrations.has('trello'),
+        comingSoon: true,
         category: 'Project Management'
       },
       {
@@ -753,6 +761,7 @@ export default function SettingsPage() {
         description: 'Connect to Asana for task management and team project coordination',
         icon: CheckCircle,
         connected: connectedIntegrations.has('asana'),
+        comingSoon: true,
         category: 'Project Management'
       },
       {
@@ -781,6 +790,7 @@ export default function SettingsPage() {
         description: 'Provide customer support and product recommendations for your Shopify store',
         icon: ShoppingCart,
         connected: connectedIntegrations.has('shopify'),
+        comingSoon: true,
         category: 'E-commerce'
       },
       {
@@ -789,6 +799,7 @@ export default function SettingsPage() {
         description: 'Handle payment inquiries and billing support through Stripe integration',
         icon: CreditCard,
         connected: connectedIntegrations.has('stripe'),
+        comingSoon: true,
         category: 'Payments'
       }
     ],
@@ -809,6 +820,7 @@ export default function SettingsPage() {
         description: 'Integrate your AI assistant with custom applications using our REST API',
         icon: Globe,
         connected: connectedIntegrations.has('api'),
+        comingSoon: true,
         category: 'Developer'
       },
       {
@@ -818,6 +830,7 @@ export default function SettingsPage() {
         icon: Globe,
         connected: connectedIntegrations.has('website'),
         popular: true,
+        comingSoon: true,
         category: 'Web'
       }
     ]

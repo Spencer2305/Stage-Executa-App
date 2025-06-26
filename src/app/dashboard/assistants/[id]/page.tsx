@@ -23,6 +23,11 @@ import { toast } from "sonner";
 import KnowledgeBaseManager from "@/components/knowledge/KnowledgeBaseManager";
 import GmailIntegration from "@/components/knowledge/GmailIntegration";
 import EmailKnowledgeManager from "@/components/knowledge/EmailKnowledgeManager";
+import DropboxIntegration from "@/components/integrations/DropboxIntegration";
+import SlackConnection from "@/components/integrations/SlackConnection";
+import TeamsConnection from "@/components/integrations/TeamsConnection";
+import DiscordConnection from "@/components/integrations/DiscordConnection";
+import IntegrationsManager from "@/components/integrations/IntegrationsManager";
 import { Document as ModelDocument } from "@/types/model";
 import { 
   ArrowLeft, 
@@ -60,7 +65,8 @@ import {
   RotateCcw,
   ImageIcon,
   User,
-  AlertTriangle
+  AlertTriangle,
+  Cloud
 } from "lucide-react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -165,6 +171,11 @@ export default function AssistantViewPage() {
   });
   const [embedCodeType, setEmbedCodeType] = useState<'styled' | 'raw' | 'wordpress'>('styled');
   const [isSavingStyles, setIsSavingStyles] = useState(false);
+  const [integrationsStatus, setIntegrationsStatus] = useState({
+    gmail: false,
+    dropbox: false,
+    slack: false
+  });
 
   useEffect(() => {
     const loadAssistantData = async () => {
@@ -216,7 +227,48 @@ export default function AssistantViewPage() {
     };
 
     loadAssistantData();
+    
+    // Load integration status
+    if (assistantId && user) {
+      checkIntegrationsStatus();
+    }
   }, [assistantId, fetchModels, refreshModel, user, userLoading, router]);
+
+  const checkIntegrationsStatus = async () => {
+    if (!assistantId) return;
+    
+    const token = localStorage.getItem('executa-auth-token');
+    if (!token) return;
+
+    try {
+      const integrations = ['gmail', 'dropbox', 'slack'];
+      const statusChecks = await Promise.all(
+        integrations.map(async (integration) => {
+          try {
+            const response = await fetch(`/api/integrations/${integration}/status?assistantId=${assistantId}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            const data = await response.json();
+            return { [integration]: data.connected || false };
+          } catch (error) {
+            console.error(`Failed to check ${integration} status:`, error);
+            return { [integration]: false };
+          }
+        })
+      );
+
+      const statusObj = statusChecks.reduce((acc, curr) => ({ ...acc, ...curr }), {
+        gmail: false,
+        dropbox: false,
+        slack: false
+      });
+      setIntegrationsStatus(statusObj as typeof integrationsStatus);
+    } catch (error) {
+      console.error('Error checking integrations status:', error);
+    }
+  };
 
   useEffect(() => {
     if (assistant?.documents) {
@@ -749,10 +801,11 @@ export default function AssistantViewPage() {
 
       {/* Tabbed Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
           <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="embed">Embed</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -952,7 +1005,13 @@ export default function AssistantViewPage() {
               
               {/* Knowledge Sub-tabs */}
               <Tabs defaultValue="documents" className="h-full flex flex-col">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsList className={`grid w-full mb-4 ${
+                  integrationsStatus.gmail && integrationsStatus.dropbox 
+                    ? 'grid-cols-4' 
+                    : integrationsStatus.gmail || integrationsStatus.dropbox 
+                    ? 'grid-cols-3' 
+                    : 'grid-cols-2'
+                }`}>
                   <TabsTrigger value="documents" className="flex items-center space-x-2">
                     <FileText className="h-4 w-4" />
                     <span>Documents</span>
@@ -961,10 +1020,18 @@ export default function AssistantViewPage() {
                     <Settings className="h-4 w-4" />
                     <span>Gmail Setup</span>
                   </TabsTrigger>
-                  <TabsTrigger value="gmail-emails" className="flex items-center space-x-2">
-                    <Mail className="h-4 w-4" />
-                    <span>Gmail Emails</span>
-                  </TabsTrigger>
+                  {integrationsStatus.gmail && (
+                    <TabsTrigger value="gmail-emails" className="flex items-center space-x-2">
+                      <Mail className="h-4 w-4" />
+                      <span>Gmail Emails</span>
+                    </TabsTrigger>
+                  )}
+                  {integrationsStatus.dropbox && (
+                    <TabsTrigger value="dropbox-sync" className="flex items-center space-x-2">
+                      <Cloud className="h-4 w-4" />
+                      <span>Dropbox Sync</span>
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 {/* Documents Tab */}
@@ -982,10 +1049,37 @@ export default function AssistantViewPage() {
                 </TabsContent>
 
                 {/* Gmail Emails Tab */}
-                <TabsContent value="gmail-emails" className="flex-1 overflow-hidden">
-                  <EmailKnowledgeManager assistantId={assistantId} />
-                </TabsContent>
+                {integrationsStatus.gmail && (
+                  <TabsContent value="gmail-emails" className="flex-1 overflow-hidden">
+                    <EmailKnowledgeManager assistantId={assistantId} />
+                  </TabsContent>
+                )}
+
+                {/* Dropbox Sync Tab */}
+                {integrationsStatus.dropbox && (
+                  <TabsContent value="dropbox-sync" className="flex-1 overflow-hidden">
+                    <DropboxIntegration assistantId={assistantId} />
+                  </TabsContent>
+                )}
               </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Integrations Tab */}
+        <TabsContent value="integrations" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Zap className="h-5 w-5" />
+                <span>Integrations</span>
+              </CardTitle>
+              <CardDescription>
+                Connect your assistant to popular platforms and services
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <IntegrationsManager assistantId={assistantId} />
             </CardContent>
           </Card>
         </TabsContent>

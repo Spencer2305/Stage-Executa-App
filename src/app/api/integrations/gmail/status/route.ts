@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
+import { db } from '@/lib/db';
 
 // Simple storage for Gmail integrations (in production, this would be in a proper database)
 // For now, we'll store it in a JSON file for persistence across restarts
@@ -50,24 +51,65 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Reload integrations from file to ensure we have the latest data
-    const freshIntegrations = loadIntegrations();
-    
-    // Check if user has Gmail integration
-    const integration = freshIntegrations.get(user.id);
-    
+    const { searchParams } = new URL(request.url);
+    const assistantId = searchParams.get('assistantId');
+
+    if (!assistantId) {
+      return NextResponse.json({ error: 'Assistant ID is required' }, { status: 400 });
+    }
+
+    // Check if assistant belongs to user
+    const assistant = await db.assistant.findFirst({
+      where: {
+        id: assistantId,
+        accountId: user.account.id
+      }
+    });
+
+    if (!assistant) {
+      return NextResponse.json({ error: 'Assistant not found' }, { status: 404 });
+    }
+
+    // For Gmail, we'll check for any email files associated with the assistant
+    // This is a simplified check - in a full implementation, you'd have a proper Gmail integration table
+    const emailFiles = await db.knowledgeFile.count({
+      where: {
+        accountId: user.account.id,
+        mimeType: {
+          contains: 'message/'
+        },
+        assistantFiles: {
+          some: {
+            assistantId: assistantId
+          }
+        }
+      }
+    });
+
+    const hasGmailIntegration = emailFiles > 0;
+
+    if (!hasGmailIntegration) {
+      return NextResponse.json({ 
+        connected: false,
+        message: 'No Gmail integration found'
+      });
+    }
+
+    // Return connection info
     return NextResponse.json({
-      connected: !!integration && integration.status === 'connected',
-      email: integration?.email,
-      connectedAt: integration?.connectedAt,
-      totalEmails: integration?.totalEmails || 0,
-      lastSync: integration?.lastSync
+      connected: true,
+      connection: {
+        email: user.email, // Simplified - in real implementation, get from integration table
+        totalEmails: emailFiles,
+        lastSyncAt: new Date(),
+        isActive: true
+      }
     });
 
   } catch (error) {
-    console.error('Gmail status check error:', error);
+    console.error('Error checking Gmail status:', error);
     return NextResponse.json(
-      { error: 'Failed to check Gmail status' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
