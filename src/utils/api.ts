@@ -95,6 +95,12 @@ export const modelApi = {
 
   // Create new assistant with knowledge files
   create: async (data: CreateModelRequest): Promise<Model> => {
+    console.log('🔍 CLIENT: Creating assistant with data:', {
+      name: data.name,
+      useDropboxSync: data.useDropboxSync,
+      documentsCount: data.documents.length
+    });
+
     const formData = new FormData();
     
     // Add text fields
@@ -102,11 +108,22 @@ export const modelApi = {
     if (data.description) {
       formData.append('description', data.description);
     }
+    if (data.useDropboxSync) {
+      console.log('🔍 CLIENT: Adding useDropboxSync=true to form data');
+      formData.append('useDropboxSync', 'true');
+    } else {
+      console.log('🔍 CLIENT: useDropboxSync is false, not adding to form data');
+    }
     
     // Add files
     data.documents.forEach((file) => {
       formData.append('files', file);
     });
+
+    // Debug: Log all form data entries
+    for (let [key, value] of formData.entries()) {
+      console.log(`🔍 CLIENT: FormData ${key}:`, typeof value === 'string' ? value : `[File: ${(value as File).name}]`);
+    }
 
     const response = await api.post('/assistants/create', formData, {
       headers: {

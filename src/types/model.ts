@@ -68,6 +68,7 @@ export interface CreateModelRequest {
   name: string;
   description?: string;
   documents: File[];
+  useDropboxSync?: boolean;
   integrations?: {
     gmail?: boolean;
     salesforce?: boolean;

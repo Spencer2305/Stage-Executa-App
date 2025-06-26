@@ -208,15 +208,9 @@ function IntegrationCard({
                 Coming Soon
               </Button>
             ) : connected ? (
-              <>
-                <Button variant="outline" size="sm" onClick={onDisconnect}>
-                  Disconnect
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => onConfigure?.(id)}>
-                  <SettingsIcon className="h-4 w-4 mr-1" />
-                  Configure
-                </Button>
-              </>
+              <Button variant="outline" size="sm" onClick={onDisconnect}>
+                Disconnect
+              </Button>
             ) : (
               <Button size="sm" onClick={onConnect} className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-1" />
@@ -267,6 +261,59 @@ export default function SettingsPage() {
     }
   }, [user]);
 
+  // Check for success/error messages and fetch integration status
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+
+    if (success === 'dropbox_connected') {
+      toast.success('🎉 Dropbox connected successfully! Your files will be synced shortly.');
+      // Clean up URL
+      window.history.replaceState({}, '', '/dashboard/settings');
+    } else if (error) {
+      const errorMessages: { [key: string]: string } = {
+        dropbox_auth_denied: 'Dropbox connection was cancelled.',
+        dropbox_missing_params: 'Invalid Dropbox response. Please try again.',
+        dropbox_invalid_state: 'Security validation failed. Please try again.',
+        dropbox_auth_mismatch: 'Authentication error. Please try again.',
+        account_not_found: 'Account not found. Please contact support.',
+        dropbox_callback_failed: 'Dropbox connection failed. Please try again.'
+      };
+      toast.error(errorMessages[error] || 'Connection failed. Please try again.');
+      // Clean up URL
+      window.history.replaceState({}, '', '/dashboard/settings');
+    }
+
+    // Fetch current integration status
+    fetchIntegrationStatus();
+  }, []);
+
+  const fetchIntegrationStatus = async () => {
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      const response = await fetch('/api/integrations/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const connected = new Set(['gmail', 'slack']); // Keep demo integrations
+        
+        // Add real connected integrations
+        if (data.integrations.dropbox) {
+          connected.add('dropbox');
+        }
+        
+        setConnectedIntegrations(connected);
+      }
+    } catch (error) {
+      console.error('Failed to fetch integration status:', error);
+    }
+  };
+
   const [notifications, setNotifications] = useState({
     emailUpdates: true,
     securityAlerts: true,
@@ -283,84 +330,10 @@ export default function SettingsPage() {
     loading?: boolean;
   }>({ connected: false, loading: true });
 
-  // Check Gmail integration status on load and handle OAuth callback
-  useEffect(() => {
-    checkGmailStatus();
-    
-    // Handle OAuth callback messages
-    const urlParams = new URLSearchParams(window.location.search);
-    const success = urlParams.get('success');
-    const error = urlParams.get('error');
-    const email = urlParams.get('email');
-    
-    if (success === 'gmail_connected' && email) {
-      toast.success(`Gmail connected successfully! (${decodeURIComponent(email)})`);
-      setGmailStatus({ connected: true, email: decodeURIComponent(email), loading: false });
-      setConnectedIntegrations(prev => new Set([...prev, 'gmail']));
-      
-      // Clean up URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (error === 'gmail_auth_failed') {
-      const message = urlParams.get('message');
-      toast.error(`Gmail connection failed: ${message ? decodeURIComponent(message) : 'Unknown error'}`);
-      setGmailStatus({ connected: false, loading: false });
-      
-      // Clean up URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
-
-  const checkGmailStatus = async () => {
-    try {
-      const token = localStorage.getItem('executa-auth-token');
-      const response = await fetch('/api/integrations/gmail/status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setGmailStatus({
-          connected: data.connected,
-          email: data.email,
-          loading: false
-        });
-        
-        if (data.connected) {
-          setConnectedIntegrations(prev => new Set([...prev, 'gmail']));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to check Gmail status:', error);
-      setGmailStatus({ connected: false, loading: false });
-    }
-  };
-
   const handleConnect = async (integration: string) => {
+    // For all integrations, just update local state for demo
     if (integration === 'gmail') {
-      try {
-        setGmailStatus({ ...gmailStatus, loading: true });
-        
-        const token = localStorage.getItem('executa-auth-token');
-        const response = await fetch('/api/integrations/gmail/auth', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          // Redirect to Gmail OAuth
-          window.location.href = data.authUrl;
-        } else {
-          throw new Error('Failed to initiate Gmail connection');
-        }
-      } catch (error) {
-        console.error('Gmail connection error:', error);
-        toast.error('Failed to connect Gmail. Please try again.');
-        setGmailStatus({ connected: false, loading: false });
-      }
+      toast.success('Gmail integration coming soon!');
     } else {
       setConnectedIntegrations(prev => new Set([...prev, integration]));
     }

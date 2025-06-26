@@ -12,7 +12,7 @@ interface ModelState {
   setModels: (models: Model[]) => void;
   addModel: (model: Model) => void;
   updateModel: (id: string, updates: Partial<Model>) => void;
-  deleteModel: (id: string) => void;
+  deleteModel: (id: string) => Promise<void>;
   setSelectedModel: (model: Model | null) => void;
   setLoading: (loading: boolean) => void;
   
@@ -40,9 +40,23 @@ export const useModelStore = create<ModelState>((set, get) => ({
     )
   })),
   
-  deleteModel: (id) => set((state) => ({
-    models: state.models.filter(model => model.id !== id)
-  })),
+  deleteModel: async (id: string) => {
+    try {
+      // Call API to delete from database
+      await modelApi.delete(id);
+      
+      // Remove from local state only after successful API call
+      set((state) => ({
+        models: state.models.filter(model => model.id !== id)
+      }));
+      
+      toast.success('Assistant deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete assistant:', error);
+      toast.error('Failed to delete assistant');
+      throw error;
+    }
+  },
   
   setSelectedModel: (model) => set({ selectedModel: model }),
   

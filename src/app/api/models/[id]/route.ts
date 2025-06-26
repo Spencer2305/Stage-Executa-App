@@ -88,4 +88,119 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    console.log(`🗑️ DELETE /api/models/${id} - Deleting assistant`);
+    
+    const auth = await authenticateRequest(request);
+    if (!auth) {
+      console.log(`❌ Unauthorized request to DELETE /api/models/${id}`);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify the assistant exists and belongs to this user
+    const assistant = await db.assistant.findFirst({
+      where: {
+        id: id,
+        accountId: auth.account.id,
+      },
+      include: {
+        files: {
+          include: {
+            file: true,
+          },
+        },
+      },
+    });
+
+    if (!assistant) {
+      console.log(`❌ Assistant ${id} not found for account ${auth.account.id}`);
+      return NextResponse.json({ error: 'Assistant not found' }, { status: 404 });
+    }
+
+    console.log(`🔍 Found assistant "${assistant.name}" with ${assistant.files.length} files`);
+
+    // Start a transaction to ensure all deletions succeed or fail together
+    await db.$transaction(async (tx) => {
+      // 1. Delete assistant-file associations
+      await tx.assistantFile.deleteMany({
+        where: {
+          assistantId: id,
+        },
+      });
+      console.log(`🔗 Deleted assistant-file associations for assistant ${id}`);
+
+      // 2. Check which files are orphaned (not used by other assistants)
+      const orphanedFiles = [];
+      for (const assistantFile of assistant.files) {
+        const otherAssistantFiles = await tx.assistantFile.findMany({
+          where: {
+            fileId: assistantFile.file.id,
+          },
+        });
+        
+        if (otherAssistantFiles.length === 0) {
+          orphanedFiles.push(assistantFile.file);
+        }
+      }
+
+      // 3. Delete orphaned files from database
+      if (orphanedFiles.length > 0) {
+        const orphanedFileIds = orphanedFiles.map(f => f.id);
+        await tx.knowledgeFile.deleteMany({
+          where: {
+            id: {
+              in: orphanedFileIds,
+            },
+          },
+        });
+        console.log(`🗑️ Deleted ${orphanedFiles.length} orphaned files from database`);
+      }
+
+      // 4. Delete the assistant itself
+      await tx.assistant.delete({
+        where: {
+          id: id,
+        },
+      });
+      console.log(`🤖 Deleted assistant ${id} from database`);
+    });
+
+    // TODO: Clean up OpenAI resources
+    // When OpenAI integration is fully implemented, add:
+    // - Delete OpenAI assistant (assistant.openaiAssistantId)
+    // - Delete OpenAI vector store (assistant.vectorStoreId)
+    // - Delete OpenAI files
+    
+    // TODO: Clean up S3 files
+    // Add S3 cleanup for orphaned files if needed
+
+    console.log(`✅ Successfully deleted assistant ${id} and cleaned up associated resources`);
+
+    return NextResponse.json({
+      success: true,
+      message: `Assistant "${assistant.name}" deleted successfully`,
+      data: {
+        deletedAssistantId: id,
+        deletedAssistantName: assistant.name,
+        orphanedFilesDeleted: assistant.files.length,
+      },
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting assistant:', error);
+    return NextResponse.json(
+      { 
+        error: 'Failed to delete assistant',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, 
+      { status: 500 }
+    );
+  }
 } 

@@ -44,7 +44,7 @@ import {
   Users
 } from "lucide-react";
 import Link from "next/link";
-import CreateAssistantDialog from "@/components/models/CreateAssistantDialog";
+
 
 // Training source badge component
 function TrainingSourceBadges({ documents }: { documents: any[] }) {
@@ -218,10 +218,14 @@ export default function MyAIsPage() {
     router.push(`/dashboard/analytics?assistant=${assistantId}`);
   };
 
-  const handleDeleteAssistant = (assistantId: string, assistantName: string) => {
+  const handleDeleteAssistant = async (assistantId: string, assistantName: string) => {
     if (window.confirm(`Are you sure you want to delete "${assistantName}"? This action cannot be undone.`)) {
-      deleteModel(assistantId);
-      toast.success("Assistant deleted successfully");
+      try {
+        await deleteModel(assistantId);
+        // Success toast is already handled in the store
+      } catch (error) {
+        // Error toast is already handled in the store
+      }
     }
   };
 
@@ -252,14 +256,12 @@ export default function MyAIsPage() {
               Manage and monitor your AI assistants
             </p>
           </div>
-          <CreateAssistantDialog>
-            <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
-              <Link href="/dashboard/create">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Assistant
-              </Link>
-            </Button>
-          </CreateAssistantDialog>
+          <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
+            <Link href="/dashboard/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Assistant
+            </Link>
+          </Button>
         </div>
 
         {/* Stats */}
@@ -362,14 +364,12 @@ export default function MyAIsPage() {
                 }
               </p>
               {!searchQuery && filterStatus === "all" && (
-                <CreateAssistantDialog>
-                  <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
-                    <Link href="/dashboard/create">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Assistant
-                    </Link>
-                  </Button>
-                </CreateAssistantDialog>
+                <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
+                  <Link href="/dashboard/create">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Assistant
+                  </Link>
+                </Button>
               )}
             </CardContent>
           </Card>

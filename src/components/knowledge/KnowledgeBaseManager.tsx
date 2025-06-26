@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   FileText, 
   Upload, 
@@ -15,13 +16,16 @@ import {
   Clock,
   Download,
   Eye,
-  Mail
+  Mail,
+  RefreshCw,
+  Cloud
 } from "lucide-react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { Document as ModelDocument } from "@/types/model";
 import { modelApi } from "@/utils/api";
 import { toast } from "sonner";
+import axios from "axios";
 
 interface KnowledgeBaseManagerProps {
   assistantId: string;
@@ -37,6 +41,9 @@ export default function KnowledgeBaseManager({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatFileSize = (bytes: number) => {
@@ -47,7 +54,9 @@ export default function KnowledgeBaseManager({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'Unknown';
+    
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(dateObj.getTime())) return 'Invalid Date';
     
@@ -211,6 +220,43 @@ export default function KnowledgeBaseManager({
       }
     } else {
       toast.error('No content available for preview');
+    }
+  };
+
+  const handleSyncFromIntegration = async (integration: string) => {
+    setIsSyncing(true);
+    setSyncProgress(0);
+    setShowSyncDialog(false);
+
+    try {
+      console.log(`🔄 Syncing files from ${integration} for assistant ${assistantId}`);
+      
+      // Use axios with authentication like other API calls
+      const token = localStorage.getItem('executa-auth-token');
+      const response = await axios.post(`/api/assistants/${assistantId}/sync-simple`, 
+        { integration },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      const result = response.data;
+      
+      // Update the files list
+      onFilesUpdated(result.files);
+      
+      toast.success(`Successfully synced ${result.syncedFiles} files from ${integration}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Error syncing from ${integration}:`, error);
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+      toast.error(`Failed to sync files from ${integration}: ${errorMessage}`);
+    } finally {
+      setIsSyncing(false);
+      setSyncProgress(0);
     }
   };
 
