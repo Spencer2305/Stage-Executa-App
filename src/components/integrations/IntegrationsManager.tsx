@@ -12,7 +12,8 @@ import {
   ExternalLink, 
   Settings,
   Users,
-  Loader2
+  Loader2,
+  MessageCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -56,6 +57,15 @@ export default function IntegrationsManager({ assistantId }: IntegrationsManager
       category: 'Chat',
       authUrl: '/api/integrations/slack/auth',
       statusUrl: '/api/integrations/slack/status'
+    },
+    {
+      id: 'discord',
+      name: 'Discord',
+      description: 'Add your AI assistant as a bot in Discord servers and channels',
+      icon: MessageCircle,
+      category: 'Chat',
+      authUrl: '/api/integrations/discord/auth',
+      statusUrl: '/api/integrations/discord/status'
     },
     {
       id: 'dropbox',
@@ -276,6 +286,15 @@ export default function IntegrationsManager({ assistantId }: IntegrationsManager
                           <span>
                             <Mail className="w-3 h-3 inline mr-1" />
                             {integration.connectionInfo.email || 'Connected'}
+                          </span>
+                        )}
+                        {integration.id === 'discord' && (
+                          <span>
+                            <MessageCircle className="w-3 h-3 inline mr-1" />
+                            {integration.connectionInfo.guildName || 'Connected'}
+                            {integration.connectionInfo.totalMessages && (
+                              <span className="ml-1">• {integration.connectionInfo.totalMessages} messages</span>
+                            )}
                           </span>
                         )}
                         {integration.id === 'dropbox' && (
