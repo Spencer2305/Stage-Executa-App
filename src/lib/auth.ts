@@ -279,3 +279,49 @@ export function validatePassword(password: string): { valid: boolean; errors: st
     errors
   };
 }
+
+// Get integration context for AI assistants
+export async function getIntegrationContext(accountId: string): Promise<string> {
+  try {
+    // This function builds context about connected integrations for the AI
+    // The AI can then inform users about available integrations and capabilities
+    
+    const integrationStatus: string[] = [
+      "📋 **Available Integrations for this account:**",
+      ""
+    ];
+
+    // Check for email integrations
+    // TODO: Query actual integration status from database
+    integrationStatus.push("**Communication:**");
+    integrationStatus.push("• Gmail - Connect to import email conversations and customer support data");
+    integrationStatus.push("• Slack - Deploy this assistant directly in Slack channels");
+    integrationStatus.push("• Microsoft Teams - Enterprise communication integration");
+    integrationStatus.push("");
+
+    integrationStatus.push("**Knowledge Management:**");
+    integrationStatus.push("• Google Drive - Access documents and files from Google Drive");
+    integrationStatus.push("• Dropbox - Connect to Dropbox files and folders");
+    integrationStatus.push("• Notion - Import from Notion workspaces and databases");
+    integrationStatus.push("");
+
+    integrationStatus.push("**CRM & Support:**");
+    integrationStatus.push("• HubSpot - Customer relationship management integration");
+    integrationStatus.push("• Salesforce - Enterprise CRM data access");
+    integrationStatus.push("• Zendesk - Customer support ticket integration");
+    integrationStatus.push("");
+
+    integrationStatus.push("**Productivity:**");
+    integrationStatus.push("• Calendly - Schedule meetings and appointments");
+    integrationStatus.push("• Trello - Project management and task tracking");
+    integrationStatus.push("• Asana - Team collaboration and project coordination");
+    integrationStatus.push("");
+
+    integrationStatus.push("📝 *To connect any of these integrations, users can visit the dashboard settings under the 'Integrations' tab.*");
+
+    return integrationStatus.join("\n");
+  } catch (error) {
+    console.error('Error getting integration context:', error);
+    return "Integration information temporarily unavailable.";
+  }
+}

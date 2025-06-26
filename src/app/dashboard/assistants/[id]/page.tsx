@@ -130,6 +130,7 @@ export default function AssistantViewPage() {
   
   const [activeTab, setActiveTab] = useState(initialTab);
   const [message, setMessage] = useState("");
+  const [chatThreadId, setChatThreadId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: "1",
@@ -268,7 +269,7 @@ export default function AssistantViewPage() {
     assistant?.welcomeMessage
   ]); // Only depend on the actual embed style properties
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) return;
 
     const userMessage: ChatMessage = {
@@ -279,18 +280,57 @@ export default function AssistantViewPage() {
     };
 
     setChatMessages(prev => [...prev, userMessage]);
+    const currentMessage = message;
     setMessage("");
 
-    // Simulate bot response
-    setTimeout(() => {
+    try {
+      // Call real AI assistant API
+      const token = localStorage.getItem('executa-auth-token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const response = await fetch(`/api/chat/${assistantId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: currentMessage,
+          threadId: chatThreadId
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response');
+      }
+
+      // Update thread ID if this is the first message
+      if (data.threadId && !chatThreadId) {
+        setChatThreadId(data.threadId);
+      }
+
       const botResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: "Thank you for your message! This is a demo response. In a real implementation, this would be connected to your AI assistant.",
+        content: data.response,
         sender: "bot" as const,
         timestamp: new Date()
       };
       setChatMessages(prev => [...prev, botResponse]);
-    }, 1000);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        sender: "bot" as const,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, errorResponse]);
+    }
   };
 
   const formatDate = (date: Date | string) => {

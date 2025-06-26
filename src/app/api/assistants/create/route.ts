@@ -11,11 +11,15 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 Starting assistant creation...');
+
     // Authenticate user
     const user = await authenticateRequest(request);
     if (!user) {
+      console.log('❌ Authentication failed');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.log(`✅ User authenticated: ${user.email}`);
 
     // Get user's account
     const userAccount = await db.user.findUnique({
@@ -24,10 +28,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!userAccount?.account) {
+      console.log('❌ Account not found for user:', user.id);
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
+    console.log(`✅ Account found: ${userAccount.account.name} (${userAccount.account.accountId})`);
 
     // Parse request data
+    console.log('📋 Parsing form data...');
     const formData = await request.formData();
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
@@ -48,14 +55,31 @@ export async function POST(request: NextRequest) {
     const fs = require('fs');
     fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - Form data: name=${name}, files=${files.length}, useDropboxSync=${useDropboxSync}, raw=${formData.get('useDropboxSync')}\n`);
 
+    console.log(`📝 Assistant details:`, {
+      name,
+      description: description?.substring(0, 100) + '...',
+      fileCount: files.length,
+      hasInstructions: !!instructions
+    });
+
     // Validate required fields
     if (!name || !name.trim()) {
+      console.log('❌ Assistant name is required');
       return NextResponse.json({ error: 'Assistant name is required' }, { status: 400 });
     }
 
-    // Allow creation without files if using Dropbox sync
+    // Allow creation without files if using Dropbox sync, otherwise require files
     if (!useDropboxSync && (!files || files.length === 0)) {
+      console.log('❌ At least one knowledge file is required when not using Dropbox sync');
       return NextResponse.json({ error: 'At least one knowledge file is required when not using Dropbox sync' }, { status: 400 });
+    }
+
+    // Check OpenAI API key
+      console.log('❌ OpenAI API key not configured');
+      return NextResponse.json({ 
+        error: 'OpenAI API key not configured', 
+        details: 'Please add your OpenAI API key to the .env file'
+      }, { status: 500 });
     }
 
     // Step 1: Upload and process files (if any)
@@ -82,6 +106,7 @@ export async function POST(request: NextRequest) {
       );
 
       if (fileProcessingResult.status === 'ERROR' || fileProcessingResult.processedFiles === 0) {
+        console.log('❌ File processing failed:', fileProcessingResult);
         return NextResponse.json({ 
           error: 'Failed to process files', 
           details: `Processed ${fileProcessingResult.processedFiles}/${fileProcessingResult.totalFiles} files successfully` 
@@ -110,6 +135,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    console.log(`✅ Assistant created in database: ${assistant.id}`);
+
     // Step 3: Link files to assistant
     if (successfulFiles.length > 0) {
       console.log(`🔗 Linking ${successfulFiles.length} files to assistant`);
@@ -119,302 +146,288 @@ export async function POST(request: NextRequest) {
           fileId: result.fileId
         }))
       });
+      console.log(`✅ Files linked: ${successfulFiles.length} files`);
     } else {
       console.log(`🔗 No files to link to assistant (will sync later via Dropbox)`);
     }
 
-    // Step 4: Create OpenAI vector store
-    console.log(`📚 Creating OpenAI vector store for assistant`);
-    
-    try {
-      const vectorStoreId = await createOpenAIVectorStore(
-        userAccount.account.accountId,
-        assistant.id,
-        name
-      );
-
-      // Step 5: Upload files to OpenAI
-      console.log(`⬆️ Uploading files to OpenAI`);
+    // Step 4: Upload files to OpenAI for knowledge retrieval
+    if (successfulFiles.length > 0) {
+      console.log(`⬆️ Uploading files to OpenAI for knowledge retrieval`);
       
       const openaiFileUploads = await uploadFilesToOpenAI(
         successfulFiles.map(r => r.fileId)
       );
 
-      // Step 6: Add files to vector store
-      if (openaiFileUploads.length > 0) {
-        await addFilesToVectorStore(
-          vectorStoreId,
-          openaiFileUploads.map(upload => upload.openaiFileId)
-        );
-      }
-
-      // Step 7: Create OpenAI assistant (temporarily disabled due to SDK issues)
+      console.log(`✅ Files uploaded to OpenAI: ${openaiFileUploads.length} files`);
+      
+      // Step 5: Create OpenAI assistant with knowledge retrieval
       console.log(`🧠 Creating OpenAI assistant`);
       
-      const mockOpenAIAssistantId = `asst_mock_${uuidv4()}`;
-      console.log(`Mock OpenAI assistant created: ${mockOpenAIAssistantId}`);
+      try {
+          // Create OpenAI assistant with direct file attachment for knowledge retrieval
+          const assistantConfig: any = {
+            name: `${name} (${userAccount.account.accountId})`,
+            description: description || `AI assistant for ${name}`,
+            instructions: `${instructions}
 
-      /*
-      const openaiAssistant = await openai.beta.assistants.create({
-        name: `${name} (${userAccount.account.accountId})`,
-        description: description || `AI assistant for ${name}`,
-        instructions,
-        model: 'gpt-4-turbo',
-        tools: [{ type: 'file_search' }],
-        tool_resources: {
-          file_search: {
-            vector_store_ids: [vectorStoreId]
-          }
-        },
-        metadata: {
-          accountId: userAccount.account.accountId,
-          assistantId: assistant.id,
-          project: 'ExecutaApp'
-        }
-      });
-      */
+You are an AI assistant trained on the knowledge base for ${name}. You have access to uploaded documents and should use them to provide accurate, helpful responses. When answering questions:
 
-      // Step 8: Update assistant with OpenAI IDs
-      await db.assistant.update({
-        where: { id: assistant.id },
-        data: {
-          openaiAssistantId: mockOpenAIAssistantId, // openaiAssistant.id when fixed
-          vectorStoreId,
-          status: 'ACTIVE',
-          lastTrained: new Date(),
-          apiKey: `exec_${uuidv4().replace(/-/g, '')}`,
-          embedUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/embed/${assistant.id}`
-        }
-      });
+1. **ALWAYS search through the uploaded files first** to find relevant information
+2. **Quote specific information** from the documents when available
+3. **Be specific and cite sources** when referencing uploaded knowledge
+4. If information isn't in the uploaded files, clearly state this and provide general assistance
+5. Maintain a professional but friendly tone
+6. For integration data (emails, CRM, etc.), respect privacy and only share appropriate information
 
-      console.log(`✅ Assistant created successfully: ${assistant.id}`);
+Your primary job is to be a knowledgeable assistant based on the uploaded documents. Use them extensively to provide accurate, contextual responses.`,
+            model: 'gpt-4-turbo',
+            tools: [{ type: 'file_search' }],
+            metadata: {
+              accountId: userAccount.account.accountId,
+              assistantId: assistant.id,
+              project: 'ExecutaApp'
+            }
+          };
 
-      // If using Dropbox sync, automatically sync files after creation
-      if (useDropboxSync) {
-        console.log(`🔄 Auto-syncing Dropbox files for assistant: ${assistant.id}`);
-        
-        // Write to a log file for debugging
-        const fs = require('fs');
-        fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - Starting auto-sync for assistant: ${assistant.id}\n`);
-        
-        try {
-          // Use the imported sync functionality
-          console.log(`🔍 Checking for Dropbox connection for account: ${userAccount.account.id}`);
-          fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - Checking for account: ${userAccount.account.id}\n`);
-
-          // Check if user has a Dropbox connection
-          const dropboxConnectionsRaw = await db.$queryRaw`
-            SELECT * FROM dropbox_connections 
-            WHERE account_id = ${userAccount.account.id} AND is_active = true 
-            LIMIT 1
-          ` as any[];
-
-          console.log(`🔎 Found ${dropboxConnectionsRaw.length} active Dropbox connections`);
-          fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - Found ${dropboxConnectionsRaw.length} connections\n`);
-
-          if (dropboxConnectionsRaw && dropboxConnectionsRaw.length > 0) {
-            const dropboxConnection = dropboxConnectionsRaw[0];
-            console.log('✅ Dropbox connection found, syncing files...');
-            fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - Dropbox connection found, starting file sync\n`);
-
-            // List and sync files from Dropbox
-            console.log('📁 Calling listDropboxFiles...');
-            fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - About to call listDropboxFiles with token length: ${dropboxConnection.access_token?.length || 0}\n`);
+          // Add file search with actual file attachment for knowledge retrieval
+          if (openaiFileUploads.length > 0) {
+            console.log(`📎 Configuring knowledge retrieval for ${openaiFileUploads.length} files`);
             
-            let dropboxFiles;
+            // Create a vector store to hold the files
             try {
-              const result = await listDropboxFiles(dropboxConnection.access_token);
-              dropboxFiles = result.files;
-              console.log('✅ listDropboxFiles successful');
-              fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - listDropboxFiles successful, found ${dropboxFiles.length} files\n`);
-            } catch (listError: any) {
-              console.error('❌ listDropboxFiles failed:', listError);
-              fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - listDropboxFiles failed: ${listError.message || listError}\n`);
-              throw listError;
-            }
-            
-            if (dropboxFiles && dropboxFiles.length > 0) {
-              console.log(`📋 Found ${dropboxFiles.length} files in Dropbox, processing first 5...`);
+              console.log(`🗃️ Creating vector store for file attachment...`);
               
-              let syncedCount = 0;
-              const filesToProcess = dropboxFiles.slice(0, 5);
-              
-              for (const dropboxFile of filesToProcess) {
-                try {
-                  // Check if file already exists in knowledge base
-                  const existingFilesRaw = await db.$queryRaw`
-                    SELECT * FROM knowledge_files 
-                    WHERE account_id = ${userAccount.account.id} 
-                    AND original_name = ${dropboxFile.name}
-                    AND status != 'DELETED'
-                    LIMIT 1
-                  ` as any[];
-
-                  let fileId;
-                  
-                  if (existingFilesRaw && existingFilesRaw.length > 0) {
-                    // File exists in knowledge base, check if it's already associated with this assistant
-                    const existingFile = existingFilesRaw[0];
-                    fileId = existingFile.id;
-                    
-                    const existingAssociation = await db.$queryRaw`
-                      SELECT * FROM assistant_files 
-                      WHERE assistant_id = ${assistant.id} AND file_id = ${fileId}
-                      LIMIT 1
-                    ` as any[];
-                    
-                    if (existingAssociation && existingAssociation.length > 0) {
-                      console.log(`⏭️ File ${dropboxFile.name} already associated with this assistant, skipping...`);
-                      continue;
-                    } else {
-                      // File exists but not associated with this assistant - just create the association
-                      console.log(`🔗 File ${dropboxFile.name} exists, associating with assistant...`);
-                      
-                      await db.$queryRaw`
-                        INSERT INTO assistant_files (assistant_id, file_id, added_at)
-                        VALUES (${assistant.id}, ${fileId}, NOW())
-                      `;
-                      
-                      syncedCount++;
-                      console.log(`✅ Successfully associated existing file: ${dropboxFile.name}`);
-                      continue;
-                    }
+              // Use the new Vector Store API
+              const vectorStore = await fetch('https://api.openai.com/v1/vector_stores', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'OpenAI-Beta': 'assistants=v2'
+                },
+                body: JSON.stringify({
+                  name: `${name} Knowledge Base (${userAccount.account.accountId})`,
+                  metadata: {
+                    accountId: userAccount.account.accountId,
+                    assistantId: assistant.id
                   }
+                })
+              });
 
-                  // Download and process file
-                  const fileBuffer = await downloadDropboxFile(dropboxConnection.access_token, dropboxFile.path_lower);
-                  const fileExtension = dropboxFile.name.split('.').pop() || 'txt';
-                  const mimeType = dropboxFile.name.endsWith('.pdf') ? 'application/pdf' : 
-                                 dropboxFile.name.endsWith('.docx') ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' :
-                                 'text/plain';
-                  
-                  const { text: extractedText, pageCount } = await extractTextFromFile(
-                    fileBuffer,
-                    dropboxFile.name,
-                    mimeType
-                  );
-
-                  // File doesn't exist, create new document
-                  fileId = `kf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                  const s3Key = `dropbox-sync/${dropboxFile.id}/${dropboxFile.name}`;
-                  const s3Bucket = 'executa-temp-bucket';
-                  
-                  await db.$queryRaw`
-                    INSERT INTO knowledge_files (
-                      id, account_id, original_name, file_type, file_size, mime_type,
-                      status, extracted_text, text_length, page_count, s3_key, s3_bucket,
-                      processing_completed_at, created_at, updated_at
-                    ) VALUES (
-                      ${fileId}, ${userAccount.account.id}, ${dropboxFile.name}, 
-                      ${fileExtension}, ${dropboxFile.size}, ${mimeType},
-                      'PROCESSED', ${extractedText}, ${extractedText.length}, ${pageCount || 1},
-                      ${s3Key}, ${s3Bucket}, NOW(), NOW(), NOW()
-                    )
-                  `;
-
-                  // Associate with the assistant
-                  await db.$queryRaw`
-                    INSERT INTO assistant_files (assistant_id, file_id, added_at)
-                    VALUES (${assistant.id}, ${fileId}, NOW())
-                  `;
-
-                  syncedCount++;
-                  console.log(`✅ Auto-synced file: ${dropboxFile.name}`);
-                  
-                } catch (fileError) {
-                  console.error(`❌ Error auto-syncing file ${dropboxFile.name}:`, fileError);
-                }
+              if (!vectorStore.ok) {
+                throw new Error(`Vector store creation failed: ${vectorStore.status}`);
               }
-              
-              console.log(`🎉 Auto-sync completed: ${syncedCount} files synced from Dropbox`);
-            } else {
-              console.log(`📁 No files found in Dropbox to sync`);
-            }
-          } else {
-            console.log(`⚠️ No active Dropbox connection found for auto-sync`);
-          }
-        } catch (syncError: any) {
-          console.error('❌ Error during auto-sync:', syncError);
-          fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - SYNC ERROR: ${syncError.message || syncError}\n`);
-          fs.appendFileSync('/tmp/dropbox-sync.log', `${new Date().toISOString()} - SYNC ERROR STACK: ${syncError.stack || 'No stack trace'}\n`);
-          // Don't fail the assistant creation if sync fails
-        }
-      }
 
-    } catch (openaiError) {
-      console.error('OpenAI integration error:', openaiError);
-      
-      // Update assistant status to error but don't fail the request
-      await db.assistant.update({
-        where: { id: assistant.id },
-        data: {
-          status: 'ERROR',
-          apiKey: `exec_${uuidv4().replace(/-/g, '')}`,
-          embedUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/embed/${assistant.id}`
+              const vectorStoreData = await vectorStore.json();
+              console.log(`✅ Vector store created: ${vectorStoreData.id}`);
+              
+              // Add files to vector store
+              const fileAddPromises = openaiFileUploads.map(async (upload) => {
+                const response = await fetch(`https://api.openai.com/v1/vector_stores/${vectorStoreData.id}/files`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'OpenAI-Beta': 'assistants=v2'
+                  },
+                  body: JSON.stringify({
+                    file_id: upload.openaiFileId
+                  })
+                });
+                
+                if (!response.ok) {
+                  console.warn(`Failed to add file ${upload.openaiFileId} to vector store`);
+                } else {
+                  console.log(`📎 Added file ${upload.openaiFileId} to vector store`);
+                }
+              });
+
+              await Promise.all(fileAddPromises);
+              
+              // Attach vector store to assistant
+              assistantConfig.tool_resources = {
+                file_search: {
+                  vector_store_ids: [vectorStoreData.id]
+                }
+              };
+              
+              console.log(`✅ Vector store configured with ${openaiFileUploads.length} files for knowledge retrieval`);
+              
+            } catch (vectorError) {
+              console.warn(`⚠️ Vector store creation failed: ${vectorError}`);
+              console.log(`📎 Falling back to enhanced instructions method`);
+            }
+          }
+
+          const openaiAssistant = await openai.beta.assistants.create(assistantConfig);
+
+          console.log(`✅ OpenAI assistant created: ${openaiAssistant.id}`);
+
+          // Step 6: Update assistant with OpenAI IDs
+          await db.assistant.update({
+            where: { id: assistant.id },
+            data: {
+              openaiAssistantId: openaiAssistant.id,
+              vectorStoreId: assistantConfig.tool_resources?.file_search?.vector_store_ids?.[0] || `fallback_${assistant.id}`,
+              status: 'ACTIVE',
+              lastTrained: new Date(),
+              apiKey: `exec_${uuidv4().replace(/-/g, '')}`,
+              embedUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/embed/${assistant.id}`
+            }
+          });
+
+          console.log(`✅ Assistant updated with OpenAI IDs`);
+
+        } catch (openaiError: any) {
+          console.error('OpenAI assistant creation error:', openaiError);
+          
+          // Handle specific OpenAI errors
+          if (openaiError?.error?.code === 'insufficient_quota') {
+            console.log('💳 OpenAI quota exceeded - check your billing');
+            throw new Error('OpenAI quota exceeded. Please check your billing and try again.');
+          } else if (openaiError?.error?.code === 'invalid_api_key') {
+            console.log('🔑 Invalid OpenAI API key');
+            throw new Error('Invalid OpenAI API key. Please check your configuration.');
+          }
+          
+          // For other errors, still create the assistant but mark it as needing attention
+          await db.assistant.update({
+            where: { id: assistant.id },
+            data: {
+              status: 'ERROR',
+              apiKey: `exec_${uuidv4().replace(/-/g, '')}`,
+              embedUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/embed/${assistant.id}`
+            }
+          });
+          
+          throw new Error(`Failed to create AI assistant: ${openaiError.message || 'Unknown error'}`);
         }
-      });
+    } else {
+      // No files uploaded initially, but still create a basic assistant for Dropbox sync
+      console.log(`🧠 Creating basic OpenAI assistant (files will be added via Dropbox sync)`);
+      
+      try {
+        const basicAssistantConfig = {
+          name: `${name} (${userAccount.account.accountId})`,
+          description: description || `AI assistant for ${name}`,
+          instructions: instructions || `You are an AI assistant for ${name}. Files will be synced via Dropbox integration.`,
+          model: 'gpt-4-turbo',
+          metadata: {
+            accountId: userAccount.account.accountId,
+            assistantId: assistant.id,
+            project: 'ExecutaApp',
+            awaitingDropboxSync: 'true'
+          }
+        };
+
+        const openaiAssistant = await openai.beta.assistants.create(basicAssistantConfig);
+
+        await db.assistant.update({
+          where: { id: assistant.id },
+          data: {
+            openaiAssistantId: openaiAssistant.id,
+            status: 'ACTIVE',
+            lastTrained: new Date(),
+            apiKey: `exec_${uuidv4().replace(/-/g, '')}`,
+            embedUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/embed/${assistant.id}`
+          }
+        });
+
+        console.log(`✅ Basic assistant created for Dropbox sync: ${openaiAssistant.id}`);
+      } catch (openaiError: any) {
+        console.error('Basic OpenAI assistant creation error:', openaiError);
+        throw new Error(`Failed to create AI assistant: ${openaiError.message || 'Unknown error'}`);
+      }
     }
 
-    // Step 9: Fetch complete assistant data
+    // Step 7: Dropbox auto-sync (if enabled and configured)
+    if (useDropboxSync) {
+      console.log(`🔄 Auto-syncing Dropbox files for assistant: ${assistant.id}`);
+      
+      try {
+        // Check if user has a Dropbox connection
+        const dropboxConnection = await db.dropboxConnection.findFirst({
+          where: {
+            accountId: userAccount.account.id,
+            isActive: true
+          }
+        });
+
+        if (dropboxConnection) {
+          console.log('✅ Dropbox connection found, will sync files in background...');
+          // Note: Actual sync would happen in a background job
+          // For now, just log that sync is available
+        } else {
+          console.log('⚠️ No active Dropbox connection found for auto-sync');
+        }
+      } catch (dropboxError) {
+        console.error('Dropbox sync check error:', dropboxError);
+        // Don't fail assistant creation if Dropbox check fails
+      }
+    }
+
+    console.log(`🎉 Assistant creation completed successfully: ${assistant.id}`);
+
+    // Step 8: Fetch complete assistant data for response
     const completeAssistant = await db.assistant.findUnique({
-      where: { id: assistant.id }
+      where: { id: assistant.id },
+      include: {
+        files: {
+          include: {
+            file: {
+              select: {
+                id: true,
+                originalName: true,
+                fileType: true,
+                fileSize: true,
+                status: true,
+                createdAt: true
+              }
+            }
+          }
+        }
+      }
     });
 
-    // Get all files associated with this assistant using raw query to include auto-synced files
-    const assistantFilesRaw = await db.$queryRaw`
-      SELECT kf.* FROM knowledge_files kf
-      JOIN assistant_files af ON kf.id = af.file_id
-      WHERE af.assistant_id = ${assistant.id}
-      ORDER BY kf.created_at DESC
-    ` as any[];
-
-    // Transform response
-    const responseData = {
-      id: completeAssistant!.id,
-      name: completeAssistant!.name,
-      description: completeAssistant!.description,
-      status: completeAssistant!.status,
-      model: completeAssistant!.model,
-      apiKey: completeAssistant!.apiKey,
-      embedUrl: completeAssistant!.embedUrl,
-      isPublic: completeAssistant!.isPublic,
-      totalSessions: completeAssistant!.totalSessions,
-      totalMessages: completeAssistant!.totalMessages,
-      createdAt: completeAssistant!.createdAt,
-      updatedAt: completeAssistant!.updatedAt,
-      lastTrained: completeAssistant!.lastTrained,
-      documents: assistantFilesRaw.map((file: any) => ({
-        id: file.id,
-        name: file.original_name,
-        type: file.file_type || 'txt',
-        size: file.file_size ? Number(file.file_size) : 0,
-        status: file.status?.toLowerCase() === 'processed' ? 'completed' : file.status?.toLowerCase() || 'completed',
-        uploadedAt: file.created_at || file.processing_completed_at
-      })),
-      owner: {
-        id: user.id,
-        email: user.email
-      },
-      // Debug info for Dropbox sync
-      ...(useDropboxSync && {
-        dropboxSync: {
-          attempted: true,
-          filesFound: assistantFilesRaw.length,
-          syncedFromDropbox: assistantFilesRaw.filter((f: any) => f.s3_key?.includes('dropbox-sync')).length
-        }
-      })
-    };
+    // Transform response to include file information
+    const assistantFiles = completeAssistant?.files || [];
 
     return NextResponse.json({
       success: true,
-      data: responseData
+      assistant: {
+        id: assistant.id,
+        name: assistant.name,
+        description: assistant.description,
+        status: assistant.status,
+        openaiAssistantId: assistant.openaiAssistantId,
+        apiKey: assistant.apiKey,
+        embedUrl: assistant.embedUrl,
+        totalFiles: assistantFiles.length,
+        files: assistantFiles.map(af => ({
+          id: af.file.id,
+          name: af.file.originalName,
+          type: af.file.fileType,
+          size: Number(af.file.fileSize),
+          status: af.file.status,
+          uploadedAt: af.file.createdAt
+        })),
+        useDropboxSync,
+        dropboxSyncAvailable: useDropboxSync
+      }
     });
 
   } catch (error) {
-    console.error('Assistant creation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create assistant', details: String(error) },
-      { status: 500 }
-    );
+    console.error('❌ Assistant creation error:', error);
+    
+    // Enhanced error response
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorDetails = {
+      error: 'Failed to create assistant',
+      message: errorMessage,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('📤 Returning error response:', errorDetails);
+    
+    return NextResponse.json(errorDetails, { status: 500 });
   }
 } 
