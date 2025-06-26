@@ -345,6 +345,26 @@ export default function SettingsPage() {
           connected.add('dropbox');
         }
         
+        // Check Discord integration status
+        try {
+          const discordResponse = await fetch('/api/integrations/discord/status', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+          });
+          if (discordResponse.ok) {
+            const discordData = await discordResponse.json();
+            if (discordData.connected) {
+              connected.add('discord');
+            }
+          }
+        } catch (discordError) {
+          console.log('Discord status check failed:', discordError);
+        }
+        
         setConnectedIntegrations(connected);
       }
     } catch (error) {
@@ -418,6 +438,55 @@ export default function SettingsPage() {
       } catch (error) {
         console.error('Gmail connection error:', error);
         showError('Failed to connect to Gmail. Please try again.');
+      }
+    } else if (integration === 'discord') {
+      try {
+        // First, fetch user's assistants
+        const token = localStorage.getItem('executa-auth-token');
+        const assistantsResponse = await fetch('/api/assistants', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!assistantsResponse.ok) {
+          throw new Error('Failed to fetch assistants');
+        }
+        
+        const assistantsData = await assistantsResponse.json();
+        
+        if (!assistantsData.assistants || assistantsData.assistants.length === 0) {
+          showError('Please create an AI assistant first before connecting Discord.');
+          return;
+        }
+        
+        // If user has multiple assistants, we should show a selection dialog
+        // For now, let's use the first assistant
+        const assistantId = assistantsData.assistants[0].id;
+        
+        const response = await fetch(`/api/integrations/discord/auth?assistantId=${assistantId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (response.status === 503) {
+            showError('Discord integration not configured on this server');
+            return;
+          }
+          throw new Error(errorData.message || 'Failed to initialize Discord connection');
+        }
+        
+        const data = await response.json();
+        
+        // Redirect to Discord OAuth
+        window.location.href = data.authUrl;
+        
+      } catch (error) {
+        console.error('Discord connection error:', error);
+        showError('Failed to connect to Discord. Please try again.');
       }
     } else {
       // For other integrations, just update local state for demo
@@ -562,6 +631,32 @@ export default function SettingsPage() {
       } catch (error) {
         console.error('Disconnect error:', error);
         toast.error('Failed to disconnect Gmail');
+      }
+    } else if (integration === 'discord') {
+      try {
+        const token = localStorage.getItem('executa-auth-token');
+        const response = await fetch('/api/integrations/discord/status', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'disconnect' })
+        });
+
+        if (response.ok) {
+          setConnectedIntegrations(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(integration);
+            return newSet;
+          });
+          toast.success('Discord disconnected successfully');
+        } else {
+          throw new Error('Failed to disconnect Discord');
+        }
+      } catch (error) {
+        console.error('Discord disconnect error:', error);
+        toast.error('Failed to disconnect Discord');
       }
     } else {
       setConnectedIntegrations(prev => {
