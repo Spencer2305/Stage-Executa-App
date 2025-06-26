@@ -26,6 +26,7 @@ model Account {
   assistants           Assistant[]
   dropboxConnections   DropboxConnection[]
   slackConnections     SlackConnection[]
+  discordConnections   DiscordConnection[]
   fileSessions         FileProcessingSession[]
   knowledgeFiles       KnowledgeFile[]
   users                User[]
@@ -117,6 +118,7 @@ model KnowledgeFile {
 }
 
 model Assistant {
+<<<<<<< HEAD
   id                          String            @id @default(cuid())
   accountId                   String            @map("account_id")
   name                        String
@@ -150,7 +152,8 @@ model Assistant {
   lastTrained                 DateTime?         @map("last_trained")
   files                       AssistantFile[]
   slackConnections            SlackConnection[]
-  account                     Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  discordConnections          DiscordConnection[]
+  account                     Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId, status])
   @@map("assistants")
@@ -229,6 +232,27 @@ model SlackConnection {
   @@map("slack_connections")
 }
 
+model DiscordConnection {
+  id                String    @id @default(cuid())
+  accountId         String    @map("account_id")
+  assistantId       String    @map("assistant_id")
+  guildId           String    @map("guild_id")
+  guildName         String    @map("guild_name")
+  guildIcon         String?   @map("guild_icon")
+  botToken          String    @map("bot_token")
+  botUserId         String?   @map("bot_user_id")
+  permissions       String    @map("permissions")
+  isActive          Boolean   @default(true) @map("is_active")
+  lastMessageAt     DateTime? @map("last_message_at")
+  totalMessages     Int       @default(0) @map("total_messages")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  account           Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant         Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, assistantId])
+  @@map("discord_connections")
+}
 enum Plan {
   FREE
   PRO
