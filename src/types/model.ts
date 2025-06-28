@@ -25,6 +25,11 @@ export interface Model {
   chatHeaderTitle?: string;
   welcomeMessage?: string;
   totalSessions: number;
+  
+  // Handoff configuration
+  handoffEnabled?: boolean;
+  handoffSettings?: any;
+  
   owner: {
     id: string;
     email: string;

@@ -179,7 +179,7 @@ export const modelApi = {
   },
 
   removeFile: async (assistantId: string, fileId: string): Promise<{ remainingFiles: ModelDocument[]; deletedCompletely: boolean }> => {
-    const response = await api.delete(`/assistants/${assistantId}/files/${fileId}`);
+    const response = await api.delete(`/assistants/${assistantId}/files?fileId=${fileId}`);
     return response.data.data;
   },
 };

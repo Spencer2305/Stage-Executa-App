@@ -29,11 +29,15 @@ import {
   TrendingDown,
   Zap,
   Target,
-  Check
+  Check,
+  AlertCircle,
+  RefreshCw,
+  Database
 } from "lucide-react";
 import { useUserStore } from "@/state/userStore";
 import { useModelStore } from "@/state/modelStore";
 import { useEffect, useState } from "react";
+import fetchApi from "@/utils/api";
 
 // Simple Sparkline Component
 function Sparkline({ data, color = "blue", trend = "up" }: { 
@@ -90,17 +94,221 @@ function MiniBarChart({ data, color = "blue" }: { data: number[], color?: string
   );
 }
 
+interface AnalyticsData {
+  overview: {
+    totalConversations: number;
+    totalMessages: number;
+    uniqueUsers: number;
+    avgResponseTime: number;
+    avgSatisfaction: number;
+    errorRate: number;
+    conversationGrowth: number;
+    messageGrowth: number;
+  };
+  platformBreakdown: Array<{
+    platform: string;
+    conversations: number;
+    messages: number;
+  }>;
+  dailyTrends: Array<{
+    date: string;
+    conversations: number;
+    messages: number;
+    uniqueUsers: number;
+    avgResponseTime?: number;
+    avgSatisfaction?: number;
+    errorRate?: number;
+  }>;
+  assistantPerformance: Array<{
+    assistantId: string;
+    assistantName: string;
+    assistantStatus: string;
+    conversations: number;
+    totalMessages: number;
+    avgResponseTime: number;
+    avgSatisfaction: number;
+  }>;
+  popularQueries: Array<{
+    query: string;
+    count: number;
+    avgResponseTime?: number;
+    avgSatisfaction?: number;
+    isAnswered: boolean;
+    category?: string;
+    lastAsked: string;
+  }>;
+  recentFeedback: Array<{
+    id: string;
+    rating: number;
+    feedback?: string;
+    feedbackType: string;
+    platform: string;
+    assistantName: string;
+    createdAt: string;
+  }>;
+  timeRange: string;
+  dateRange: {
+    start: string;
+    end: string;
+  };
+}
+
 export default function AnalyticsPage() {
   const { user } = useUserStore();
   const { models, fetchModels } = useModelStore();
   
-  // State for filters
+  // State for filters and data
   const [selectedAssistant, setSelectedAssistant] = useState("All Assistants");
   const [selectedTimeRange, setSelectedTimeRange] = useState("Last 7 days");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [usingMockData, setUsingMockData] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     fetchModels();
   }, [fetchModels]);
+
+  // Function to fetch analytics data
+  const fetchAnalyticsData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Map time range to API format
+      const timeRangeMap: { [key: string]: string } = {
+        "Last 24 hours": "24h",
+        "Last 7 days": "7d", 
+        "Last 30 days": "30d",
+        "Last 3 months": "90d",
+        "Last 6 months": "180d",
+        "Last year": "1y",
+        "All time": "all"
+      };
+
+      const apiTimeRange = timeRangeMap[selectedTimeRange] || "7d";
+      const assistantId = selectedAssistant !== "All Assistants" 
+        ? models.find(m => m.name === selectedAssistant)?.id
+        : undefined;
+
+      const params = new URLSearchParams({
+        timeRange: apiTimeRange,
+      });
+      
+      if (assistantId) {
+        params.append('assistantId', assistantId);
+      }
+
+      const response = await fetchApi(`/analytics?${params.toString()}`);
+      
+      if (response.data && response.data.success) {
+        setAnalyticsData(response.data.data);
+        setUsingMockData(false);
+      } else {
+        throw new Error(response.data?.error || 'Failed to fetch analytics');
+      }
+    } catch (err) {
+      console.error('Analytics fetch error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load analytics');
+      
+      // Fallback to mock data
+      setAnalyticsData(generateMockAnalyticsData());
+      setUsingMockData(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Generate mock data as fallback
+  const generateMockAnalyticsData = (): AnalyticsData => {
+    const mockData = {
+      overview: {
+        totalConversations: 1247,
+        totalMessages: 5834,
+        uniqueUsers: 423,
+        avgResponseTime: 1.2,
+        avgSatisfaction: 4.6,
+        errorRate: 2.3,
+        conversationGrowth: 23.5,
+        messageGrowth: 18.7,
+      },
+      platformBreakdown: [
+        { platform: "WEBSITE", conversations: 865, messages: 4012 },
+        { platform: "SLACK", conversations: 234, messages: 1245 },
+        { platform: "DISCORD", conversations: 89, messages: 398 },
+        { platform: "API", conversations: 59, messages: 179 },
+      ],
+      dailyTrends: Array.from({ length: 30 }, (_, i) => ({
+        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString(),
+        conversations: Math.floor(Math.random() * 50) + 20,
+        messages: Math.floor(Math.random() * 200) + 80,
+        uniqueUsers: Math.floor(Math.random() * 25) + 10,
+        avgResponseTime: Math.random() * 2 + 0.5,
+        avgSatisfaction: Math.random() * 1.5 + 3.5,
+        errorRate: Math.random() * 5,
+      })),
+      assistantPerformance: models.map((model, index) => ({
+        assistantId: model.id,
+        assistantName: model.name,
+        assistantStatus: model.status,
+        conversations: Math.floor(Math.random() * 500) + 50,
+        totalMessages: Math.floor(Math.random() * 2000) + 200,
+        avgResponseTime: Math.random() * 2 + 0.8,
+        avgSatisfaction: Math.random() * 1.5 + 3.5,
+      })),
+      popularQueries: [
+        { query: "How do I reset my password?", count: 89, isAnswered: true, category: "support", lastAsked: new Date().toISOString() },
+        { query: "What are your business hours?", count: 67, isAnswered: true, category: "general", lastAsked: new Date().toISOString() },
+        { query: "Can you help me with billing?", count: 54, isAnswered: true, category: "billing", lastAsked: new Date().toISOString() },
+        { query: "How do I contact support?", count: 43, isAnswered: true, category: "support", lastAsked: new Date().toISOString() },
+        { query: "What features are available?", count: 38, isAnswered: true, category: "general", lastAsked: new Date().toISOString() },
+      ],
+      recentFeedback: [
+        { id: "1", rating: 5, feedback: "Great help!", feedbackType: "RATING", platform: "WEBSITE", assistantName: "Support Bot", createdAt: new Date().toISOString() },
+        { id: "2", rating: 4, feedback: "Quick response", feedbackType: "RATING", platform: "SLACK", assistantName: "Help Assistant", createdAt: new Date().toISOString() },
+        { id: "3", rating: 5, feedbackType: "THUMBS_UP", platform: "WEBSITE", assistantName: "Support Bot", createdAt: new Date().toISOString() },
+      ],
+      timeRange: selectedTimeRange,
+      dateRange: {
+        start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        end: new Date().toISOString(),
+      },
+    };
+    return mockData;
+  };
+
+  // Generate sample data for testing
+  const generateSampleData = async () => {
+    try {
+      setIsGenerating(true);
+      
+      const assistantId = selectedAssistant !== "All Assistants" 
+        ? models.find(m => m.name === selectedAssistant)?.id
+        : undefined;
+        
+      const response = await fetchApi.post('/analytics/generate-sample', { assistantId });
+      
+      if (response.data && response.data.success) {
+        // Refresh analytics data after generation
+        await fetchAnalyticsData();
+      } else {
+        throw new Error(response.data?.error || 'Failed to generate sample data');
+      }
+    } catch (err) {
+      console.error('Failed to generate sample data:', err);
+      // You might want to show a toast notification here
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Fetch data when filters change
+  useEffect(() => {
+    if (user) {
+      fetchAnalyticsData();
+    }
+  }, [user, selectedTimeRange, selectedAssistant, models]);
 
   // Assistant options for dropdown
   const assistantOptions = [
@@ -121,9 +329,12 @@ export default function AnalyticsPage() {
 
   // Function to handle CSV export
   const handleExport = () => {
-    // Mock export functionality
-    const csvData = `Assistant,Conversations,Rating,Response Time
-${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(4 + Math.random()).toFixed(1)},${(0.8 + Math.random() * 2).toFixed(1)}s`).join('\n')}`;
+    if (!analyticsData) return;
+    
+    const csvData = `Assistant,Conversations,Rating,Response Time,Messages,Platform
+${analyticsData.assistantPerformance.map(ap => 
+  `${ap.assistantName},${ap.conversations},${ap.avgSatisfaction.toFixed(1)},${ap.avgResponseTime.toFixed(1)}s,${ap.totalMessages},Mixed`
+).join('\n')}`;
     
     const blob = new Blob([csvData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -136,27 +347,39 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
     window.URL.revokeObjectURL(url);
   };
 
-  // Enhanced mock data with trends
-  const mockData = {
-    totalConversations: 1247,
-    avgResponseTime: 1.2,
-    satisfactionRate: 4.6,
-    topAssistant: models.length > 0 ? models[0]?.name : "Customer Support Bot",
-    weeklyGrowth: 23,
-    monthlyActive: 234,
-    conversationTrend: [45, 52, 48, 61, 55, 67, 73, 69, 78, 82, 87, 91, 95],
-    satisfactionTrend: [4.2, 4.3, 4.1, 4.4, 4.5, 4.3, 4.6, 4.7, 4.5, 4.6, 4.8, 4.7, 4.6],
-    responseTimeTrend: [1.8, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 1.1, 1.2, 1.0, 1.1, 1.2],
-    usersTrend: [15, 18, 22, 28, 25, 32, 38, 42, 45, 48, 52, 55, 60]
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="p-8 space-y-8 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600">Loading analytics data...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const assistantData = models.map((model, index) => ({
-    ...model,
-    conversations: Math.floor(Math.random() * 500) + 50,
-    avgRating: (4 + Math.random()).toFixed(1),
-    responseTime: (0.8 + Math.random() * 2).toFixed(1),
-    platform: index % 2 === 0 ? 'Website' : 'Slack'
-  }));
+  if (!analyticsData) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="p-8 space-y-8 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">Failed to load analytics</p>
+              <Button onClick={fetchAnalyticsData} variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -168,6 +391,35 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
           <p className="text-gray-600 mt-1">
             Monitor performance and insights across all your AI assistants
           </p>
+          {usingMockData && (
+            <div className="flex items-center justify-between mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <div className="flex items-center">
+                <Database className="h-4 w-4 text-amber-600 mr-2" />
+                <span className="text-sm text-amber-800">
+                  Showing demo data. Real analytics will appear after conversations.
+                </span>
+              </div>
+              <Button 
+                onClick={generateSampleData} 
+                variant="outline" 
+                size="sm"
+                disabled={isGenerating}
+                className="text-amber-800 border-amber-300 hover:bg-amber-100"
+              >
+                {isGenerating ? (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-3 w-3 mr-2" />
+                    Generate Sample Data
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
           {(selectedAssistant !== "All Assistants" || selectedTimeRange !== "Last 7 days") && (
             <div className="flex items-center space-x-2 mt-2">
               <span className="text-sm text-gray-500">Filtered by:</span>
@@ -198,21 +450,18 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
                 <DropdownMenuItem
                   key={option}
                   onClick={() => setSelectedAssistant(option)}
-                  className="flex items-center justify-between"
                 >
-                  <span>{option}</span>
-                  {selectedAssistant === option && (
-                    <Check className="h-4 w-4" />
-                  )}
+                  {option}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Time Range Filter Dropdown */}
+          {/* Time Range Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
+                <Calendar className="mr-2 h-4 w-4" />
                 {selectedTimeRange}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
@@ -222,107 +471,146 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
                 <DropdownMenuItem
                   key={option}
                   onClick={() => setSelectedTimeRange(option)}
-                  className="flex items-center justify-between"
                 >
-                  <span>{option}</span>
-                  {selectedTimeRange === option && (
-                    <Check className="h-4 w-4" />
-                  )}
+                  {option}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
           {/* Export Button */}
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
+          <Button onClick={handleExport} variant="outline" size="sm">
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+
+          {/* Refresh Button */}
+          <Button onClick={fetchAnalyticsData} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Enhanced Summary Boxes with Sparklines */}
+      {/* Key Metrics Overview */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border border-gray-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Most Used Assistant</CardTitle>
-            <Star className="h-4 w-4 text-yellow-500" />
+            <CardTitle className="text-sm font-medium">Total Conversations</CardTitle>
+            <MessageSquare className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-xl font-bold text-gray-900">{mockData.topAssistant}</div>
-                <p className="text-xs text-gray-500">
-                  {mockData.totalConversations} conversations this month
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  ↗ Up {mockData.weeklyGrowth}% this week
-                </p>
-              </div>
-              <Sparkline data={mockData.conversationTrend} color="blue" trend="up" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border border-gray-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Highest Satisfaction</CardTitle>
-            <ThumbsUp className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-xl font-bold text-gray-900">{mockData.satisfactionRate}/5.0</div>
-                <p className="text-xs text-gray-500">
-                  Average across all assistants
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  ↗ +0.4 improvement this month
-                </p>
-              </div>
-              <Sparkline data={mockData.satisfactionTrend} color="green" trend="up" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border border-gray-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Average Response Time</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-xl font-bold text-gray-900">{mockData.avgResponseTime}s</div>
-                <p className="text-xs text-gray-500">
-                  Avg. response 1.2s – faster than 82% of tools
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  ↘ {mockData.weeklyGrowth}% faster than last week
-                </p>
-              </div>
-              <Sparkline data={mockData.responseTimeTrend} color="blue" trend="down" />
+            <div className="text-2xl font-bold">{analyticsData.overview.totalConversations.toLocaleString()}</div>
+            <div className="flex items-center text-xs">
+              {analyticsData.overview.conversationGrowth >= 0 ? (
+                <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+              )}
+              <span className={analyticsData.overview.conversationGrowth >= 0 ? "text-green-600" : "text-red-600"}>
+                {analyticsData.overview.conversationGrowth >= 0 ? '+' : ''}{analyticsData.overview.conversationGrowth.toFixed(1)}%
+              </span>
+              <span className="text-gray-500 ml-1">vs last period</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border border-gray-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Monthly Active Users</CardTitle>
-            <Users className="h-4 w-4 text-purple-500" />
+            <CardTitle className="text-sm font-medium">Messages Exchanged</CardTitle>
+            <Mail className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-xl font-bold text-gray-900">{mockData.monthlyActive}</div>
-                <p className="text-xs text-gray-500">
-                  Unique users this month
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  ↗ +{mockData.weeklyGrowth}% from last month
-                </p>
+            <div className="text-2xl font-bold">{analyticsData.overview.totalMessages.toLocaleString()}</div>
+            <div className="flex items-center text-xs">
+              {analyticsData.overview.messageGrowth >= 0 ? (
+                <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+              )}
+              <span className={analyticsData.overview.messageGrowth >= 0 ? "text-green-600" : "text-red-600"}>
+                {analyticsData.overview.messageGrowth >= 0 ? '+' : ''}{analyticsData.overview.messageGrowth.toFixed(1)}%
+              </span>
+              <span className="text-gray-500 ml-1">vs last period</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Unique Users</CardTitle>
+            <Users className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analyticsData.overview.uniqueUsers.toLocaleString()}</div>
+            <p className="text-xs text-gray-500">
+              Active users in period
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analyticsData.overview.avgResponseTime.toFixed(1)}s</div>
+            <p className="text-xs text-gray-500">
+              Average assistant response
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">User Satisfaction</CardTitle>
+            <Star className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analyticsData.overview.avgSatisfaction.toFixed(1)}/5</div>
+            <div className="flex items-center mt-2">
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star 
+                    key={star}
+                    className={`h-4 w-4 ${star <= Math.round(analyticsData.overview.avgSatisfaction) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                  />
+                ))}
               </div>
-              <MiniBarChart data={mockData.usersTrend} color="purple" />
+              <span className="text-xs text-gray-500 ml-2">Average rating</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <Target className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{(100 - analyticsData.overview.errorRate).toFixed(1)}%</div>
+            <p className="text-xs text-gray-500">
+              Conversations without errors
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Platform Distribution</CardTitle>
+            <Globe className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {analyticsData.platformBreakdown.slice(0, 3).map((platform, index) => (
+                <div key={platform.platform} className="flex items-center justify-between text-sm">
+                  <span className="capitalize">{platform.platform.toLowerCase()}</span>
+                  <span className="font-medium">{platform.conversations}</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -341,9 +629,12 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
               <div className="text-center">
                 <BarChart3 className="h-12 w-12 text-blue-500 mx-auto mb-4" />
                 <p className="text-blue-700 font-medium">Interactive Chart</p>
-                <p className="text-sm text-blue-600">Showing growth trend: +{mockData.weeklyGrowth}% this week</p>
+                <p className="text-sm text-blue-600">Showing growth trend: +{analyticsData.overview.conversationGrowth.toFixed(1)}% this period</p>
                 <div className="mt-4 flex justify-center">
-                  <MiniBarChart data={[40, 45, 52, 48, 61, 55, 67, 73, 69, 78, 82, 87, 91]} color="blue" />
+                  <MiniBarChart 
+                    data={analyticsData.dailyTrends.slice(-13).map(d => d.conversations)} 
+                    color="blue" 
+                  />
                 </div>
               </div>
             </div>
@@ -353,17 +644,20 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
         {/* Response Time Trends */}
         <Card>
           <CardHeader>
-            <CardTitle>Response Time Trends</CardTitle>
-            <CardDescription>Average response time by assistant</CardDescription>
+            <CardTitle>Response Time Analysis</CardTitle>
+            <CardDescription>Average response time trends and distribution</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64 flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 rounded-lg border border-green-100">
               <div className="text-center">
-                <TrendingUp className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <p className="text-green-700 font-medium">Performance Metrics</p>
-                <p className="text-sm text-green-600">Average: {mockData.avgResponseTime}s response time</p>
+                <Clock className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                <p className="text-green-700 font-medium">Response Time Trends</p>
+                <p className="text-sm text-green-600">Current avg: {analyticsData.overview.avgResponseTime.toFixed(1)}s</p>
                 <div className="mt-4 flex justify-center">
-                  <Sparkline data={mockData.responseTimeTrend} color="green" trend="down" />
+                  <Sparkline 
+                    data={analyticsData.dailyTrends.slice(-13).map(d => d.avgResponseTime || 1)} 
+                    color="green" 
+                  />
                 </div>
               </div>
             </div>
@@ -371,178 +665,129 @@ ${models.map(model => `${model.name},${Math.floor(Math.random() * 500) + 50},${(
         </Card>
       </div>
 
-      {/* Filtering Options */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Filter Analytics</CardTitle>
-              <CardDescription>View data by platform or knowledge source</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Platform</label>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="cursor-pointer hover:bg-blue-50">
-                  <Globe className="w-3 h-3 mr-1" />
-                  Website (12)
-                </Badge>
-                <Badge variant="outline" className="cursor-pointer hover:bg-blue-50">
-                  <MessageSquare className="w-3 h-3 mr-1" />
-                  Slack (8)
-                </Badge>
-                <Badge variant="outline" className="cursor-pointer hover:bg-blue-50">
-                  <Zap className="w-3 h-3 mr-1" />
-                  API (3)
-                </Badge>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Knowledge Source</label>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="cursor-pointer hover:bg-green-50">
-                  <FileText className="w-3 h-3 mr-1" />
-                  Documents (15)
-                </Badge>
-                <Badge variant="outline" className="cursor-pointer hover:bg-green-50">
-                  <Mail className="w-3 h-3 mr-1" />
-                  Gmail (5)
-                </Badge>
-                <Badge variant="outline" className="cursor-pointer hover:bg-green-50">
-                  <Zap className="w-3 h-3 mr-1" />
-                  API (2)
-                </Badge>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Time Range</label>
-              <select className="w-full p-2 border rounded-md text-sm">
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 3 months</option>
-                <option>All time</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Assistant Performance Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Assistant Performance</CardTitle>
-              <CardDescription>Detailed metrics for each AI assistant</CardDescription>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm">
-                Group by Platform
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {models.length === 0 ? (
-            <div className="text-center py-12">
-              <Bot className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No assistants to analyze yet</h3>
-              <p className="text-gray-500 mb-4">Create your first AI assistant to start seeing analytics</p>
-              <div className="space-y-3">
-                <div className="flex items-center justify-center space-x-2 text-sm text-gray-400">
-                  <Target className="w-4 h-4" />
-                  <span>Demo data shown below to preview the analytics experience</span>
-                </div>
-              </div>
-            </div>
-          ) : (
+      {/* Popular Queries and Recent Feedback */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Popular Queries */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Popular Queries</CardTitle>
+            <CardDescription>Most frequently asked questions</CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
-              {assistantData.map((assistant) => (
-                <div key={assistant.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-white hover:shadow-md transition-all duration-200">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Bot className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">{assistant.name}</h4>
-                      <p className="text-sm text-gray-500">
-                        {assistant.conversations} conversations • {assistant.platform}
-                      </p>
+              {analyticsData.popularQueries.slice(0, 5).map((query, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {query.query}
+                    </p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <Badge variant="outline" className="text-xs">
+                        {query.category || 'general'}
+                      </Badge>
+                      {query.isAnswered ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3 text-red-500" />
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-6 text-sm">
-                    <div className="text-center">
-                      <p className="font-medium text-gray-900">{assistant.avgRating}</p>
-                      <p className="text-gray-500">Rating</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-medium text-gray-900">{assistant.responseTime}s</p>
-                      <p className="text-gray-500">Response</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-medium text-gray-900">{assistant.conversations}</p>
-                      <p className="text-gray-500">Sessions</p>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-gray-900">{query.count}</p>
+                    <p className="text-xs text-gray-500">asks</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Feedback */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Feedback</CardTitle>
+            <CardDescription>Latest user ratings and comments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {analyticsData.recentFeedback.slice(0, 5).map((feedback) => (
+                <div key={feedback.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star 
+                        key={star}
+                        className={`h-3 w-3 ${star <= feedback.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                      />
+                    ))}
+                  </div>
+                  <div className="flex-1">
+                    {feedback.feedback && (
+                      <p className="text-sm text-gray-900 mb-1">"{feedback.feedback}"</p>
+                    )}
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      <span>{feedback.assistantName}</span>
+                      <span>•</span>
+                      <span className="capitalize">{feedback.platform.toLowerCase()}</span>
+                      <span>•</span>
+                      <span>{new Date(feedback.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          )}
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Demo Data Section */}
-          {models.length === 0 && (
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <h4 className="font-medium text-gray-900 mb-4">Preview Analytics (Demo Data)</h4>
-              <div className="space-y-3">
-                {[
-                  { name: "Customer Support Bot", conversations: 342, rating: "4.8", response: "0.9s", platform: "Website" },
-                  { name: "Sales Assistant", conversations: 189, rating: "4.6", response: "1.2s", platform: "Slack" },
-                  { name: "FAQ Helper", conversations: 156, rating: "4.7", response: "0.8s", platform: "Website" },
-                ].map((demo, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg bg-blue-50/50 border-blue-200">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Bot className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">{demo.name}</h4>
-                        <p className="text-sm text-gray-500">
-                          {demo.conversations} conversations • {demo.platform}
-                        </p>
-                      </div>
+      {/* Assistant Performance */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Assistant Performance Comparison</CardTitle>
+          <CardDescription>Detailed metrics for each AI assistant</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {analyticsData.assistantPerformance.length > 0 ? (
+            <div className="space-y-4">
+              {analyticsData.assistantPerformance.map((assistant) => (
+                <div key={assistant.assistantId} className="flex items-center justify-between p-4 border rounded-lg hover:bg-white hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <Bot className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="flex items-center space-x-6 text-sm">
-                      <div className="text-center">
-                        <p className="font-medium text-gray-900">{demo.rating}</p>
-                        <p className="text-gray-500">Rating</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-gray-900">{demo.response}</p>
-                        <p className="text-gray-500">Response</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-gray-900">{demo.conversations}</p>
-                        <p className="text-gray-500">Sessions</p>
-                      </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">{assistant.assistantName}</h4>
+                      <p className="text-sm text-gray-500">
+                        {assistant.conversations} conversations • {assistant.assistantStatus.toLowerCase()}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
+                  <div className="flex items-center space-x-6 text-sm">
+                    <div className="text-center">
+                      <p className="font-medium text-gray-900">{assistant.avgSatisfaction.toFixed(1)}</p>
+                      <p className="text-gray-500">Rating</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-medium text-gray-900">{assistant.avgResponseTime.toFixed(1)}s</p>
+                      <p className="text-gray-500">Response</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-medium text-gray-900">{assistant.totalMessages}</p>
+                      <p className="text-gray-500">Messages</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No assistant data available</p>
+              <p className="text-sm text-gray-400">Create some assistants to see performance metrics</p>
             </div>
           )}
-                 </CardContent>
-       </Card>
+        </CardContent>
+      </Card>
       </div>
-     </div>
-   );
- } 
+    </div>
+  );
+} 

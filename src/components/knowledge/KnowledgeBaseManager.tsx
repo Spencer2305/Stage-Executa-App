@@ -62,19 +62,36 @@ export default function KnowledgeBaseManager({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDate = (date: Date | string | null | undefined) => {
+  const formatDate = (date: Date | string | number | null | undefined) => {
     if (!date) return 'Unknown';
     
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    if (isNaN(dateObj.getTime())) return 'Invalid Date';
-    
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(dateObj);
+    try {
+      let dateObj: Date;
+      
+      if (date instanceof Date) {
+        dateObj = date;
+      } else if (typeof date === 'string' || typeof date === 'number') {
+        dateObj = new Date(date);
+      } else {
+        return 'Unknown';
+      }
+      
+      // Check if the date is valid
+      if (isNaN(dateObj.getTime()) || !dateObj.getTime) {
+        return 'Unknown';
+      }
+      
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(dateObj);
+    } catch (error) {
+      console.warn('Date formatting error:', error, 'for date:', date);
+      return 'Unknown';
+    }
   };
 
   const getFileIcon = (type: string) => {
@@ -163,6 +180,12 @@ export default function KnowledgeBaseManager({
       });
 
       console.log('✅ Files uploaded successfully:', result);
+      
+      // Show completion briefly before resetting
+      setUploadProgress(100);
+      
+      // Small delay to show completion state
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Update the files list
       onFilesUpdated(result.files);
@@ -315,7 +338,7 @@ export default function KnowledgeBaseManager({
             }
           </p>
           <p className="text-xs text-gray-500">
-            Supports PDF, DOC, DOCX, TXT files
+            Supports PDF, DOC, DOCX, TXT, and image files
           </p>
           
           {isUploading && (
@@ -336,7 +359,7 @@ export default function KnowledgeBaseManager({
           ref={fileInputRef}
           onChange={handleFileChange}
           multiple
-          accept=".pdf,.doc,.docx,.txt"
+          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp"
           className="hidden"
         />
 

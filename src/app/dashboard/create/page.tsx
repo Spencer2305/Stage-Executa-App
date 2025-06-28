@@ -72,7 +72,7 @@ export default function CreateAIPage() {
 
   const handleFiles = (fileList: FileList) => {
     const newFiles = Array.from(fileList).filter(file => {
-      const validTypes = ['.pdf', '.docx', '.txt'];
+      const validTypes = ['.pdf', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.webp'];
       return validTypes.some(type => file.name.toLowerCase().endsWith(type));
     });
     
@@ -246,14 +246,14 @@ export default function CreateAIPage() {
                       <input
                         type="file"
                         multiple
-                        accept=".pdf,.docx,.txt"
+                        accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp"
                         onChange={(e) => e.target.files && handleFiles(e.target.files)}
                         className="hidden"
                       />
                     </label>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Supports PDF, DOCX, and TXT files (max 10 files)
+                    Supports PDF, DOCX, TXT, and image files (max 10 files)
                   </p>
                 </div>
               </div>

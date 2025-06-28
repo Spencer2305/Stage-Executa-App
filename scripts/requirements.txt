@@ -1,0 +1,11 @@
+pdfplumber>=0.10.0
+PyPDF2>=3.0.0
+PyMuPDF>=1.23.0
+
+# OCR dependencies for image text extraction
+pytesseract>=0.3.10
+easyocr>=1.7.0
+paddleocr>=2.7.0
+Pillow>=10.0.0
+numpy>=1.24.0
+opencv-python>=4.8.0 

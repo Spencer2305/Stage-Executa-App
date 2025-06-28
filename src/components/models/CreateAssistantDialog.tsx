@@ -71,18 +71,28 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
   }, []);
 
   const handleFiles = (fileList: FileList) => {
-    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'];
+    const validTypes = [
+      'application/pdf', 
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+      'text/plain', 
+      'text/markdown',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/bmp',
+      'image/tiff',
+      'image/webp'
+    ];
+    const validExtensions = ['.pdf', '.docx', '.doc', '.txt', '.md', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.webp'];
+    
     const newFiles = Array.from(fileList).filter(file => {
-      return validTypes.includes(file.type) || 
-             file.name.toLowerCase().endsWith('.pdf') ||
-             file.name.toLowerCase().endsWith('.docx') ||
-             file.name.toLowerCase().endsWith('.doc') ||
-             file.name.toLowerCase().endsWith('.txt') ||
-             file.name.toLowerCase().endsWith('.md');
+      const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+      return validTypes.includes(file.type) || validExtensions.includes(extension);
     });
     
     if (newFiles.length !== fileList.length) {
-      toast.error('Some files were skipped. Only PDF, DOC, DOCX, TXT, and MD files are supported.');
+      toast.error('Some files were skipped. Only PDF, DOC, DOCX, TXT, MD, and image files are supported.');
     }
     
     setFormData(prev => ({
@@ -262,14 +272,14 @@ export default function CreateAssistantDialog({ children }: CreateAssistantDialo
                         <input
                           type="file"
                           multiple
-                          accept=".pdf,.docx,.doc,.txt,.md"
+                          accept=".pdf,.docx,.doc,.txt,.md,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp"
                           onChange={(e) => e.target.files && handleFiles(e.target.files)}
                           className="hidden"
                         />
                       </label>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Supports PDF, DOC, DOCX, TXT, and MD files (max 10 files)
+                      Supports PDF, DOC, DOCX, TXT, MD, and image files (max 10 files)
                     </p>
                   </div>
                 </div>

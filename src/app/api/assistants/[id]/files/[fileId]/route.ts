@@ -5,6 +5,23 @@ import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const prisma = new PrismaClient();
 
+// Add a GET method to ensure the route is properly registered
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; fileId: string }> }
+) {
+  const resolvedParams = await params;
+  const { id: assistantId, fileId } = resolvedParams;
+  console.log('🔍 GET /api/assistants/${assistantId}/files/${fileId} - Route is accessible');
+  
+  return NextResponse.json({
+    message: 'File endpoint is accessible',
+    assistantId,
+    fileId,
+    availableMethods: ['DELETE']
+  });
+}
+
 // Initialize S3 client if AWS credentials are available
 let s3Client: S3Client | null = null;
   s3Client = new S3Client({
@@ -19,9 +36,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
+  console.log('🚀 DELETE route reached for file deletion');
   try {
-    const { id: assistantId, fileId } = await params;
-    console.log(`🗑️ DELETE /api/assistants/${assistantId}/files/${fileId}`);
+    const resolvedParams = await params;
+    const { id: assistantId, fileId } = resolvedParams;
+    console.log(`🗑️ DELETE /api/assistants/${assistantId}/files/${fileId} - Params:`, { assistantId, fileId });
     
     // Verify authentication
     const userAccount = await authenticateRequest(request);

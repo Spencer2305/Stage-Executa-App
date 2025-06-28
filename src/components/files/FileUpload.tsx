@@ -13,7 +13,8 @@ import {
   XCircle, 
   AlertCircle,
   Trash2,
-  FileText
+  FileText,
+  Image
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -36,7 +37,7 @@ export default function FileUpload({
   onUploadComplete, 
   maxFiles = 10,
   maxFileSize = 10 * 1024 * 1024, // 10MB default
-  acceptedFileTypes = ['.pdf', '.doc', '.docx', '.txt', '.md', '.json', '.csv']
+  acceptedFileTypes = ['.pdf', '.doc', '.docx', '.txt', '.md', '.json', '.csv', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp']
 }: FileUploadProps) {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -61,7 +62,13 @@ export default function FileUpload({
       'text/plain': ['.txt'],
       'text/markdown': ['.md'],
       'application/json': ['.json'],
-      'text/csv': ['.csv']
+      'text/csv': ['.csv'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/gif': ['.gif'],
+      'image/bmp': ['.bmp'],
+      'image/tiff': ['.tiff', '.tif'],
+      'image/webp': ['.webp']
     },
     maxSize: maxFileSize,
     multiple: true,
@@ -148,6 +155,15 @@ export default function FileUpload({
       case 'json':
       case 'csv':
         return <FileText className="h-5 w-5 text-green-500" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+      case 'tiff':
+      case 'tif':
+      case 'webp':
+        return <Image className="h-5 w-5 text-purple-500" />;
       default:
         return <File className="h-5 w-5 text-gray-400" />;
     }

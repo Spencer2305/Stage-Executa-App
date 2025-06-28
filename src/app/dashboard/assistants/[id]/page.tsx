@@ -67,7 +67,8 @@ import {
   ImageIcon,
   User,
   AlertTriangle,
-  Cloud
+  Cloud,
+  Save
 } from "lucide-react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -92,6 +93,8 @@ import {
   faQuestionCircle,
   faExclamationCircle
 } from '@fortawesome/free-solid-svg-icons';
+import AssistantAnalytics from "@/components/analytics/AssistantAnalytics";
+import HandoffSettings from "@/components/models/HandoffSettings";
 
 interface ChatMessage {
   id: string;
@@ -186,6 +189,53 @@ export default function AssistantViewPage() {
     dropbox: false,
     slack: false
   });
+
+  // Settings state
+  const [settingsState, setSettingsState] = useState({
+    basicInfo: {
+      name: '',
+      description: '',
+      status: 'active',
+      welcomeMessage: ''
+    },
+    behavior: {
+      systemInstructions: '',
+      responseStyle: 'friendly',
+      responseLength: 'medium',
+      confidenceLevel: 'balanced',
+      allowGeneralKnowledge: true,
+      requireSourceCitation: true,
+      allowFollowUpQuestions: true,
+      enableContextMemory: true
+    },
+    knowledgeBase: {
+      searchSensitivity: 'moderate',
+      maxContextLength: '4000',
+      prioritizeRecentFiles: true,
+      includeFileMetadata: true,
+      crossReferenceFiles: true
+    },
+    moderation: {
+      contentFilterLevel: 'moderate',
+      privacyMode: 'high',
+      blockedTopics: '',
+      logConversations: true,
+      enableFeedback: true
+    },
+    advanced: {
+      temperature: 0.7,
+      topP: 0.9,
+      maxTokens: '500',
+      stopSequences: '',
+      enableStreaming: true,
+      enableRetry: true
+    }
+  });
+  
+  // Handoff settings state
+  const [handoffEnabled, setHandoffEnabled] = useState(false);
+  const [handoffSettings, setHandoffSettings] = useState({});
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   useEffect(() => {
     const loadAssistantData = async () => {
@@ -330,6 +380,38 @@ export default function AssistantViewPage() {
     assistant?.chatHeaderTitle,
     assistant?.welcomeMessage
   ]); // Only depend on the actual embed style properties
+
+  // Load settings state when assistant loads
+  useEffect(() => {
+    if (assistant) {
+      setSettingsState(prev => ({
+        ...prev,
+        basicInfo: {
+          name: assistant.name || '',
+          description: assistant.description || '',
+          status: assistant.status || 'active',
+          welcomeMessage: assistant.welcomeMessage || 'Hello! I\'m ready to help you with any questions about the knowledge base. What would you like to know?'
+        },
+        behavior: {
+          ...prev.behavior,
+          systemInstructions: `You are an AI assistant trained on the knowledge base for ${assistant.name}. You have access to uploaded documents and should use them to provide accurate, helpful responses. When answering questions:
+
+1. **ALWAYS search through the uploaded files first** to find relevant information
+2. **Quote specific information** from the documents when available
+3. **Be specific and cite sources** when referencing uploaded knowledge
+4. If information isn't in the uploaded files, clearly state this and provide general assistance
+5. Maintain a professional but friendly tone
+6. For integration data (emails, CRM, etc.), respect privacy and only share appropriate information
+
+Your primary job is to be a knowledgeable assistant based on the uploaded documents. Use them extensively to provide accurate, contextual responses.`
+        }
+      }));
+      
+      // Load handoff settings
+      setHandoffEnabled(assistant.handoffEnabled || false);
+      setHandoffSettings(assistant.handoffSettings || {});
+    }
+  }, [assistant?.id, assistant?.name, assistant?.description, assistant?.status, assistant?.welcomeMessage, assistant?.handoffEnabled, assistant?.handoffSettings]);
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -708,6 +790,148 @@ export default function AssistantViewPage() {
       console.error("Error copying embed code:", error);
       toast.error("Failed to copy embed code");
     }
+  };
+
+  // Settings management functions
+  const handleSettingsChange = (category: string, field: string, value: any) => {
+    setSettingsState(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category as keyof typeof prev],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleAdvancedSliderChange = (field: string, value: number) => {
+    setSettingsState(prev => ({
+      ...prev,
+      advanced: {
+        ...prev.advanced,
+        [field]: value
+      }
+    }));
+    
+    // Update the display value
+    const sliderElement = document.querySelector(`input[type="range"][data-field="${field}"]`) as HTMLInputElement;
+    if (sliderElement) {
+      const displayElement = sliderElement.nextElementSibling as HTMLElement;
+      if (displayElement) {
+        displayElement.textContent = value.toString();
+      }
+    }
+  };
+
+  const saveAllSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      if (!token) {
+        toast.error("Authentication required");
+        return;
+      }
+
+      console.log('Saving all assistant settings:', settingsState);
+
+      const response = await fetch(`/api/models/${assistantId}/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(settingsState),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save settings');
+      }
+
+      toast.success("Settings saved successfully!");
+      
+      // Update the assistant in the store
+      if (data.data) {
+        updateModel(assistantId, {
+          name: data.data.name,
+          description: data.data.description,
+          status: data.data.status.toLowerCase(),
+          welcomeMessage: data.data.welcomeMessage,
+          updatedAt: new Date(data.data.updatedAt)
+        });
+      }
+      
+      // Refresh the model to get the latest data
+      await refreshModel(assistantId);
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to save settings");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const resetSettingsToDefaults = () => {
+    if (assistant) {
+      setSettingsState({
+        basicInfo: {
+          name: assistant.name || '',
+          description: assistant.description || '',
+          status: 'active',
+          welcomeMessage: 'Hello! I\'m ready to help you with any questions about the knowledge base. What would you like to know?'
+        },
+        behavior: {
+          systemInstructions: `You are an AI assistant trained on the knowledge base for ${assistant.name}. You have access to uploaded documents and should use them to provide accurate, helpful responses. When answering questions:
+
+1. **ALWAYS search through the uploaded files first** to find relevant information
+2. **Quote specific information** from the documents when available
+3. **Be specific and cite sources** when referencing uploaded knowledge
+4. If information isn't in the uploaded files, clearly state this and provide general assistance
+5. Maintain a professional but friendly tone
+6. For integration data (emails, CRM, etc.), respect privacy and only share appropriate information
+
+Your primary job is to be a knowledgeable assistant based on the uploaded documents. Use them extensively to provide accurate, contextual responses.`,
+          responseStyle: 'friendly',
+          responseLength: 'medium',
+          confidenceLevel: 'balanced',
+          allowGeneralKnowledge: true,
+          requireSourceCitation: true,
+          allowFollowUpQuestions: true,
+          enableContextMemory: true
+        },
+        knowledgeBase: {
+          searchSensitivity: 'moderate',
+          maxContextLength: '4000',
+          prioritizeRecentFiles: true,
+          includeFileMetadata: true,
+          crossReferenceFiles: true
+        },
+        moderation: {
+          contentFilterLevel: 'moderate',
+          privacyMode: 'high',
+          blockedTopics: '',
+          logConversations: true,
+          enableFeedback: true
+        },
+        advanced: {
+          temperature: 0.7,
+          topP: 0.9,
+          maxTokens: '500',
+          stopSequences: '',
+          enableStreaming: true,
+          enableRetry: true
+        }
+      });
+      setHandoffEnabled(false);
+      setHandoffSettings({});
+      toast.success("Settings reset to defaults");
+    }
+  };
+
+  // Handle handoff settings updates
+  const handleHandoffUpdate = (enabled: boolean, settings: any) => {
+    setHandoffEnabled(enabled);
+    setHandoffSettings(settings);
   };
 
   const downloadWordPressPlugin = async () => {
@@ -1852,107 +2076,465 @@ export default function AssistantViewPage() {
 
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Conversations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{assistant.totalSessions || 0}</div>
-                <p className="text-xs text-green-600">+12% from last week</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Satisfaction Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">4.8/5</div>
-                <p className="text-xs text-green-600">+0.2 from last week</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Avg Response Time</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">1.2s</div>
-                <p className="text-xs text-green-600">15% faster than average</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">47</div>
-                <p className="text-xs text-blue-600">This month</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Usage Analytics</CardTitle>
-              <CardDescription>
-                {assistant.totalSessions === 0 
-                  ? "No analytics data yet - start chatting to see insights!" 
-                  : "Performance metrics and user engagement data"
-                }
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 font-medium">Analytics Chart</p>
-                  <p className="text-sm text-gray-500">Interactive analytics coming soon</p>
-        </div>
-              </div>
-            </CardContent>
-          </Card>
+          <AssistantAnalytics assistantId={assistantId} />
         </TabsContent>
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-6">
+          {/* Basic Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Assistant Settings</CardTitle>
+              <CardTitle>Basic Information</CardTitle>
               <CardDescription>
-                Configure your assistant's behavior and appearance
+                Configure your assistant's basic details and status
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Assistant Name</Label>
-                  <Input defaultValue={assistant.name} />
-      </div>
+                  <Input 
+                    value={settingsState.basicInfo.name}
+                    onChange={(e) => handleSettingsChange('basicInfo', 'name', e.target.value)}
+                    placeholder="Enter assistant name"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
-                  <select className="w-full p-2 border rounded-md">
+                  <select 
+                    className="w-full p-2 border rounded-md bg-white"
+                    value={settingsState.basicInfo.status}
+                    onChange={(e) => handleSettingsChange('basicInfo', 'status', e.target.value)}
+                  >
                     <option value="active">Active</option>
                     <option value="draft">Draft</option>
-                    <option value="paused">Paused</option>
+                    <option value="training">Training</option>
                   </select>
                 </div>
               </div>
               
               <div className="space-y-2">
                 <Label>Description</Label>
-                <Textarea defaultValue={assistant.description || ""} rows={3} />
+                <Textarea 
+                  value={settingsState.basicInfo.description}
+                  onChange={(e) => handleSettingsChange('basicInfo', 'description', e.target.value)}
+                  rows={3}
+                  placeholder="Describe what your assistant does and its purpose"
+                />
               </div>
 
-              <div className="flex space-x-4 pt-4">
-                <Button>Save Changes</Button>
-                <Button variant="outline">Cancel</Button>
-                <Button variant="destructive" className="ml-auto">
+              <div className="space-y-2">
+                <Label>Welcome Message</Label>
+                <Textarea 
+                  value={settingsState.basicInfo.welcomeMessage}
+                  onChange={(e) => handleSettingsChange('basicInfo', 'welcomeMessage', e.target.value)}
+                  rows={2}
+                  placeholder="The first message users see when starting a conversation"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Behavior Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle>AI Behavior & Personality</CardTitle>
+              <CardDescription>
+                Fine-tune how your assistant responds and behaves
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>System Instructions</Label>
+                <Textarea 
+                  value={settingsState.behavior.systemInstructions}
+                  onChange={(e) => handleSettingsChange('behavior', 'systemInstructions', e.target.value)}
+                  rows={8}
+                  placeholder="Define how your assistant should behave, its personality, and specific instructions"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  These instructions guide your assistant's behavior and responses. Be specific about tone, style, and capabilities.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Response Style</Label>
+                  <select 
+                    className="w-full p-2 border rounded-md bg-white"
+                    value={settingsState.behavior.responseStyle}
+                    onChange={(e) => handleSettingsChange('behavior', 'responseStyle', e.target.value)}
+                  >
+                    <option value="professional">Professional & Formal</option>
+                    <option value="friendly">Friendly & Conversational</option>
+                    <option value="casual">Casual & Relaxed</option>
+                    <option value="technical">Technical & Detailed</option>
+                    <option value="concise">Brief & Concise</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Response Length</Label>
+                  <select 
+                    className="w-full p-2 border rounded-md bg-white"
+                    value={settingsState.behavior.responseLength}
+                    onChange={(e) => handleSettingsChange('behavior', 'responseLength', e.target.value)}
+                  >
+                    <option value="short">Short (1-2 sentences)</option>
+                    <option value="medium">Medium (Paragraph)</option>
+                    <option value="long">Long (Detailed explanations)</option>
+                    <option value="adaptive">Adaptive to context</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Confidence Level</Label>
+                  <select 
+                    className="w-full p-2 border rounded-md bg-white"
+                    value={settingsState.behavior.confidenceLevel}
+                    onChange={(e) => handleSettingsChange('behavior', 'confidenceLevel', e.target.value)}
+                  >
+                    <option value="conservative">Conservative (Always cite sources)</option>
+                    <option value="balanced">Balanced (Moderate confidence)</option>
+                    <option value="confident">Confident (Direct answers)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id="allowGeneralKnowledge" 
+                      checked={settingsState.behavior.allowGeneralKnowledge}
+                      onChange={(e) => handleSettingsChange('behavior', 'allowGeneralKnowledge', e.target.checked)}
+                      className="rounded" 
+                    />
+                    <Label htmlFor="allowGeneralKnowledge">Allow general knowledge responses</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    When enabled, assistant can provide general answers when information isn't in uploaded files
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id="requireSourceCitation" 
+                      checked={settingsState.behavior.requireSourceCitation}
+                      onChange={(e) => handleSettingsChange('behavior', 'requireSourceCitation', e.target.checked)}
+                      className="rounded" 
+                    />
+                    <Label htmlFor="requireSourceCitation">Require source citations</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Always cite specific documents and page numbers when available
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id="allowFollowUpQuestions" 
+                      checked={settingsState.behavior.allowFollowUpQuestions}
+                      onChange={(e) => handleSettingsChange('behavior', 'allowFollowUpQuestions', e.target.checked)}
+                      className="rounded" 
+                    />
+                    <Label htmlFor="allowFollowUpQuestions">Suggest follow-up questions</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Assistant will suggest related questions users might want to ask
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id="enableContextMemory" 
+                      checked={settingsState.behavior.enableContextMemory}
+                      onChange={(e) => handleSettingsChange('behavior', 'enableContextMemory', e.target.checked)}
+                      className="rounded" 
+                    />
+                    <Label htmlFor="enableContextMemory">Remember conversation context</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Maintain context across messages in the same conversation
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Knowledge Base Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Knowledge Base Configuration</CardTitle>
+              <CardDescription>
+                Control how your assistant uses uploaded documents and files
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Search Sensitivity</Label>
+                  <select className="w-full p-2 border rounded-md bg-white">
+                    <option value="strict">Strict (Exact matches only)</option>
+                    <option value="moderate" selected>Moderate (Similar content)</option>
+                    <option value="broad">Broad (Related concepts)</option>
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    How closely content must match to be considered relevant
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Max Context Length</Label>
+                  <select className="w-full p-2 border rounded-md bg-white">
+                    <option value="2000">2K tokens (Short responses)</option>
+                    <option value="4000" selected>4K tokens (Balanced)</option>
+                    <option value="8000">8K tokens (Detailed responses)</option>
+                    <option value="16000">16K tokens (Maximum detail)</option>
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    Amount of document content to include in responses
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="prioritizeRecentFiles" defaultChecked className="rounded" />
+                    <Label htmlFor="prioritizeRecentFiles">Prioritize recent uploads</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Give preference to recently uploaded files
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="includeFileMetadata" defaultChecked className="rounded" />
+                    <Label htmlFor="includeFileMetadata">Include file metadata</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Show filename and upload date in responses
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="crossReferenceFiles" defaultChecked className="rounded" />
+                    <Label htmlFor="crossReferenceFiles">Cross-reference files</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Look for related information across multiple files
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Response Moderation */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Response Moderation & Safety</CardTitle>
+              <CardDescription>
+                Configure content filtering and safety measures
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Content Filter Level</Label>
+                  <select className="w-full p-2 border rounded-md bg-white">
+                    <option value="strict">Strict (Block sensitive content)</option>
+                    <option value="moderate" selected>Moderate (Standard filtering)</option>
+                    <option value="permissive">Permissive (Minimal filtering)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Privacy Mode</Label>
+                  <select className="w-full p-2 border rounded-md bg-white">
+                    <option value="high" selected>High (Redact personal info)</option>
+                    <option value="medium">Medium (Basic protection)</option>
+                    <option value="low">Low (Minimal redaction)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Blocked Topics (one per line)</Label>
+                <Textarea 
+                  placeholder="Enter topics or keywords that should not be discussed..."
+                  rows={3}
+                />
+                <p className="text-xs text-gray-500">
+                  Assistant will avoid these topics and redirect conversations appropriately
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="logConversations" defaultChecked className="rounded" />
+                    <Label htmlFor="logConversations">Log conversations for improvement</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Store conversations to improve assistant performance
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="enableFeedback" defaultChecked className="rounded" />
+                    <Label htmlFor="enableFeedback">Enable user feedback collection</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Allow users to rate responses and provide feedback
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Advanced Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced Configuration</CardTitle>
+              <CardDescription>
+                Expert-level settings for fine-tuning assistant behavior
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Temperature (Creativity)</Label>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.1" 
+                      value={settingsState.advanced.temperature}
+                      onChange={(e) => handleAdvancedSliderChange('temperature', parseFloat(e.target.value))}
+                      data-field="temperature"
+                      className="flex-1" 
+                    />
+                    <span className="text-sm text-gray-500 w-8">{settingsState.advanced.temperature}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Higher = more creative, Lower = more focused
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Top-p (Response Focus)</Label>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.1" 
+                      value={settingsState.advanced.topP}
+                      onChange={(e) => handleAdvancedSliderChange('topP', parseFloat(e.target.value))}
+                      data-field="topP"
+                      className="flex-1" 
+                    />
+                    <span className="text-sm text-gray-500 w-8">{settingsState.advanced.topP}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Controls response diversity and focus
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Max Tokens per Response</Label>
+                  <select className="w-full p-2 border rounded-md bg-white">
+                    <option value="150">150 (Very short)</option>
+                    <option value="300">300 (Short)</option>
+                    <option value="500" selected>500 (Medium)</option>
+                    <option value="1000">1000 (Long)</option>
+                    <option value="2000">2000 (Very long)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Custom Stop Sequences (comma-separated)</Label>
+                <Input placeholder="e.g., [END], ###, STOP" />
+                <p className="text-xs text-gray-500">
+                  Sequences that will stop response generation
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="enableStreaming" defaultChecked className="rounded" />
+                    <Label htmlFor="enableStreaming">Enable response streaming</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Show responses as they're being generated
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="enableRetry" defaultChecked className="rounded" />
+                    <Label htmlFor="enableRetry">Auto-retry failed requests</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Automatically retry if requests fail
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-4">
+                  <Button 
+                    onClick={saveAllSettings}
+                    disabled={isSavingSettings}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {isSavingSettings ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={resetSettingsToDefaults}
+                    disabled={isSavingSettings}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset to Defaults
+                  </Button>
+                  <Button variant="outline" disabled>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Configuration
+                  </Button>
+                </div>
+                
+                <Button variant="destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete Assistant
                 </Button>
+              </div>
+              
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  <strong>💡 Pro Tip:</strong> Changes to AI behavior and personality take effect immediately. 
+                  Knowledge base changes require rebuilding the vector store, which happens automatically when you add or remove files.
+                </p>
               </div>
             </CardContent>
           </Card>
