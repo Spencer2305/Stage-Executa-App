@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { 
   Bot, 
@@ -373,8 +374,6 @@ function AssistantCard({ model }: { model: any }) {
   );
 }
 
-
-
 export default function DashboardPage() {
   const { user } = useUserStore();
   const { models, isLoading, fetchModels } = useModelStore();
@@ -397,219 +396,225 @@ export default function DashboardPage() {
   const activeModels = models.filter(model => model?.status === 'active');
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="p-8 space-y-8 max-w-7xl mx-auto">
-        {/* Welcome Message for New Subscribers */}
-        {showWelcome && (
-          <Card className="border-green-200 bg-green-50">
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-                <CardTitle className="text-green-800">Welcome to Executa Pro! 🎉</CardTitle>
-              </div>
-              <CardDescription className="text-green-700">
-                Your subscription is now active. You have access to all Pro features including 10 AI assistants, 
-                10,000 conversations per month, and priority support.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="bg-green-600 hover:bg-green-700">
-                <Link href="/dashboard/create">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Your First AI Assistant
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+    <div className="p-8 space-y-8">
+      {/* Welcome Message for New Subscribers */}
+      {showWelcome && (
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+              <CardTitle className="text-green-800">Welcome to Executa Pro! 🎉</CardTitle>
+            </div>
+            <CardDescription className="text-green-700">
+              Your subscription is now active. You have access to all Pro features including 10 AI assistants, 
+              10,000 conversations per month, and priority support.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="bg-green-600 hover:bg-green-700">
+              <Link href="/dashboard/create">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First AI Assistant
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Header with enhanced styling */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 leading-tight font-kanit tracking-wide">
-              Welcome Back, {user?.name?.split(' ')[0] || 'There'}!
-            </h1>
-            <p className="text-gray-600 mt-2 text-lg leading-relaxed">
-              Building AI solutions for everyone and every business with ease
-            </p>
-          </div>
-          {models.length > 0 && (
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700 shadow-sm text-base font-medium px-6 py-3 h-auto"
-            onClick={() => router.push('/dashboard/create')}
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Build AI Assistant
-          </Button>
-          )}
+      {/* Header with enhanced styling */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 leading-tight font-kanit tracking-wide">
+            Welcome Back, {user?.name?.split(' ')[0] || 'There'}!
+          </h1>
+          <p className="text-gray-600 mt-2 text-lg leading-relaxed">
+            Building AI solutions for everyone and every business with ease
+          </p>
         </div>
-
-        {/* Enhanced Stats Overview */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border border-gray-200 shadow-sm bg-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
-                Total Assistants
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="inline w-3.5 h-3.5 ml-2 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Total number of AI assistants you've created</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-              <Bot className="h-5 w-5 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{models.length}</div>
-              <p className="text-sm text-gray-600 mt-1 flex items-center">
-                <Circle className="w-2 h-2 mr-1.5 fill-emerald-500 text-emerald-500" />
-                {activeModels.length} active
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border border-gray-200 shadow-sm bg-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
-                Conversations
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="inline w-3.5 h-3.5 ml-2 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Total conversations across all assistants</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-              <MessageSquare className="h-5 w-5 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{totalConversations}</div>
-              <p className="text-sm text-gray-600 mt-1">Total across all assistants</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border border-gray-200 shadow-sm bg-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
-                Success Rate
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="inline w-3.5 h-3.5 ml-2 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Average response accuracy across assistants</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {models.length > 0 ? "98%" : "--"}
-              </div>
-              <p className="text-sm text-emerald-600 mt-1 flex items-center">
-                {models.length > 0 ? (
-                  <>
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    Outperforming 82% of tools
-                  </>
-                ) : (
-                  "No data available yet"
-                )}
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border border-gray-200 shadow-sm bg-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">This Month</CardTitle>
-              <Activity className="h-5 w-5 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {totalConversations > 0 ? Math.floor(totalConversations * 0.7) : 0}
-              </div>
-              <p className="text-sm text-orange-600 mt-1 flex items-center">
-                {totalConversations > 0 ? (
-                  <>
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    Up 23% this week
-                  </>
-                ) : (
-                  "New conversations"
-                )}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-
-
-        {/* Content: Onboarding or Assistant Grid */}
-                {models.length === 0 ? (
-          <FirstTimeUserOnboarding router={router} />
-        ) : (
-          <>
-            {/* Enhanced Progress Banner */}
-            {models.some(m => m?.status !== 'active') && (
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-start space-x-4">
-                    <div className="p-2 bg-amber-100 rounded-lg">
-                      <Target className="h-6 w-6 text-amber-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-amber-900 text-lg">
-                        Ready to activate your assistants?
-                      </p>
-                      <p className="text-amber-800 mt-1 leading-relaxed">
-                        You have assistants ready to deploy. Activate them to start gathering valuable insights and helping your users.
-                      </p>
-                    </div>
-                  </div>
-                  <Button className="bg-amber-600 hover:bg-amber-700 shadow-sm font-medium">
-                    Deploy Now
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                              </Button>
-                            </div>
-                  </div>
-                )}
-
-            {/* Enhanced Assistant Grid */}
-            <div>
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-heading tracking-wide">Your AI Assistants</h2>
-                  <p className="text-gray-600 mt-1">Manage and monitor your AI-powered assistants</p>
-          </div>
-                <Button 
-                  variant="outline" 
-                  className="font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
-                  onClick={() => router.push('/dashboard/create')}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Assistant
-                </Button>
-              </div>
-              
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {models.map((model) => (
-                  <AssistantCard key={model.id} model={model} />
-                ))}
-                  </div>
-                </div>
-          </>
+        {models.length > 0 && (
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700 shadow-sm text-base font-medium px-6 py-3 h-auto"
+          onClick={() => router.push('/dashboard/create')}
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Build AI Assistant
+        </Button>
         )}
       </div>
+
+      {/* Enhanced Stats Overview */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border border-gray-200 shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
+              Total Assistants
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="inline w-3.5 h-3.5 ml-2 text-gray-400" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Total number of AI assistants you've created</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+            <Bot className="h-5 w-5 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">{models.length}</div>
+            <p className="text-sm text-gray-600 mt-1 flex items-center">
+              <Circle className="w-2 h-2 mr-1.5 fill-emerald-500 text-emerald-500" />
+              {activeModels.length} active
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border border-gray-200 shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
+              Conversations
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="inline w-3.5 h-3.5 ml-2 text-gray-400" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Total conversations across all assistants</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+            <MessageSquare className="h-5 w-5 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">{totalConversations}</div>
+            <p className="text-sm text-gray-600 mt-1">Total across all assistants</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border border-gray-200 shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">
+              Success Rate
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="inline w-3.5 h-3.5 ml-2 text-gray-400" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Average response accuracy across assistants</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+            <TrendingUp className="h-5 w-5 text-emerald-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">
+              {models.length > 0 ? "98%" : "--"}
+            </div>
+            <p className="text-sm text-emerald-600 mt-1 flex items-center">
+              {models.length > 0 ? (
+                <>
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                  Outperforming 82% of tools
+                </>
+              ) : (
+                "No data available yet"
+              )}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border border-gray-200 shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-gray-600 tracking-wide">This Month</CardTitle>
+            <Activity className="h-5 w-5 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">
+              {totalConversations > 0 ? Math.floor(totalConversations * 0.7) : 0}
+            </div>
+            <p className="text-sm text-orange-600 mt-1 flex items-center">
+              {totalConversations > 0 ? (
+                <>
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                  Up 23% this week
+                </>
+              ) : (
+                "New conversations"
+              )}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Content: Onboarding or Assistant Grid */}
+      {models.length === 0 ? (
+        <FirstTimeUserOnboarding router={router} />
+      ) : (
+        <>
+          {/* Enhanced Progress Banner */}
+          {models.some(m => m?.status !== 'active') && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-start space-x-4">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <Target className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-900 text-lg">
+                      Ready to activate your assistants?
+                    </p>
+                    <p className="text-amber-800 mt-1 leading-relaxed">
+                      You have assistants ready to deploy. Activate them to start gathering valuable insights and helping your users.
+                    </p>
+                  </div>
+                </div>
+                <Button className="bg-amber-600 hover:bg-amber-700 shadow-sm font-medium">
+                  Deploy Now
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Enhanced Assistant Grid */}
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 font-heading tracking-wide">Your AI Assistants</h2>
+                <p className="text-gray-600 mt-1">Manage and monitor your AI-powered assistants</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                onClick={() => router.push('/dashboard/create')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Assistant
+              </Button>
+            </div>
+            
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {models.map((model) => (
+                <AssistantCard key={model.id} model={model} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Success Messages */}
+      {searchParams.get('success') === 'gmail_connected' && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
+            Gmail successfully connected! Your emails are now being synced.
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 } 

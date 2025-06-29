@@ -1035,9 +1035,9 @@ export default function SettingsPage() {
   const availableCount = allIntegrations.filter(i => !(i as any).comingSoon).length;
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 font-kanit tracking-wide">Settings</h1>
+    <div className="p-8 space-y-8">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 font-kanit tracking-wide">Settings</h1>
         <p className="text-gray-600 mt-2">Manage your account settings and preferences</p>
       </div>
 
@@ -1532,8 +1532,8 @@ export default function SettingsPage() {
               </Button>
             </div>
           </div>
-                  </div>
-        )}
+        </div>
+      )}
 
       {/* Plan Change Dialog */}
       {showPlanChangeDialog && (

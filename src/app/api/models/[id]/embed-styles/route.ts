@@ -31,7 +31,19 @@ export async function PUT(
       assistantAvatarIcon,
       showChatHeader,
       chatHeaderTitle,
-      welcomeMessage
+      welcomeMessage,
+      // Advanced styling options
+      selectedTheme,
+      chatHeaderGradient,
+      backgroundPattern,
+      glassEffect,
+      animation,
+      customCSS,
+      googleFont,
+      chatSize,
+      shadowIntensity,
+      borderRadius,
+      opacity
     } = body;
 
     // Verify the assistant belongs to the user's account
@@ -64,6 +76,21 @@ export async function PUT(
       welcomeMessage
     });
 
+    // Prepare advanced styling settings as JSON
+    const advancedSettings = {
+      selectedTheme: selectedTheme || 'custom',
+      chatHeaderGradient: chatHeaderGradient || 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+      backgroundPattern: backgroundPattern || 'none',
+      glassEffect: glassEffect || false,
+      animation: animation || 'smooth',
+      customCSS: customCSS || '',
+      googleFont: googleFont || 'inter',
+      chatSize: chatSize || 'standard',
+      shadowIntensity: shadowIntensity || 'medium',
+      borderRadius: borderRadius || 12,
+      opacity: opacity || 100
+    };
+
     // Update the assistant with new embed styles
     const updatedAssistant = await prisma.assistant.update({
       where: { id: assistantId },
@@ -82,6 +109,11 @@ export async function PUT(
         showChatHeader: showChatHeader !== false,
         chatHeaderTitle: chatHeaderTitle || 'AI Assistant',
         welcomeMessage: welcomeMessage || null,
+        // Store advanced settings in handoffSettings JSON field temporarily
+        handoffSettings: {
+          ...(assistant.handoffSettings as object || {}),
+          embedAdvanced: advancedSettings
+        },
         updatedAt: new Date(),
       },
     });
@@ -105,7 +137,9 @@ export async function PUT(
         assistantAvatarIcon,
         showChatHeader,
         chatHeaderTitle,
-        welcomeMessage
+        welcomeMessage,
+        // Include advanced settings
+        ...advancedSettings
       },
     });
   } catch (error) {

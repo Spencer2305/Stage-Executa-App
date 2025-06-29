@@ -38,6 +38,7 @@ import { useUserStore } from "@/state/userStore";
 import { useModelStore } from "@/state/modelStore";
 import { useEffect, useState } from "react";
 import fetchApi from "@/utils/api";
+import { useRouter } from "next/navigation";
 
 // Simple Sparkline Component
 function Sparkline({ data, color = "blue", trend = "up" }: { 
@@ -156,6 +157,7 @@ interface AnalyticsData {
 export default function AnalyticsPage() {
   const { user } = useUserStore();
   const { models, fetchModels } = useModelStore();
+  const router = useRouter();
   
   // State for filters and data
   const [selectedAssistant, setSelectedAssistant] = useState("All Assistants");
@@ -347,16 +349,18 @@ ${analyticsData.assistantPerformance.map(ap =>
     window.URL.revokeObjectURL(url);
   };
 
-  if (isLoading) {
+  if (!models || models.length === 0) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="p-8 space-y-8 max-w-7xl mx-auto">
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
-              <p className="text-gray-600">Loading analytics data...</p>
-            </div>
-          </div>
+      <div className="p-8 space-y-8">
+        <div className="text-center py-12">
+          <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-semibold text-gray-700 mb-2">No Analytics Data</h2>
+          <p className="text-gray-500 mb-6">
+            Create your first AI assistant to start seeing analytics data.
+          </p>
+          <Button onClick={() => router.push('/dashboard/create')}>
+            Create Your First Assistant
+          </Button>
         </div>
       </div>
     );
@@ -364,28 +368,19 @@ ${analyticsData.assistantPerformance.map(ap =>
 
   if (!analyticsData) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="p-8 space-y-8 max-w-7xl mx-auto">
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">Failed to load analytics</p>
-              <Button onClick={fetchAnalyticsData} variant="outline">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            </div>
-          </div>
+      <div className="p-8 space-y-8">
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="mt-4 text-gray-600">Loading analytics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-8 space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 font-kanit tracking-wide">Analytics</h1>
           <p className="text-gray-600 mt-1">
@@ -787,7 +782,6 @@ ${analyticsData.assistantPerformance.map(ap =>
           )}
         </CardContent>
       </Card>
-      </div>
     </div>
   );
 } 

@@ -509,97 +509,95 @@ export default function CreateAIPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-8 space-y-8 max-w-7xl mx-auto">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2 font-kanit tracking-wide">Create Your AI Assistant</h1>
-            <p className="text-muted-foreground">
-              Build a custom AI assistant trained on your knowledge base
-            </p>
-          </div>
-
-          {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
-                <div key={step} className="flex items-center flex-1">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${getStepColor(step)}`}
-                  >
-                    {getStepIcon(step)}
-                  </div>
-                  {step < totalSteps && (
-                    <div
-                      className={`flex-1 h-px mx-2 ${
-                        step < currentStep ? "bg-primary" : "bg-muted"
-                      }`}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Step Content */}
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5" />
-                {currentStep === 1 && "Basic Information"}
-                {currentStep === 2 && "Upload Knowledge Base"}
-                {currentStep === 3 && "Integrations"}
-                {currentStep === 4 && "Review & Create"}
-                {currentStep === 5 && "Success!"}
-              </CardTitle>
-              <CardDescription>
-                {currentStep === 1 && "Give your AI assistant a name and description"}
-                {currentStep === 2 && "Upload documents that your AI will learn from"}
-                {currentStep === 3 && "Connect external data sources (optional)"}
-                {currentStep === 4 && "Review your settings and create the assistant"}
-                {currentStep === 5 && "Your assistant has been created successfully"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="min-h-[300px]">
-                {renderStep()}
-              </div>
-
-              {/* Navigation - Hide on success screen */}
-              {currentStep < 5 && (
-                <div className="flex justify-between pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={prevStep}
-                    disabled={currentStep === 1}
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Previous
-                  </Button>
-
-                  {currentStep < 4 ? (
-                    <Button onClick={nextStep}>
-                      Next
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  ) : (
-                    <Button onClick={handleSubmit} disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          {formData.useDropboxSync ? "Creating & Syncing..." : "Creating..."}
-                        </>
-                      ) : (
-                        "Create Assistant"
-                      )}
-                    </Button>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+    <div className="p-8 space-y-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2 font-kanit tracking-wide">Create Your AI Assistant</h1>
+          <p className="text-muted-foreground">
+            Build a custom AI assistant trained on your knowledge base
+          </p>
         </div>
+
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
+              <div key={step} className="flex items-center flex-1">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${getStepColor(step)}`}
+                >
+                  {getStepIcon(step)}
+                </div>
+                {step < totalSteps && (
+                  <div
+                    className={`flex-1 h-px mx-2 ${
+                      step < currentStep ? "bg-primary" : "bg-muted"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              {currentStep === 1 && "Basic Information"}
+              {currentStep === 2 && "Upload Knowledge Base"}
+              {currentStep === 3 && "Integrations"}
+              {currentStep === 4 && "Review & Create"}
+              {currentStep === 5 && "Success!"}
+            </CardTitle>
+            <CardDescription>
+              {currentStep === 1 && "Give your AI assistant a name and description"}
+              {currentStep === 2 && "Upload documents that your AI will learn from"}
+              {currentStep === 3 && "Connect external data sources (optional)"}
+              {currentStep === 4 && "Review your settings and create the assistant"}
+              {currentStep === 5 && "Your assistant has been created successfully"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="min-h-[300px]">
+              {renderStep()}
+            </div>
+
+            {/* Navigation - Hide on success screen */}
+            {currentStep < 5 && (
+              <div className="flex justify-between pt-4">
+                <Button
+                  variant="outline"
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Previous
+                </Button>
+
+                {currentStep < 4 ? (
+                  <Button onClick={nextStep}>
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button onClick={handleSubmit} disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {formData.useDropboxSync ? "Creating & Syncing..." : "Creating..."}
+                      </>
+                    ) : (
+                      "Create Assistant"
+                    )}
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

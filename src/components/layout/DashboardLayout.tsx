@@ -10,7 +10,8 @@ import {
   Bot, 
   BarChart3, 
   Settings, 
-  LogOut
+  LogOut,
+  Ticket
 } from "lucide-react";
 import Image from "next/image";
 
@@ -32,6 +33,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       name: "My AIs",
       href: "/dashboard/my-ais",
       icon: Bot,
+    },
+    {
+      name: "Ticket Manager",
+      href: "/dashboard/tickets",
+      icon: Ticket,
     },
     {
       name: "Analytics",
