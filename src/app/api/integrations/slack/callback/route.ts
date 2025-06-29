@@ -13,14 +13,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Slack OAuth error:', error);
       return NextResponse.redirect(
-        new URL(`/dashboard/settings?error=slack_${error}`, process.env.NEXTAUTH_URL)
+        new URL(`/app/dashboard/settings?error=slack_${error}`, process.env.NEXTAUTH_URL)
       );
     }
 
     if (!code || !state) {
       console.error('Missing code or state in Slack callback');
       return NextResponse.redirect(
-        new URL('/dashboard/settings?error=slack_missing_params', process.env.NEXTAUTH_URL)
+        new URL('/app/dashboard/settings?error=slack_missing_params', process.env.NEXTAUTH_URL)
       );
     }
 
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     if (!storedState || storedState !== state.split(':')[0]) {
       console.error('Invalid state parameter in Slack callback');
       return NextResponse.redirect(
-        new URL('/dashboard/settings?error=slack_invalid_state', process.env.NEXTAUTH_URL)
+        new URL('/app/dashboard/settings?error=slack_invalid_state', process.env.NEXTAUTH_URL)
       );
     }
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (!assistantId) {
       console.error('Missing assistant ID in state parameter');
       return NextResponse.redirect(
-        new URL('/dashboard/settings?error=slack_missing_assistant', process.env.NEXTAUTH_URL)
+        new URL('/app/dashboard/settings?error=slack_missing_assistant', process.env.NEXTAUTH_URL)
       );
     }
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (!assistant) {
       console.error('Assistant not found:', assistantId);
       return NextResponse.redirect(
-        new URL('/dashboard/settings?error=assistant_not_found', process.env.NEXTAUTH_URL)
+        new URL('/app/dashboard/settings?error=assistant_not_found', process.env.NEXTAUTH_URL)
       );
     }
 
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
 
     // Clear the state cookie
     const response = NextResponse.redirect(
-      new URL(`/dashboard/assistants/${assistantId}?success=slack_connected&team=${encodeURIComponent(tokenResult.team.name)}`, process.env.NEXTAUTH_URL || request.url)
+      new URL(`/app/dashboard/assistants/${assistantId}?success=slack_connected&team=${encodeURIComponent(tokenResult.team.name)}`, process.env.NEXTAUTH_URL || request.url)
     );
     
     response.cookies.set('slack_oauth_state', '', {
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Slack callback error:', error);
     return NextResponse.redirect(
-      new URL('/dashboard/settings?error=slack_callback_failed', process.env.NEXTAUTH_URL)
+      new URL('/app/dashboard/settings?error=slack_callback_failed', process.env.NEXTAUTH_URL)
     );
   }
 } 

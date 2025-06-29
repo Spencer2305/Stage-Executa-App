@@ -63,8 +63,9 @@ export const useUserStore = create<UserState>()(
           localStorage.removeItem('executa-user-storage');
           set({ user: null });
           
-          // Redirect to login
-          window.location.href = '/login';
+          // Redirect to appropriate login based on current context
+          const isAppContext = window.location.pathname.startsWith('/app');
+          window.location.href = isAppContext ? '/app/login' : '/login';
         }
       },
       

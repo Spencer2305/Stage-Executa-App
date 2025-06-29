@@ -277,7 +277,7 @@ export default function MyAIsPage() {
             </p>
           </div>
           <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
-            <Link href="/dashboard/create">
+            <Link href="/app/dashboard/create">
               <Plus className="mr-2 h-4 w-4" />
               Create Assistant
             </Link>
@@ -385,7 +385,7 @@ export default function MyAIsPage() {
               </p>
               {!searchQuery && filterStatus === "all" && (
                 <Button asChild className="bg-brand-600 hover:bg-brand-700 text-white hover:text-white">
-                  <Link href="/dashboard/create">
+                  <Link href="/app/dashboard/create">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Assistant
                   </Link>
@@ -406,7 +406,7 @@ export default function MyAIsPage() {
               const documentCount = model?.documents?.length || 0;
 
               const handleCardClick = () => {
-                router.push(`/dashboard/assistants/${model?.id || 'unknown'}`);
+                router.push(`/app/dashboard/assistants/${model?.id || 'unknown'}`);
               };
 
               return (

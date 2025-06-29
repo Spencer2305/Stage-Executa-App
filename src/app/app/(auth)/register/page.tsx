@@ -9,21 +9,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserStore } from "@/state/userStore";
-import { Bot, Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react";
+import { authApi } from "@/utils/api";
+import { Bot, Eye, EyeOff, Loader2, Mail, Lock, User } from "lucide-react";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useUserStore();
+  const { register } = useUserStore();
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    }
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
@@ -33,6 +41,12 @@ export default function LoginPage() {
 
     if (!formData.password) {
       newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords don't match";
     }
 
     setErrors(newErrors);
@@ -49,13 +63,13 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(formData.email, formData.password);
+      const result = await register(formData.email, formData.password, formData.name);
       
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Redirect to plan selection or app dashboard
+      router.push(result.redirectTo || "/app/dashboard");
     } catch (error: any) {
-      console.error("Login error:", error);
-      const errorMessage = error.response?.data?.error || "Login failed. Please try again.";
+      console.error("Registration error:", error);
+      const errorMessage = error.response?.data?.error || "Registration failed. Please try again.";
       setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
@@ -80,20 +94,41 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary">
             <Lock className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground">Sign in to your Executa account</p>
+          <h1 className="text-2xl font-bold">Join Executa</h1>
+          <p className="text-muted-foreground">Create your account to start building AI assistants</p>
         </div>
 
-        {/* Login Form */}
+        {/* Registration Form */}
         <Card>
           <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">Sign in</CardTitle>
+            <CardTitle className="text-xl">Create account</CardTitle>
             <CardDescription>
-              Enter your email and password to access your account
+              Enter your details to create your Executa account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Name Field */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className={`pl-10 ${errors.name ? "border-destructive" : ""}`}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                {errors.name && (
+                  <p className="text-sm text-destructive">{errors.name}</p>
+                )}
+              </div>
+
               {/* Email Field */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -117,19 +152,14 @@ export default function LoginPage() {
 
               {/* Password Field */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    placeholder="Create a password"
                     value={formData.password}
                     onChange={handleChange}
                     className={`pl-10 pr-10 ${errors.password ? "border-destructive" : ""}`}
@@ -149,6 +179,35 @@ export default function LoginPage() {
                 )}
               </div>
 
+              {/* Confirm Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className={`pl-10 pr-10 ${errors.confirmPassword ? "border-destructive" : ""}`}
+                    disabled={isSubmitting}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    disabled={isSubmitting}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                )}
+              </div>
+
               {/* Submit Error */}
               {errors.submit && (
                 <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
@@ -156,29 +215,41 @@ export default function LoginPage() {
                 </div>
               )}
 
-
-
               {/* Submit Button */}
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    Creating account...
                   </>
                 ) : (
-                  "Sign in"
+                  "Create account"
                 )}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Register Link */}
+        {/* Login Link */}
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Create account
+            Already have an account?{" "}
+            <Link href="/app/login" className="font-medium text-primary hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        {/* Terms */}
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">
+            By creating an account, you agree to our{" "}
+            <Link href="/terms" className="underline hover:text-foreground">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline hover:text-foreground">
+              Privacy Policy
             </Link>
           </p>
         </div>

@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import Image from 'next/image';
 import { 
   LogOut, 
+  User, 
+  Grid3X3, 
   ExternalLink, 
   Plus,
+  Settings,
   Loader2
 } from 'lucide-react';
 
@@ -43,8 +45,8 @@ export default function PortalDashboard() {
       id: 'executa',
       name: 'Executa',
       description: 'AI Assistant Builder Platform',
-      url: '/app',
-      previewUrl: '/app',
+      url: 'https://executa.app',
+      previewUrl: 'https://executa.app',
       status: 'active',
       category: 'AI Tools'
     },
@@ -88,12 +90,12 @@ export default function PortalDashboard() {
         const data = await response.json();
         setUser(data.user);
       } else {
-        router.push('/login');
+        router.push('/portal/login');
       }
-          } catch (error) {
-        console.error('Auth check error:', error);
-        router.push('/login');
-      } finally {
+    } catch (error) {
+      console.error('Auth check error:', error);
+      router.push('/portal/login');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -103,7 +105,7 @@ export default function PortalDashboard() {
     try {
       await fetch('/api/portal/auth/logout', { method: 'POST' });
       toast.success('Logged out successfully');
-      router.push('/login');
+      router.push('/portal/login');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Logout failed');
@@ -122,12 +124,8 @@ export default function PortalDashboard() {
       return;
     }
 
-    // Navigate to internal app or open external link
-    if (app.url.startsWith('/')) {
-      router.push(app.url);
-    } else {
-      window.open(app.url, '_blank');
-    }
+    // Open in new tab
+    window.open(app.url, '_blank');
   };
 
   if (isLoading) {
@@ -140,47 +138,51 @@ export default function PortalDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Portal Header with Logo */}
-      <header className="border-b bg-background">
-        <div className="container mx-auto px-4 py-6">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            {/* Executa Logo - Left Side */}
-            <div className="relative h-12 w-[200px]">
-              <Image
-                src="/Executa-logo.png"
-                alt="Executa Logo"
-                fill
-                className="object-contain"
-                priority
-              />
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Grid3X3 className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">Company Portal</h1>
+                <p className="text-sm text-muted-foreground">Application Dashboard</p>
+              </div>
             </div>
             
-            {/* Logout Button - Right Side */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {isLoggingOut ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <LogOut className="h-4 w-4 mr-2" />
-              )}
-              Logout
-            </Button>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-sm">
+                <User className="h-4 w-4" />
+                <span>Welcome, {user?.username}</span>
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <LogOut className="h-4 w-4 mr-2" />
+                )}
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Welcome Title */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold font-kanit tracking-wide text-left">
-            Welcome, {user?.username}
-          </h1>
+          <h2 className="text-2xl font-bold mb-2">Your Applications</h2>
+          <p className="text-muted-foreground">
+            Click on any application to access it. Active applications will open in a new tab.
+          </p>
         </div>
 
         {/* App Grid */}
@@ -266,7 +268,21 @@ export default function PortalDashboard() {
           ))}
         </div>
 
-
+        {/* Admin Section (if admin user) */}
+        {user?.role === 'admin' && (
+          <div className="mt-12 pt-8 border-t">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Admin Tools</h3>
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4 mr-2" />
+                Manage Apps
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Add new applications, manage user access, and configure portal settings.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

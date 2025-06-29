@@ -13,14 +13,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Discord OAuth error:', error);
       return NextResponse.redirect(
-        new URL(`/dashboard/settings?error=discord_${error}`, process.env.NEXTAUTH_URL)
+        new URL(`/app/dashboard/settings?error=discord_${error}`, process.env.NEXTAUTH_URL)
       );
     }
 
     if (!code || !state) {
       console.error('Missing code or state in Discord callback');
       return NextResponse.redirect(
-        new URL('/dashboard/settings?error=discord_missing_params', process.env.NEXTAUTH_URL)
+        new URL('/app/dashboard/settings?error=discord_missing_params', process.env.NEXTAUTH_URL)
       );
     }
 
@@ -28,19 +28,19 @@ export async function GET(request: NextRequest) {
     const cookies = request.cookies;
     const storedState = cookies.get('discord_oauth_state')?.value;
     
-    if (!storedState || storedState !== state.split(':')[0]) {
+    if (!storedState || storedState !== state) {
       console.error('Invalid state parameter in Discord callback');
       return NextResponse.redirect(
-        new URL('/dashboard/settings?error=discord_invalid_state', process.env.NEXTAUTH_URL)
+        new URL('/app/dashboard/settings?error=discord_invalid_state', process.env.NEXTAUTH_URL)
       );
     }
 
-    // Extract assistant ID from state
-    const [, assistantId] = state.split(':');
+    // The state IS the assistant ID
+    const assistantId = state;
     if (!assistantId) {
       console.error('Missing assistant ID in state parameter');
       return NextResponse.redirect(
-        new URL('/dashboard/settings?error=discord_missing_assistant', process.env.NEXTAUTH_URL)
+        new URL('/app/dashboard/settings?error=discord_missing_assistant', process.env.NEXTAUTH_URL)
       );
     }
 
@@ -53,13 +53,12 @@ export async function GET(request: NextRequest) {
     if (!assistant) {
       console.error('Assistant not found:', assistantId);
       return NextResponse.redirect(
-        new URL('/dashboard/settings?error=assistant_not_found', process.env.NEXTAUTH_URL)
+        new URL('/app/dashboard/settings?error=assistant_not_found', process.env.NEXTAUTH_URL)
       );
     }
 
     // Exchange code for tokens
-    const redirectUri = `${process.env.NEXTAUTH_URL}/api/integrations/discord/callback`;
-    const tokenResult = await exchangeCodeForToken(code, redirectUri);
+    const tokenResult = await exchangeCodeForToken(code);
 
     console.log('💾 Saving Discord connection:', {
       assistantId,
@@ -69,7 +68,13 @@ export async function GET(request: NextRequest) {
     // Get guild information
     let guildInfo;
     try {
-      guildInfo = await getGuildInfo(tokenResult.access_token);
+      const guilds = await getGuildInfo(tokenResult.access_token);
+      // Use the first guild (bot was added to this guild during OAuth)
+      guildInfo = guilds[0] || tokenResult.guild || {
+        id: 'unknown',
+        name: 'Discord Server',
+        icon: null
+      };
     } catch (error) {
       console.error('Failed to get guild info:', error);
       // Use basic info from token if available
@@ -113,7 +118,7 @@ export async function GET(request: NextRequest) {
 
     // Clear the state cookie
     const response = NextResponse.redirect(
-      new URL(`/dashboard/assistants/${assistantId}?success=discord_connected&guild=${encodeURIComponent(guildInfo.name)}`, process.env.NEXTAUTH_URL)
+      new URL(`/app/dashboard/assistants/${assistantId}?success=discord_connected&guild=${encodeURIComponent(guildInfo.name)}`, process.env.NEXTAUTH_URL)
     );
     
     response.cookies.set('discord_oauth_state', '', {
@@ -125,7 +130,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Discord callback error:', error);
     return NextResponse.redirect(
-      new URL('/dashboard/settings?error=discord_callback_failed', process.env.NEXTAUTH_URL)
+      new URL('/app/dashboard/settings?error=discord_callback_failed', process.env.NEXTAUTH_URL)
     );
   }
 } 

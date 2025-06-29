@@ -495,7 +495,7 @@ export default function CreateAIPage() {
 
             <Button 
               variant="outline" 
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/app/dashboard')}
               className="w-full"
             >
               Go to Dashboard

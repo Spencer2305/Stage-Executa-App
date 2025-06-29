@@ -7,7 +7,7 @@ export default function DashboardLayoutWrapper({
   children: React.ReactNode;
 }) {
   return (
-    <AuthGuard requireAuth={true} redirectTo="/login">
+    <AuthGuard requireAuth={true} redirectTo="/app/login">
       <DashboardLayout>{children}</DashboardLayout>
     </AuthGuard>
   );

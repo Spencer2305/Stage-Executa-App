@@ -373,13 +373,7 @@ export default function SettingsPage() {
           connected.add('dropbox');
         }
         
-        // Add Discord from main status endpoint
-        if (data.integrations.discord) {
-          console.log('✅ Discord is connected');
-          connected.add('discord');
-        } else {
-          console.log('❌ Discord is NOT connected');
-        }
+
         
         // Add Slack from main status endpoint
         if (data.integrations.slack) {
@@ -841,15 +835,7 @@ export default function SettingsPage() {
         popular: true,
         category: 'Chat'
       },
-      {
-        id: 'discord',
-        name: 'Discord',
-        description: 'Add your AI assistant to Discord servers for community support and engagement',
-        icon: MessageSquare,
-        connected: connectedIntegrations.has('discord'),
-        comingSoon: true,
-        category: 'Chat'
-      },
+
       {
         id: 'microsoft-teams',
         name: 'Microsoft Teams',

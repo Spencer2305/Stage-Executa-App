@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
     
     // Clear the state cookie
     const response = NextResponse.redirect(
-      new URL('/dashboard/settings?success=dropbox_connected', process.env.NEXTAUTH_URL)
+              new URL('/app/dashboard/settings?success=dropbox_connected', process.env.NEXTAUTH_URL)
     );
     response.cookies.delete('dropbox_oauth_state');
     

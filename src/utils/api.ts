@@ -36,7 +36,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('executa-auth-token');
-      window.location.href = '/login';
+      // Redirect to appropriate login based on current context
+      const isAppContext = window.location.pathname.startsWith('/app');
+      window.location.href = isAppContext ? '/app/login' : '/login';
     }
     return Promise.reject(error);
   }

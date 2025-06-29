@@ -187,7 +187,8 @@ export default function AssistantViewPage() {
   const [integrationsStatus, setIntegrationsStatus] = useState({
     gmail: false,
     dropbox: false,
-    slack: false
+    slack: false,
+    discord: false
   });
 
   // Settings state
@@ -301,7 +302,7 @@ export default function AssistantViewPage() {
     if (!token) return;
 
     try {
-      const integrations = ['gmail', 'dropbox', 'slack'];
+      const integrations = ['gmail', 'dropbox', 'slack', 'discord'];
       const statusChecks = await Promise.all(
         integrations.map(async (integration) => {
           try {
@@ -322,7 +323,8 @@ export default function AssistantViewPage() {
       const statusObj = statusChecks.reduce((acc, curr) => ({ ...acc, ...curr }), {
         gmail: false,
         dropbox: false,
-        slack: false
+        slack: false,
+        discord: false
       });
       setIntegrationsStatus(statusObj as typeof integrationsStatus);
     } catch (error) {
@@ -999,7 +1001,7 @@ Your primary job is to be a knowledgeable assistant based on the uploaded docume
             <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">Assistant Not Found</h3>
             <p className="text-gray-600 mb-4">The assistant you're looking for doesn't exist or has been deleted.</p>
-            <Link href="/dashboard">
+            <Link href="/app/dashboard">
               <Button>Go to Dashboard</Button>
                 </Link>
           </CardContent>

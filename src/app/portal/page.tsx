@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-export default function RootPage() {
+export default function PortalPage() {
   const router = useRouter();
 
   useEffect(() => {
@@ -15,12 +15,12 @@ export default function RootPage() {
     try {
       const response = await fetch('/api/portal/auth/me');
       if (response.ok) {
-        router.push('/dashboard');
+        router.push('/portal/dashboard');
       } else {
-        router.push('/login');
+        router.push('/portal/login');
       }
     } catch (error) {
-      router.push('/login');
+      router.push('/portal/login');
     }
   };
 
@@ -28,7 +28,7 @@ export default function RootPage() {
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
         <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Loading portal...</p>
       </div>
     </div>
   );

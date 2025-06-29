@@ -26,10 +26,10 @@ export default function Navbar() {
   const pathname = usePathname();
   
   // Check if we're on dashboard pages
-  const isDashboard = pathname?.startsWith('/dashboard');
+  const isDashboard = pathname?.startsWith('/app/dashboard');
   
-  // Don't render navbar on dashboard pages
-  if (isDashboard) {
+  // Don't render navbar on portal routes (clean auth wrapper) or dashboard pages
+  if (pathname?.startsWith('/login') || pathname?.startsWith('/dashboard') || pathname === '/' || isDashboard) {
     return null;
   }
 
@@ -57,7 +57,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center">
+        <Link href="/app" className="flex items-center">
           <div className="relative h-12 w-[200px]">
             <Image
               src="/Executa-logo.png"
@@ -75,32 +75,32 @@ export default function Navbar() {
             // Dashboard Navigation
             <>
               <Link 
-                href="/dashboard" 
-                className={getLinkClasses('/dashboard')}
+                href="/app/dashboard" 
+                className={getLinkClasses('/app/dashboard')}
               >
                 Dashboard
               </Link>
               <Link 
-                href="/dashboard/create" 
-                className={getLinkClasses('/dashboard/create')}
+                href="/app/dashboard/create" 
+                className={getLinkClasses('/app/dashboard/create')}
               >
                 Create an AI
               </Link>
               <Link 
-                href="/dashboard/my-ais" 
-                className={getLinkClasses('/dashboard/my-ais')}
+                href="/app/dashboard/my-ais" 
+                className={getLinkClasses('/app/dashboard/my-ais')}
               >
                 My AIs
               </Link>
               <Link 
-                href="/dashboard/analytics" 
-                className={getLinkClasses('/dashboard/analytics')}
+                href="/app/dashboard/analytics" 
+                className={getLinkClasses('/app/dashboard/analytics')}
               >
                 Analytics
               </Link>
               <Link 
-                href="/dashboard/settings" 
-                className={getLinkClasses('/dashboard/settings')}
+                href="/app/dashboard/settings" 
+                className={getLinkClasses('/app/dashboard/settings')}
               >
                 Settings
               </Link>
@@ -136,7 +136,7 @@ export default function Navbar() {
             <div className="flex items-center space-x-2">
               {!isDashboard && (
                 <Button asChild variant="ghost">
-                  <Link href="/dashboard">Dashboard</Link>
+                  <Link href="/app/dashboard">Dashboard</Link>
                 </Button>
               )}
               <div className="relative group">

@@ -25,29 +25,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigationItems = [
     {
       name: "Dashboard",
-      href: "/dashboard",
+      href: "/app/dashboard",
       icon: LayoutDashboard,
     },
     {
       name: "My AIs",
-      href: "/dashboard/my-ais",
+      href: "/app/dashboard/my-ais",
       icon: Bot,
     },
     {
       name: "Analytics",
-      href: "/dashboard/analytics",
+      href: "/app/dashboard/analytics",
       icon: BarChart3,
     },
     {
       name: "Settings",
-      href: "/dashboard/settings",
+      href: "/app/dashboard/settings",
       icon: Settings,
     },
   ];
 
   const isActive = (href: string) => {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard";
+    if (href === "/app/dashboard") {
+      return pathname === "/app/dashboard";
     }
     return pathname?.startsWith(href);
   };
@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="w-64 bg-slate-900 text-white flex flex-col">
         {/* Logo */}
         <div className="p-6 border-b border-slate-700">
-          <Link href="/dashboard" className="flex items-center">
+          <Link href="/app/dashboard" className="flex items-center">
             <div className="relative h-8 w-32">
               <Image
                 src="/Executa-logo.png"

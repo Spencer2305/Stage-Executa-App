@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Check for active integrations
     const integrations = {
       dropbox: false,
-      // Add other integrations here as you build them
+      slack: false,
     };
 
     // Check Dropbox connection
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     
     const dropboxConnection = await db.dropboxConnection.findFirst({
       where: {
-        accountId: userAccount.account.id, // Use internal database ID
+        accountId: userAccount.account.id,
         isActive: true
       }
     });
@@ -41,6 +41,26 @@ export async function GET(request: NextRequest) {
     if (dropboxConnection) {
       integrations.dropbox = true;
     }
+
+
+
+    // Check Slack connection
+    console.log('🔍 Checking Slack connection for accountId:', userAccount.account.id);
+    
+    const slackConnection = await db.slackConnection.findFirst({
+      where: {
+        accountId: userAccount.account.id,
+        isActive: true
+      }
+    });
+
+    console.log('📊 Slack connection result:', slackConnection ? 'FOUND' : 'NOT FOUND');
+
+    if (slackConnection) {
+      integrations.slack = true;
+    }
+
+
 
     return NextResponse.json({
       success: true,
