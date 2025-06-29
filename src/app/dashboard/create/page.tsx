@@ -44,6 +44,7 @@ export default function CreateAIPage() {
     files: [] as File[],
     gmailIntegration: false,
     useDropboxSync: false,
+    useSlackIntegration: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dragActive, setDragActive] = useState(false);
@@ -129,6 +130,7 @@ export default function CreateAIPage() {
         useDropboxSync: formData.useDropboxSync,
         integrations: {
           gmail: formData.gmailIntegration,
+          slack: formData.useSlackIntegration,
         },
       });
 
@@ -327,6 +329,37 @@ export default function CreateAIPage() {
                 </div>
               </div>
 
+              {/* Slack Integration */}
+              <div 
+                className={`border rounded-lg p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
+                  formData.useSlackIntegration ? 'border-primary bg-primary/5' : 'border-muted'
+                }`}
+                onClick={() => setFormData(prev => ({ ...prev, useSlackIntegration: !prev.useSlackIntegration }))}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                      <MessageSquare className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Slack</p>
+                      <p className="text-xs text-muted-foreground">
+                        Deploy assistant in Slack channels
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      formData.useSlackIntegration 
+                        ? 'border-primary bg-primary' 
+                        : 'border-muted-foreground'
+                    }`}>
+                      {formData.useSlackIntegration && <Check className="h-2.5 w-2.5 text-white" />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Gmail Integration - Live */}
               <div className="border rounded-lg p-4">
                 <GmailIntegrationStep 
@@ -336,25 +369,7 @@ export default function CreateAIPage() {
                 />
               </div>
 
-              {/* Other Integrations - Coming Soon */}
-              <div className="border rounded-lg p-4 opacity-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Google Drive</p>
-                      <p className="text-xs text-muted-foreground">
-                        Sync documents from Google Drive
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                    Coming Soon
-                  </div>
-                </div>
-              </div>
+
 
               {formData.useDropboxSync && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -364,6 +379,19 @@ export default function CreateAIPage() {
                     </div>
                     <div className="text-xs text-blue-700">
                       <strong>Note:</strong> Files from your connected Dropbox account will be automatically synced when the assistant is created. Make sure you have connected your Dropbox account in Settings first.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.useSlackIntegration && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-4 h-4 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold mt-0.5">
+                      i
+                    </div>
+                    <div className="text-xs text-purple-700">
+                      <strong>Note:</strong> Your assistant will be deployed to Slack after creation. You can configure the Slack integration in the assistant settings.
                     </div>
                   </div>
                 </div>
@@ -424,6 +452,12 @@ export default function CreateAIPage() {
                 <span className="text-muted-foreground">Gmail Integration:</span>
                 <span className={`font-medium ${formData.gmailIntegration ? 'text-green-600' : 'text-gray-500'}`}>
                   {formData.gmailIntegration ? '✓ Connected' : 'Not connected'}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Slack Integration:</span>
+                <span className={`font-medium ${formData.useSlackIntegration ? 'text-green-600' : 'text-gray-500'}`}>
+                  {formData.useSlackIntegration ? '✓ Enabled' : 'Not enabled'}
                 </span>
               </div>
             </div>

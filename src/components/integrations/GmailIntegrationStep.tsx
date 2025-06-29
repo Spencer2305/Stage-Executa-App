@@ -233,20 +233,7 @@ export default function GmailIntegrationStep({ onGmailStatusChange }: GmailInteg
         </div>
 
         {/* Coming Soon - Other Integrations */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="flex items-center justify-between p-3 border rounded-lg opacity-50">
-            <div className="flex items-center space-x-2">
-              <div className="w-5 h-5 bg-purple-500 rounded flex items-center justify-center">
-                <span className="text-white text-xs font-bold">S</span>
-              </div>
-              <div>
-                <p className="font-medium text-xs">Slack</p>
-                <p className="text-xs text-muted-foreground">Import conversations</p>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-xs">Coming Soon</Badge>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="flex items-center justify-between p-3 border rounded-lg opacity-50">
             <div className="flex items-center space-x-2">
               <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center">
@@ -255,6 +242,32 @@ export default function GmailIntegrationStep({ onGmailStatusChange }: GmailInteg
               <div>
                 <p className="font-medium text-xs">Notion</p>
                 <p className="text-xs text-muted-foreground">Sync knowledge pages</p>
+              </div>
+            </div>
+            <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+          </div>
+
+          <div className="flex items-center justify-between p-3 border rounded-lg opacity-50">
+            <div className="flex items-center space-x-2">
+              <div className="w-5 h-5 bg-green-600 rounded flex items-center justify-center">
+                <span className="text-white text-xs font-bold">G</span>
+              </div>
+              <div>
+                <p className="font-medium text-xs">Google Drive</p>
+                <p className="text-xs text-muted-foreground">Sync documents</p>
+              </div>
+            </div>
+            <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+          </div>
+
+          <div className="flex items-center justify-between p-3 border rounded-lg opacity-50">
+            <div className="flex items-center space-x-2">
+              <div className="w-5 h-5 bg-orange-500 rounded flex items-center justify-center">
+                <span className="text-white text-xs font-bold">H</span>
+              </div>
+              <div>
+                <p className="font-medium text-xs">HubSpot</p>
+                <p className="text-xs text-muted-foreground">CRM integration</p>
               </div>
             </div>
             <Badge variant="outline" className="text-xs">Coming Soon</Badge>

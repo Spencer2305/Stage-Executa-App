@@ -71,6 +71,7 @@ export interface CreateModelRequest {
   useDropboxSync?: boolean;
   integrations?: {
     gmail?: boolean;
+    slack?: boolean;
     salesforce?: boolean;
     hubspot?: boolean;
   };
