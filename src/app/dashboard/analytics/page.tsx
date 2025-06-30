@@ -39,6 +39,7 @@ import { useModelStore } from "@/state/modelStore";
 import { useEffect, useState } from "react";
 import fetchApi from "@/utils/api";
 import { useRouter } from "next/navigation";
+import { ConversationTrendsChart, ResponseTimeChart, MiniTrendChart, ConversationsList } from "@/components/analytics/Charts";
 
 // Simple Sparkline Component
 function Sparkline({ data, color = "blue", trend = "up" }: { 
@@ -138,15 +139,35 @@ interface AnalyticsData {
     category?: string;
     lastAsked: string;
   }>;
-  recentFeedback: Array<{
+  recentConversations: Array<{
     id: string;
-    rating: number;
-    feedback?: string;
-    feedbackType: string;
-    platform: string;
+    assistantId: string;
     assistantName: string;
+    platform: string;
+    totalMessages: number;
+    userMessages: number;
+    assistantMessages: number;
+    avgResponseTime?: number | null;
+    userSatisfaction?: number | null;
+    status: string;
+    hasErrors: boolean;
     createdAt: string;
+    lastMessageAt: string;
+    messages: Array<{
+      id: string;
+      role: 'USER' | 'ASSISTANT';
+      content: string;
+      timestamp: string;
+      responseTime?: number | null;
+      hasError: boolean;
+    }>;
   }>;
+  responseTimeDistribution: {
+    fast: number;
+    medium: number;
+    slow: number;
+    verySlow: number;
+  };
   timeRange: string;
   dateRange: {
     start: string;
@@ -266,11 +287,55 @@ export default function AnalyticsPage() {
         { query: "How do I contact support?", count: 43, isAnswered: true, category: "support", lastAsked: new Date().toISOString() },
         { query: "What features are available?", count: 38, isAnswered: true, category: "general", lastAsked: new Date().toISOString() },
       ],
-      recentFeedback: [
-        { id: "1", rating: 5, feedback: "Great help!", feedbackType: "RATING", platform: "WEBSITE", assistantName: "Support Bot", createdAt: new Date().toISOString() },
-        { id: "2", rating: 4, feedback: "Quick response", feedbackType: "RATING", platform: "SLACK", assistantName: "Help Assistant", createdAt: new Date().toISOString() },
-        { id: "3", rating: 5, feedbackType: "THUMBS_UP", platform: "WEBSITE", assistantName: "Support Bot", createdAt: new Date().toISOString() },
+      recentConversations: [
+        {
+          id: "conv_1",
+          assistantId: "asst_1",
+          assistantName: "Support Bot",
+          platform: "WEBSITE",
+          totalMessages: 4,
+          userMessages: 2,
+          assistantMessages: 2,
+          avgResponseTime: 1.2,
+          userSatisfaction: 5,
+          status: "ACTIVE",
+          hasErrors: false,
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          lastMessageAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+          messages: [
+            { id: "msg_1", role: "USER" as const, content: "How do I reset my password?", timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), responseTime: null, hasError: false },
+            { id: "msg_2", role: "ASSISTANT" as const, content: "I can help you reset your password. You can click on the 'Forgot Password' link on the login page.", timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000 + 60000).toISOString(), responseTime: 1.2, hasError: false },
+            { id: "msg_3", role: "USER" as const, content: "Thank you! That worked perfectly.", timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), responseTime: null, hasError: false },
+            { id: "msg_4", role: "ASSISTANT" as const, content: "You're welcome! Is there anything else I can help you with?", timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000 + 30000).toISOString(), responseTime: 0.8, hasError: false }
+          ]
+        },
+        {
+          id: "conv_2", 
+          assistantId: "asst_2",
+          assistantName: "Help Assistant",
+          platform: "SLACK",
+          totalMessages: 3,
+          userMessages: 2,
+          assistantMessages: 1,
+          avgResponseTime: 2.1,
+          userSatisfaction: 4,
+          status: "ACTIVE",
+          hasErrors: false,
+          createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          lastMessageAt: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(),
+          messages: [
+            { id: "msg_5", role: "USER" as const, content: "What are your business hours?", timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), responseTime: null, hasError: false },
+            { id: "msg_6", role: "ASSISTANT" as const, content: "Our business hours are Monday-Friday 9AM-6PM EST. We also offer 24/7 chat support.", timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000 + 120000).toISOString(), responseTime: 2.1, hasError: false },
+            { id: "msg_7", role: "USER" as const, content: "Perfect, thank you!", timestamp: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(), responseTime: null, hasError: false }
+          ]
+        }
       ],
+      responseTimeDistribution: {
+        fast: 450,
+        medium: 120,
+        slow: 45,
+        verySlow: 15,
+      },
       timeRange: selectedTimeRange,
       dateRange: {
         start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -620,42 +685,37 @@ ${analyticsData.assistantPerformance.map(ap =>
             <CardDescription>Daily conversation volume across all assistants</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-                <p className="text-blue-700 font-medium">Interactive Chart</p>
-                <p className="text-sm text-blue-600">Showing growth trend: +{analyticsData.overview.conversationGrowth.toFixed(1)}% this period</p>
-                <div className="mt-4 flex justify-center">
-                  <MiniBarChart 
-                    data={analyticsData.dailyTrends.slice(-13).map(d => d.conversations)} 
-                    color="blue" 
-                  />
+            {analyticsData.dailyTrends.length > 0 ? (
+              <ConversationTrendsChart 
+                data={analyticsData.dailyTrends.map(trend => ({
+                  ...trend,
+                  avgResponseTime: trend.avgResponseTime || 0,
+                  avgSatisfaction: trend.avgSatisfaction || 0,
+                  errorRate: trend.errorRate || 0
+                }))} 
+              />
+            ) : (
+              <div className="h-64 flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                <div className="text-center">
+                  <BarChart3 className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+                  <p className="text-blue-700 font-medium">No Data Available</p>
+                  <p className="text-sm text-blue-600">Start conversations to see trends</p>
                 </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Response Time Trends */}
+        {/* Response Time Analysis */}
         <Card>
           <CardHeader>
             <CardTitle>Response Time Analysis</CardTitle>
             <CardDescription>Average response time trends and distribution</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 rounded-lg border border-green-100">
-              <div className="text-center">
-                <Clock className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <p className="text-green-700 font-medium">Response Time Trends</p>
-                <p className="text-sm text-green-600">Current avg: {analyticsData.overview.avgResponseTime.toFixed(1)}s</p>
-                <div className="mt-4 flex justify-center">
-                  <Sparkline 
-                    data={analyticsData.dailyTrends.slice(-13).map(d => d.avgResponseTime || 1)} 
-                    color="green" 
-                  />
-                </div>
-              </div>
-            </div>
+            <ResponseTimeChart 
+              data={analyticsData.responseTimeDistribution}
+            />
           </CardContent>
         </Card>
       </div>
@@ -697,41 +757,8 @@ ${analyticsData.assistantPerformance.map(ap =>
           </CardContent>
         </Card>
 
-        {/* Recent Feedback */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Feedback</CardTitle>
-            <CardDescription>Latest user ratings and comments</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {analyticsData.recentFeedback.slice(0, 5).map((feedback) => (
-                <div key={feedback.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star 
-                        key={star}
-                        className={`h-3 w-3 ${star <= feedback.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
-                      />
-                    ))}
-                  </div>
-                  <div className="flex-1">
-                    {feedback.feedback && (
-                      <p className="text-sm text-gray-900 mb-1">"{feedback.feedback}"</p>
-                    )}
-                    <div className="flex items-center space-x-2 text-xs text-gray-500">
-                      <span>{feedback.assistantName}</span>
-                      <span>•</span>
-                      <span className="capitalize">{feedback.platform.toLowerCase()}</span>
-                      <span>•</span>
-                      <span>{new Date(feedback.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Recent Conversations */}
+        <ConversationsList conversations={analyticsData.recentConversations} />
       </div>
 
       {/* Assistant Performance */}
