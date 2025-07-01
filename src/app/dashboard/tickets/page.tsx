@@ -370,7 +370,7 @@ export default function TicketManagerPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-green-700 font-medium">Active</p>
-                <p className="text-xs text-green-600">support@executa.ai</p>
+                                        <p className="text-xs text-green-600">info@executasolutions.com</p>
               </div>
               <Badge className="bg-green-100 text-green-800 border-green-200">
                 Connected

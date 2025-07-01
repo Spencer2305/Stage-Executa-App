@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     try {
       // Check if conversation table exists by trying a simple query
-      const testConversation = await db.$queryRaw`SELECT COUNT(*) as count FROM conversations WHERE account_id = ${user.account.id} LIMIT 1`;
+      const testConversation = await db.$queryRaw`SELECT COUNT(*) as count FROM conversations WHERE account_id = ${Prisma.sql`${user.account.id}`} LIMIT 1`;
       hasConversationData = true;
       
       // If we reach here, conversation table exists

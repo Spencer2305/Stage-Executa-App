@@ -326,7 +326,7 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
                       <Label>Support Email Address</Label>
                       <Input
                         type="email"
-                        placeholder="support@yourcompany.com"
+                        placeholder="info@executasolutions.com"
                         value={handoffSettings.emailSettings.supportEmail}
                         onChange={(e) => handleSettingChange('emailSettings.supportEmail', e.target.value)}
                       />

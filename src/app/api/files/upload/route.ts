@@ -5,8 +5,10 @@ import { db } from '@/lib/db';
 import formidable from 'formidable';
 import fs from 'fs';
 import { Readable } from 'stream';
+import { withRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/security';
+import { validateFileSecurely, validateSessionLimits } from '@/lib/fileUploadSecurity';
 
-export async function POST(request: NextRequest) {
+async function handleFileUpload(request: NextRequest): Promise<NextResponse> {
   try {
     // Authenticate user
     const user = await authenticateRequest(request);
@@ -33,13 +35,57 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
-    // Convert files to processing format
-    const filesToProcess = await Promise.all(
+    // Get user's account plan for security validation
+    const accountPlan = userAccount.account.plan as 'FREE' | 'PRO' | 'ENTERPRISE';
+
+    // Validate session limits
+    const sessionLimits = validateSessionLimits(
+      files.map(f => ({ size: f.size })),
+      0 // Could track existing session size if needed
+    );
+    
+    if (!sessionLimits.isValid) {
+      return NextResponse.json({ error: sessionLimits.error }, { status: 400 });
+    }
+
+    // Security validation for each file
+    console.log('🔒 Running comprehensive security validation for file uploads');
+    const securityResults = await Promise.all(
       files.map(async (file) => {
+        const result = await validateFileSecurely(file, file.name, file.type, accountPlan);
+        return { file, result };
+      })
+    );
+
+    // Check if any files failed security validation
+    const failedFiles = securityResults.filter(({ result }) => !result.isValid);
+    if (failedFiles.length > 0) {
+      const errors = failedFiles.map(({ file, result }) => ({
+        fileName: file.name,
+        errors: result.errors
+      }));
+      
+      console.warn('🚫 File uploads rejected due to security issues:', errors);
+      return NextResponse.json({ 
+        error: 'File security validation failed',
+        failedFiles: errors
+      }, { status: 400 });
+    }
+
+    // Log security warnings
+    securityResults.forEach(({ file, result }) => {
+      if (result.warnings.length > 0) {
+        console.warn(`⚠️ Security warnings for ${file.name}:`, result.warnings);
+      }
+    });
+
+    // Convert files to processing format using sanitized names
+    const filesToProcess = await Promise.all(
+      securityResults.map(async ({ file, result }) => {
         const buffer = Buffer.from(await file.arrayBuffer());
         return {
           buffer,
-          fileName: file.name,
+          fileName: result.sanitizedFileName || file.name,
           mimeType: file.type || 'application/octet-stream'
         };
       })
@@ -60,13 +106,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('File upload error:', error);
     return NextResponse.json(
-      { error: 'File upload failed', details: String(error) },
+      { error: 'File upload failed' },
       { status: 500 }
     );
   }
 }
 
-export async function GET(request: NextRequest) {
+async function handleGetFiles(request: NextRequest): Promise<NextResponse> {
   try {
     // Authenticate user
     const user = await authenticateRequest(request);
@@ -141,8 +187,14 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Get files error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch files', details: String(error) },
+      { error: 'Failed to fetch files' },
       { status: 500 }
     );
   }
-} 
+}
+
+// Apply rate limiting to file uploads
+export const POST = withRateLimit(RATE_LIMIT_CONFIGS.UPLOAD, handleFileUpload);
+
+// Apply general API rate limiting to file listing
+export const GET = withRateLimit(RATE_LIMIT_CONFIGS.API, handleGetFiles); 

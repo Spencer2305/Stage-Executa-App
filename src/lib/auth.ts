@@ -3,6 +3,12 @@ import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
 import { db } from './db';
 import { v4 as uuidv4 } from 'uuid';
+import { validateSecurityEnvironment } from './security';
+
+// Validate security environment on module load
+if (typeof window === 'undefined') { // Only run on server side
+  validateSecurityEnvironment();
+}
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 

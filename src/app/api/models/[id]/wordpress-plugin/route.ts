@@ -284,8 +284,67 @@ new ExecutaAIWidget();
 }
 
 function generateSimpleJavaScript(assistant: any): string {
-  return `// Executa AI WordPress Plugin - Enhanced with Live Styling
+  return `// Executa AI WordPress Plugin - Enhanced with Live Styling & XSS Protection
 console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
+
+// Security utility functions to prevent XSS
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function isSafeUrl(url) {
+    try {
+        var parsedUrl = new URL(url);
+        var allowedProtocols = ['http:', 'https:', 'data:'];
+        return allowedProtocols.includes(parsedUrl.protocol);
+    } catch {
+        return false;
+    }
+}
+
+function isSafeImageUrl(url) {
+    if (!isSafeUrl(url)) return false;
+    try {
+        var parsedUrl = new URL(url);
+        if (parsedUrl.protocol === 'data:') {
+            return parsedUrl.href.indexOf('data:image/') === 0;
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function createSafeElement(tagName, textContent, styles) {
+    var element = document.createElement(tagName);
+    if (textContent) {
+        element.textContent = textContent; // Safe text assignment
+    }
+    if (styles) {
+        element.style.cssText = styles;
+    }
+    return element;
+}
+
+function createSafeImage(src, alt, styles) {
+    if (!isSafeImageUrl(src)) {
+        console.warn('EXECUTA AI: Unsafe image URL blocked:', src);
+        return null;
+    }
+    var img = document.createElement('img');
+    img.src = src;
+    img.alt = alt || '';
+    if (styles) {
+        img.style.cssText = styles;
+    }
+    img.onerror = function() {
+        console.warn('EXECUTA AI: Image failed to load:', src);
+        img.style.display = 'none';
+    };
+    return img;
+}
 
 (function() {
     var initialized = false;
@@ -492,11 +551,18 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
         var bubble = document.createElement('div');
         bubble.id = 'executa-chat-bubble';
         // Use Font Awesome icon with fallback
-        bubble.innerHTML = '<i class="fas fa-comments" style="font-size: 24px;"></i>';
+        // Securely create Font Awesome icon
+        var icon = document.createElement('i');
+        icon.className = 'fas fa-comments';
+        icon.style.fontSize = '24px';
+        bubble.appendChild(icon);
+        
         // Fallback for when Font Awesome doesn't load
         setTimeout(function() {
-            if (bubble.querySelector('i').offsetWidth === 0) {
-                bubble.innerHTML = '💬';
+            if (icon.offsetWidth === 0) {
+                bubble.removeChild(icon);
+                var emoji = document.createTextNode('💬');
+                bubble.appendChild(emoji);
             }
         }, 100);
         bubble.style.cssText = 'position: fixed !important; ' + 
@@ -520,12 +586,20 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
             positionStyles.chat + 
             ' width: 350px !important; height: 450px !important; background: ' + chatBackgroundColor + ' !important; border-radius: 12px !important; box-shadow: 0 8px 30px rgba(0,0,0,0.3) !important; z-index: 99998 !important; display: none !important; flex-direction: column !important; ' + fontFamily;
         
-        // Enhanced header with conditional display
+        // Enhanced header with conditional display (XSS protected)
         var header = null;
         if (showChatHeader) {
             header = document.createElement('div');
             header.style.cssText = 'background: linear-gradient(135deg, ' + bubbleColor + ' 0%, ' + userMessageBubbleColor + ' 100%) !important; color: white !important; padding: 16px !important; border-radius: 12px 12px 0 0 !important; font-weight: 600 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; font-size: 16px !important;';
-            header.innerHTML = '<span>' + chatHeaderTitle + '</span><span id="close-chat" style="cursor: pointer; font-size: 20px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.2s ease;">×</span>';
+            
+            // Safely create title span
+            var titleSpan = createSafeElement('span', chatHeaderTitle);
+            header.appendChild(titleSpan);
+            
+            // Safely create close button
+            var closeBtn = createSafeElement('span', '×', 'cursor: pointer; font-size: 20px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.2s ease;');
+            closeBtn.id = 'close-chat';
+            header.appendChild(closeBtn);
         }
         
         // Enhanced messages area
@@ -538,18 +612,39 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
             var welcomeDiv = document.createElement('div');
             welcomeDiv.style.cssText = 'display: flex !important; align-items: flex-start !important; margin-bottom: 16px !important; gap: 8px !important;';
             
-            // Avatar if enabled
+            // Avatar if enabled (XSS protected)
             if (showAssistantAvatar) {
                 var avatar = document.createElement('div');
                 avatar.style.cssText = 'width: 32px !important; height: 32px !important; border-radius: 50% !important; background: ' + bubbleColor + ' !important; display: flex !important; align-items: center !important; justify-content: center !important; color: white !important; font-size: 16px !important; flex-shrink: 0 !important;';
+                
                 if (assistantAvatarUrl) {
-                    avatar.innerHTML = '<img src="' + assistantAvatarUrl + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Assistant">';
+                    var avatarImg = createSafeImage(assistantAvatarUrl, 'Assistant', 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;');
+                    if (avatarImg) {
+                        avatar.appendChild(avatarImg);
+                    } else {
+                        // Fallback to robot icon if image is unsafe
+                        var robotIcon = createSafeElement('i', '', 'font-size: 16px;');
+                        robotIcon.className = 'fas fa-robot';
+                        avatar.appendChild(robotIcon);
+                        // Fallback to emoji if Font Awesome doesn't load
+                        setTimeout(function() {
+                            if (robotIcon.offsetWidth === 0) {
+                                avatar.removeChild(robotIcon);
+                                var robotEmoji = createSafeElement('span', '🤖');
+                                avatar.appendChild(robotEmoji);
+                            }
+                        }, 100);
+                    }
                 } else {
-                    avatar.innerHTML = '<i class="fas fa-robot" style="font-size: 16px;"></i>';
+                    var robotIcon = createSafeElement('i', '', 'font-size: 16px;');
+                    robotIcon.className = 'fas fa-robot';
+                    avatar.appendChild(robotIcon);
                     // Fallback for when Font Awesome doesn't load
                     setTimeout(function() {
-                        if (avatar.querySelector('i') && avatar.querySelector('i').offsetWidth === 0) {
-                            avatar.innerHTML = '🤖';
+                        if (robotIcon.offsetWidth === 0) {
+                            avatar.removeChild(robotIcon);
+                            var robotEmoji = createSafeElement('span', '🤖');
+                            avatar.appendChild(robotEmoji);
                         }
                     }, 100);
                 }
@@ -584,11 +679,18 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
         
         var sendBtn = document.createElement('button');
         sendBtn.id = 'chat-send';
-        sendBtn.innerHTML = '<i class="fas fa-paper-plane" style="font-size: 16px;"></i>';
+        // Securely create send button icon
+        var sendIcon = document.createElement('i');
+        sendIcon.className = 'fas fa-paper-plane';
+        sendIcon.style.fontSize = '16px';
+        sendBtn.appendChild(sendIcon);
+        
         // Fallback for when Font Awesome doesn't load
         setTimeout(function() {
-            if (sendBtn.querySelector('i').offsetWidth === 0) {
-                sendBtn.innerHTML = '→';
+            if (sendIcon.offsetWidth === 0) {
+                sendBtn.removeChild(sendIcon);
+                var arrow = document.createTextNode('→');
+                sendBtn.appendChild(arrow);
             }
         }, 100);
         sendBtn.style.cssText = 'background: ' + userMessageBubbleColor + ' !important; color: white !important; border: none !important; width: 44px !important; height: 44px !important; border-radius: 50% !important; cursor: pointer !important; font-size: 18px !important; font-weight: bold !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s ease !important;';
@@ -715,13 +817,29 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
         if (showAssistantAvatar) {
             var typingAvatar = document.createElement('div');
             typingAvatar.style.cssText = 'width: 32px !important; height: 32px !important; border-radius: 50% !important; background: ' + bubbleColor + ' !important; display: flex !important; align-items: center !important; justify-content: center !important; color: white !important; font-size: 16px !important; flex-shrink: 0 !important;';
-            if (assistantAvatarUrl) {
-                typingAvatar.innerHTML = '<img src="' + assistantAvatarUrl + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Assistant">';
+            if (assistantAvatarUrl && /^https?:\\/\\//.test(assistantAvatarUrl)) {
+                // Securely create image
+                var img = document.createElement('img');
+                img.src = assistantAvatarUrl;
+                img.alt = 'Assistant';
+                img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                img.onerror = function() {
+                    typingAvatar.removeChild(img);
+                    var emoji = document.createTextNode('🤖');
+                    typingAvatar.appendChild(emoji);
+                };
+                typingAvatar.appendChild(img);
             } else {
-                typingAvatar.innerHTML = '<i class="fas fa-robot" style="font-size: 16px;"></i>';
+                var robotIcon = document.createElement('i');
+                robotIcon.className = 'fas fa-robot';
+                robotIcon.style.fontSize = '16px';
+                typingAvatar.appendChild(robotIcon);
+                
                 setTimeout(function() {
-                    if (typingAvatar.querySelector('i') && typingAvatar.querySelector('i').offsetWidth === 0) {
-                        typingAvatar.innerHTML = '🤖';
+                    if (robotIcon.offsetWidth === 0) {
+                        typingAvatar.removeChild(robotIcon);
+                        var emoji = document.createTextNode('🤖');
+                        typingAvatar.appendChild(emoji);
                     }
                 }, 100);
             }
@@ -730,7 +848,24 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
         
         var typingText = document.createElement('div');
         typingText.style.cssText = 'background: ' + assistantBubbleColor + ' !important; color: #666 !important; padding: 12px 16px !important; border-radius: ' + messageBubbleRadius + 'px !important; font-size: 14px !important; font-style: italic !important; max-width: 70% !important;';
-        typingText.innerHTML = '<span style="animation: pulse 1.5s infinite;">●</span> <span style="animation: pulse 1.5s infinite 0.2s;">●</span> <span style="animation: pulse 1.5s infinite 0.4s;">●</span>';
+        // Securely create typing dots animation
+        var dot1 = document.createElement('span');
+        dot1.textContent = '●';
+        dot1.style.cssText = 'animation: pulse 1.5s infinite;';
+        
+        var dot2 = document.createElement('span');
+        dot2.textContent = '●';
+        dot2.style.cssText = 'animation: pulse 1.5s infinite 0.2s;';
+        
+        var dot3 = document.createElement('span');
+        dot3.textContent = '●';
+        dot3.style.cssText = 'animation: pulse 1.5s infinite 0.4s;';
+        
+        typingText.appendChild(dot1);
+        typingText.appendChild(document.createTextNode(' '));
+        typingText.appendChild(dot2);
+        typingText.appendChild(document.createTextNode(' '));
+        typingText.appendChild(dot3);
         typingDiv.appendChild(typingText);
         
         messages.appendChild(typingDiv);
@@ -766,13 +901,29 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
             if (showAssistantAvatar) {
                 var aiAvatar = document.createElement('div');
                 aiAvatar.style.cssText = 'width: 32px !important; height: 32px !important; border-radius: 50% !important; background: ' + bubbleColor + ' !important; display: flex !important; align-items: center !important; justify-content: center !important; color: white !important; font-size: 16px !important; flex-shrink: 0 !important;';
-                if (assistantAvatarUrl) {
-                    aiAvatar.innerHTML = '<img src="' + assistantAvatarUrl + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Assistant">';
+                if (assistantAvatarUrl && /^https?:\\/\\//.test(assistantAvatarUrl)) {
+                    // Securely create image
+                    var img = document.createElement('img');
+                    img.src = assistantAvatarUrl;
+                    img.alt = 'Assistant';
+                    img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                    img.onerror = function() {
+                        aiAvatar.removeChild(img);
+                        var emoji = document.createTextNode('🤖');
+                        aiAvatar.appendChild(emoji);
+                    };
+                    aiAvatar.appendChild(img);
                 } else {
-                    aiAvatar.innerHTML = '<i class="fas fa-robot" style="font-size: 16px;"></i>';
+                    var robotIcon = document.createElement('i');
+                    robotIcon.className = 'fas fa-robot';
+                    robotIcon.style.fontSize = '16px';
+                    aiAvatar.appendChild(robotIcon);
+                    
                     setTimeout(function() {
-                        if (aiAvatar.querySelector('i') && aiAvatar.querySelector('i').offsetWidth === 0) {
-                            aiAvatar.innerHTML = '🤖';
+                        if (robotIcon.offsetWidth === 0) {
+                            aiAvatar.removeChild(robotIcon);
+                            var emoji = document.createTextNode('🤖');
+                            aiAvatar.appendChild(emoji);
                         }
                     }, 100);
                 }
@@ -808,13 +959,29 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
             if (showAssistantAvatar) {
                 var errorAvatar = document.createElement('div');
                 errorAvatar.style.cssText = 'width: 32px !important; height: 32px !important; border-radius: 50% !important; background: ' + bubbleColor + ' !important; display: flex !important; align-items: center !important; justify-content: center !important; color: white !important; font-size: 16px !important; flex-shrink: 0 !important;';
-                if (assistantAvatarUrl) {
-                    errorAvatar.innerHTML = '<img src="' + assistantAvatarUrl + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Assistant">';
+                if (assistantAvatarUrl && /^https?:\\/\\//.test(assistantAvatarUrl)) {
+                    // Securely create image
+                    var img = document.createElement('img');
+                    img.src = assistantAvatarUrl;
+                    img.alt = 'Assistant';
+                    img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                    img.onerror = function() {
+                        errorAvatar.removeChild(img);
+                        var emoji = document.createTextNode('🤖');
+                        errorAvatar.appendChild(emoji);
+                    };
+                    errorAvatar.appendChild(img);
                 } else {
-                    errorAvatar.innerHTML = '<i class="fas fa-robot" style="font-size: 16px;"></i>';
+                    var robotIcon = document.createElement('i');
+                    robotIcon.className = 'fas fa-robot';
+                    robotIcon.style.fontSize = '16px';
+                    errorAvatar.appendChild(robotIcon);
+                    
                     setTimeout(function() {
-                        if (errorAvatar.querySelector('i') && errorAvatar.querySelector('i').offsetWidth === 0) {
-                            errorAvatar.innerHTML = '🤖';
+                        if (robotIcon.offsetWidth === 0) {
+                            errorAvatar.removeChild(robotIcon);
+                            var emoji = document.createTextNode('🤖');
+                            errorAvatar.appendChild(emoji);
                         }
                     }, 100);
                 }

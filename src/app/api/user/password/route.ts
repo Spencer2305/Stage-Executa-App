@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest, verifyPassword, hashPassword, validatePassword } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { withRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/security';
 
-export async function PUT(request: NextRequest) {
+async function handlePasswordChange(request: NextRequest): Promise<NextResponse> {
   try {
     // Authenticate user
     const user = await authenticateRequest(request);
@@ -63,14 +64,17 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({
-      success: true,
-      message: 'Password updated successfully. Please log in again.'
+      message: 'Password updated successfully'
     });
 
   } catch (error) {
-    console.error('Password update error:', error);
-    return NextResponse.json({ 
-      error: 'Failed to update password' 
-    }, { status: 500 });
+    console.error('Password change error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+// Apply rate limiting to prevent password change abuse
+export const PUT = withRateLimit(RATE_LIMIT_CONFIGS.PASSWORD_RESET, handlePasswordChange); 

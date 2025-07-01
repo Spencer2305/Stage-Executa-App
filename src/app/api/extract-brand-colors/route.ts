@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { withSecureAPI, RATE_LIMIT_CONFIGS } from '@/lib/security';
 
-export async function POST(request: NextRequest) {
+async function handleBrandColorExtraction(request: NextRequest, user: any): Promise<NextResponse> {
   try {
-    // Check authentication using the same method as other API endpoints
-    const authorization = request.headers.get('authorization');
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authorization.split(' ')[1];
-    try {
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const { url } = await request.json();
     
     if (!url) {
@@ -43,6 +31,9 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// Apply secure authentication and rate limiting
+export const POST = withSecureAPI(RATE_LIMIT_CONFIGS.API, handleBrandColorExtraction);
 
 async function extractColorsFromWebsite(url: string): Promise<string[]> {
   const colors: string[] = [];

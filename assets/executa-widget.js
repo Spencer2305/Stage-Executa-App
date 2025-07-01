@@ -205,12 +205,18 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
         // Create chat bubble with enhanced styling
         var bubble = document.createElement('div');
         bubble.id = 'executa-chat-bubble';
-        // Use Font Awesome icon with fallback
-        bubble.innerHTML = '<i class="fas fa-comments" style="font-size: 24px;"></i>';
+        // Use Font Awesome icon with fallback - SECURE VERSION
+        var icon = document.createElement('i');
+        icon.className = 'fas fa-comments';
+        icon.style.fontSize = '24px';
+        bubble.appendChild(icon);
+        
         // Fallback for when Font Awesome doesn't load
         setTimeout(function() {
-            if (bubble.querySelector('i').offsetWidth === 0) {
-                bubble.innerHTML = '💬';
+            if (icon.offsetWidth === 0) {
+                bubble.removeChild(icon);
+                var emoji = document.createTextNode('💬');
+                bubble.appendChild(emoji);
             }
         }, 100);
         bubble.style.cssText = 'position: fixed !important; ' + 
@@ -234,12 +240,22 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
             positionStyles.chat + 
             ' width: 350px !important; height: 450px !important; background: ' + chatBackgroundColor + ' !important; border-radius: 12px !important; box-shadow: 0 8px 30px rgba(0,0,0,0.3) !important; z-index: 99998 !important; display: none !important; flex-direction: column !important; ' + fontFamily;
         
-        // Enhanced header with conditional display
+        // Enhanced header with conditional display - SECURE VERSION
         var header = null;
         if (showChatHeader) {
             header = document.createElement('div');
             header.style.cssText = 'background: linear-gradient(135deg, ' + bubbleColor + ' 0%, ' + userMessageBubbleColor + ' 100%) !important; color: white !important; padding: 16px !important; border-radius: 12px 12px 0 0 !important; font-weight: 600 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; font-size: 16px !important;';
-            header.innerHTML = '<span>' + chatHeaderTitle + '</span><span id="close-chat" style="cursor: pointer; font-size: 20px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.2s ease;">×</span>';
+            
+            // Securely create header content
+            var titleSpan = document.createElement('span');
+            titleSpan.textContent = chatHeaderTitle; // Safe text assignment
+            header.appendChild(titleSpan);
+            
+            var closeSpan = document.createElement('span');
+            closeSpan.id = 'close-chat';
+            closeSpan.textContent = '×';
+            closeSpan.style.cssText = 'cursor: pointer; font-size: 20px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.2s ease;';
+            header.appendChild(closeSpan);
         }
         
         // Enhanced messages area
@@ -252,18 +268,35 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
             var welcomeDiv = document.createElement('div');
             welcomeDiv.style.cssText = 'display: flex !important; align-items: flex-start !important; margin-bottom: 16px !important; gap: 8px !important;';
             
-            // Avatar if enabled
+            // Avatar if enabled - SECURE VERSION
             if (showAssistantAvatar) {
                 var avatar = document.createElement('div');
                 avatar.style.cssText = 'width: 32px !important; height: 32px !important; border-radius: 50% !important; background: ' + bubbleColor + ' !important; display: flex !important; align-items: center !important; justify-content: center !important; color: white !important; font-size: 16px !important; flex-shrink: 0 !important;';
-                if (assistantAvatarUrl) {
-                    avatar.innerHTML = '<img src="' + assistantAvatarUrl + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Assistant">';
+                
+                if (assistantAvatarUrl && /^https?:\/\//.test(assistantAvatarUrl)) {
+                    // Validate URL and create image securely
+                    var img = document.createElement('img');
+                    img.src = assistantAvatarUrl;
+                    img.alt = 'Assistant';
+                    img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                    img.onerror = function() { 
+                        avatar.removeChild(img);
+                        var emoji = document.createTextNode('🤖');
+                        avatar.appendChild(emoji);
+                    };
+                    avatar.appendChild(img);
                 } else {
-                    avatar.innerHTML = '<i class="fas fa-robot" style="font-size: 16px;"></i>';
+                    var robotIcon = document.createElement('i');
+                    robotIcon.className = 'fas fa-robot';
+                    robotIcon.style.fontSize = '16px';
+                    avatar.appendChild(robotIcon);
+                    
                     // Fallback for when Font Awesome doesn't load
                     setTimeout(function() {
-                        if (avatar.querySelector('i') && avatar.querySelector('i').offsetWidth === 0) {
-                            avatar.innerHTML = '🤖';
+                        if (robotIcon.offsetWidth === 0) {
+                            avatar.removeChild(robotIcon);
+                            var emoji = document.createTextNode('🤖');
+                            avatar.appendChild(emoji);
                         }
                     }, 100);
                 }
@@ -298,11 +331,19 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
         
         var sendBtn = document.createElement('button');
         sendBtn.id = 'chat-send';
-        sendBtn.innerHTML = '<i class="fas fa-paper-plane" style="font-size: 16px;"></i>';
+        
+        // Securely create send button icon
+        var sendIcon = document.createElement('i');
+        sendIcon.className = 'fas fa-paper-plane';
+        sendIcon.style.fontSize = '16px';
+        sendBtn.appendChild(sendIcon);
+        
         // Fallback for when Font Awesome doesn't load
         setTimeout(function() {
-            if (sendBtn.querySelector('i').offsetWidth === 0) {
-                sendBtn.innerHTML = '→';
+            if (sendIcon.offsetWidth === 0) {
+                sendBtn.removeChild(sendIcon);
+                var arrow = document.createTextNode('→');
+                sendBtn.appendChild(arrow);
             }
         }, 100);
         sendBtn.style.cssText = 'background: ' + userMessageBubbleColor + ' !important; color: white !important; border: none !important; width: 44px !important; height: 44px !important; border-radius: 50% !important; cursor: pointer !important; font-size: 18px !important; font-weight: bold !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s ease !important;';
@@ -425,17 +466,34 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
         typingDiv.id = 'typing-indicator';
         typingDiv.style.cssText = 'display: flex !important; align-items: flex-start !important; margin-bottom: 16px !important; gap: 8px !important;';
         
-        // Avatar for typing indicator
+        // Avatar for typing indicator - SECURE VERSION
         if (showAssistantAvatar) {
             var typingAvatar = document.createElement('div');
             typingAvatar.style.cssText = 'width: 32px !important; height: 32px !important; border-radius: 50% !important; background: ' + bubbleColor + ' !important; display: flex !important; align-items: center !important; justify-content: center !important; color: white !important; font-size: 16px !important; flex-shrink: 0 !important;';
-            if (assistantAvatarUrl) {
-                typingAvatar.innerHTML = '<img src="' + assistantAvatarUrl + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Assistant">';
+            
+            if (assistantAvatarUrl && /^https?:\/\//.test(assistantAvatarUrl)) {
+                // Securely create image
+                var img = document.createElement('img');
+                img.src = assistantAvatarUrl;
+                img.alt = 'Assistant';
+                img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                img.onerror = function() {
+                    typingAvatar.removeChild(img);
+                    var emoji = document.createTextNode('🤖');
+                    typingAvatar.appendChild(emoji);
+                };
+                typingAvatar.appendChild(img);
             } else {
-                typingAvatar.innerHTML = '<i class="fas fa-robot" style="font-size: 16px;"></i>';
+                var robotIcon = document.createElement('i');
+                robotIcon.className = 'fas fa-robot';
+                robotIcon.style.fontSize = '16px';
+                typingAvatar.appendChild(robotIcon);
+                
                 setTimeout(function() {
-                    if (typingAvatar.querySelector('i') && typingAvatar.querySelector('i').offsetWidth === 0) {
-                        typingAvatar.innerHTML = '🤖';
+                    if (robotIcon.offsetWidth === 0) {
+                        typingAvatar.removeChild(robotIcon);
+                        var emoji = document.createTextNode('🤖');
+                        typingAvatar.appendChild(emoji);
                     }
                 }, 100);
             }
@@ -444,7 +502,26 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
         
         var typingText = document.createElement('div');
         typingText.style.cssText = 'background: ' + assistantBubbleColor + ' !important; color: #666 !important; padding: 12px 16px !important; border-radius: ' + messageBubbleRadius + 'px !important; font-size: 14px !important; font-style: italic !important; max-width: 70% !important;';
-        typingText.innerHTML = '<span style="animation: pulse 1.5s infinite;">●</span> <span style="animation: pulse 1.5s infinite 0.2s;">●</span> <span style="animation: pulse 1.5s infinite 0.4s;">●</span>';
+        
+        // Securely create typing dots animation
+        var dot1 = document.createElement('span');
+        dot1.textContent = '●';
+        dot1.style.cssText = 'animation: pulse 1.5s infinite;';
+        
+        var dot2 = document.createElement('span');
+        dot2.textContent = '●';
+        dot2.style.cssText = 'animation: pulse 1.5s infinite 0.2s;';
+        
+        var dot3 = document.createElement('span');
+        dot3.textContent = '●';
+        dot3.style.cssText = 'animation: pulse 1.5s infinite 0.4s;';
+        
+        typingText.appendChild(dot1);
+        typingText.appendChild(document.createTextNode(' '));
+        typingText.appendChild(dot2);
+        typingText.appendChild(document.createTextNode(' '));
+        typingText.appendChild(dot3);
+        
         typingDiv.appendChild(typingText);
         
         messages.appendChild(typingDiv);
@@ -476,17 +553,34 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
             var aiMsgDiv = document.createElement('div');
             aiMsgDiv.style.cssText = 'display: flex !important; align-items: flex-start !important; margin-bottom: 16px !important; gap: 8px !important;';
             
-            // Avatar for AI response
+            // Avatar for AI response - SECURE VERSION
             if (showAssistantAvatar) {
                 var aiAvatar = document.createElement('div');
                 aiAvatar.style.cssText = 'width: 32px !important; height: 32px !important; border-radius: 50% !important; background: ' + bubbleColor + ' !important; display: flex !important; align-items: center !important; justify-content: center !important; color: white !important; font-size: 16px !important; flex-shrink: 0 !important;';
-                if (assistantAvatarUrl) {
-                    aiAvatar.innerHTML = '<img src="' + assistantAvatarUrl + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Assistant">';
+                
+                if (assistantAvatarUrl && /^https?:\/\//.test(assistantAvatarUrl)) {
+                    // Securely create image
+                    var img = document.createElement('img');
+                    img.src = assistantAvatarUrl;
+                    img.alt = 'Assistant';
+                    img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                    img.onerror = function() {
+                        aiAvatar.removeChild(img);
+                        var emoji = document.createTextNode('🤖');
+                        aiAvatar.appendChild(emoji);
+                    };
+                    aiAvatar.appendChild(img);
                 } else {
-                    aiAvatar.innerHTML = '<i class="fas fa-robot" style="font-size: 16px;"></i>';
+                    var robotIcon = document.createElement('i');
+                    robotIcon.className = 'fas fa-robot';
+                    robotIcon.style.fontSize = '16px';
+                    aiAvatar.appendChild(robotIcon);
+                    
                     setTimeout(function() {
-                        if (aiAvatar.querySelector('i') && aiAvatar.querySelector('i').offsetWidth === 0) {
-                            aiAvatar.innerHTML = '🤖';
+                        if (robotIcon.offsetWidth === 0) {
+                            aiAvatar.removeChild(robotIcon);
+                            var emoji = document.createTextNode('🤖');
+                            aiAvatar.appendChild(emoji);
                         }
                     }, 100);
                 }
@@ -522,13 +616,30 @@ console.log('EXECUTA AI: Enhanced WordPress plugin loading...');
             if (showAssistantAvatar) {
                 var errorAvatar = document.createElement('div');
                 errorAvatar.style.cssText = 'width: 32px !important; height: 32px !important; border-radius: 50% !important; background: ' + bubbleColor + ' !important; display: flex !important; align-items: center !important; justify-content: center !important; color: white !important; font-size: 16px !important; flex-shrink: 0 !important;';
-                if (assistantAvatarUrl) {
-                    errorAvatar.innerHTML = '<img src="' + assistantAvatarUrl + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Assistant">';
+                
+                if (assistantAvatarUrl && /^https?:\/\//.test(assistantAvatarUrl)) {
+                    // Securely create image
+                    var img = document.createElement('img');
+                    img.src = assistantAvatarUrl;
+                    img.alt = 'Assistant';
+                    img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                    img.onerror = function() {
+                        errorAvatar.removeChild(img);
+                        var emoji = document.createTextNode('🤖');
+                        errorAvatar.appendChild(emoji);
+                    };
+                    errorAvatar.appendChild(img);
                 } else {
-                    errorAvatar.innerHTML = '<i class="fas fa-robot" style="font-size: 16px;"></i>';
+                    var robotIcon = document.createElement('i');
+                    robotIcon.className = 'fas fa-robot';
+                    robotIcon.style.fontSize = '16px';
+                    errorAvatar.appendChild(robotIcon);
+                    
                     setTimeout(function() {
-                        if (errorAvatar.querySelector('i') && errorAvatar.querySelector('i').offsetWidth === 0) {
-                            errorAvatar.innerHTML = '🤖';
+                        if (robotIcon.offsetWidth === 0) {
+                            errorAvatar.removeChild(robotIcon);
+                            var emoji = document.createTextNode('🤖');
+                            errorAvatar.appendChild(emoji);
                         }
                     }, 100);
                 }

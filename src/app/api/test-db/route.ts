@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
     console.log('1. Environment check:');
     console.log('   NODE_ENV:', process.env.NODE_ENV);
     console.log('   DATABASE_URL exists:', !!process.env.DATABASE_URL);
-    console.log('   DATABASE_URL preview:', process.env.DATABASE_URL?.substring(0, 30) + '...');
     
     console.log('2. Creating Prisma client...');
     const prisma = new PrismaClient({

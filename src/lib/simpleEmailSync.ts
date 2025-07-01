@@ -31,7 +31,7 @@ export class SimpleEmailSync {
     return [
       {
         id: 'mock-1',
-        from: 'example@gmail.com',
+        from: 'info@executasolutions.com',
         subject: 'Sample Email 1',
         date: new Date(),
         content: 'This is sample email content for testing...'

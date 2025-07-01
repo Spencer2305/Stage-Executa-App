@@ -77,7 +77,7 @@ async function createZendeskTicket(user: any, executaTicketId: string, data: any
         status: mapStatusToZendesk(ticket.status),
         requester: {
           name: ticket.session.customerName || 'Customer',
-          email: ticket.session.customerEmail || 'noreply@executa.ai'
+                      email: ticket.session.customerEmail || 'info@executasolutions.com'
         },
         custom_fields: [
           {

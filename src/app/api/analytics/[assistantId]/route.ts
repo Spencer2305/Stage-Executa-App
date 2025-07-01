@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 
 export async function GET(
   request: NextRequest,
@@ -76,7 +77,7 @@ export async function GET(
 
     try {
       // Check if conversation table exists
-      const testConversation = await db.$queryRaw`SELECT COUNT(*) as count FROM conversations WHERE assistant_id = ${assistantId} LIMIT 1`;
+      const testConversation = await db.$queryRaw`SELECT COUNT(*) as count FROM conversations WHERE assistant_id = ${Prisma.sql`${assistantId}`} LIMIT 1`;
       hasConversationData = true;
       
       const whereConditions = {

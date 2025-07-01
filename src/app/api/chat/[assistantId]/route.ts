@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest, getIntegrationContext } from '@/lib/auth';
 import { db } from '@/lib/db';
 import OpenAI from 'openai';
+import { withRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/security';
 
 const openai = new OpenAI({
 });
 
-export async function POST(
+async function handleChatMessage(
   request: NextRequest,
   { params }: { params: Promise<{ assistantId: string }> }
-) {
+): Promise<NextResponse> {
   try {
     const { message, threadId, sessionId, userIdentifier } = await request.json();
     const { assistantId } = await params;
@@ -196,83 +197,60 @@ Always be helpful and professional, and make it clear what capabilities are avai
                 }
               });
             } catch (err) {
-              console.warn('Could not save assistant message:', err);
+              console.warn('Could not update conversation stats:', err);
             }
           }
 
           return NextResponse.json({
             response: assistantResponse,
-            assistantId: assistantId,
             threadId: currentThreadId,
-            sessionId: sessionId,
-            conversationId: conversation?.id,
+            assistantId: assistantId,
             timestamp: new Date().toISOString(),
-            usage: run.usage
+            responseTime: responseTime
           });
         }
       } else {
         console.error('OpenAI run failed:', run.status, run.last_error);
-        
-        // Mark conversation as having errors
-        if (conversation) {
-          await db.conversation.update({
-            where: { id: conversation.id },
-            data: { hasErrors: true }
-          }).catch(err => console.warn('Could not update conversation error status:', err));
-        }
-        
-        return NextResponse.json({
-          error: 'AI processing failed',
-          details: run.last_error?.message || `Run status: ${run.status}`
+        return NextResponse.json({ 
+          error: 'Failed to get response from assistant',
+          details: `Run status: ${run.status}`
         }, { status: 500 });
       }
 
     } catch (openaiError: any) {
       console.error('OpenAI API error:', openaiError);
       
-      // Mark conversation as having errors
-      if (conversation) {
-        await db.conversation.update({
-          where: { id: conversation.id },
-          data: { hasErrors: true }
-        }).catch(err => console.warn('Could not update conversation error status:', err));
+      // Check if it's a quota/billing error
+      if (openaiError.status === 429) {
+        return NextResponse.json({ 
+          error: 'API rate limit exceeded. Please try again in a moment.',
+          details: 'OpenAI rate limit'
+        }, { status: 429 });
       }
       
-      // Handle specific OpenAI errors gracefully
-      if (openaiError?.error?.code === 'insufficient_quota') {
-        return NextResponse.json({
-          error: 'OpenAI quota exceeded',
-          details: 'Please check your OpenAI billing and quota limits.'
-        }, { status: 429 });
-      } else if (openaiError?.error?.code === 'invalid_api_key') {
-        return NextResponse.json({
-          error: 'Invalid OpenAI API key',
-          details: 'Please check your OpenAI API key configuration.'
-        }, { status: 401 });
+      if (openaiError.status === 403 || openaiError.status === 401) {
+        return NextResponse.json({ 
+          error: 'OpenAI API authentication failed. Please check your API key.',
+          details: 'OpenAI auth error'
+        }, { status: 500 });
       }
 
-      // Fallback to demo response for other errors
-      return NextResponse.json({
-        response: `I apologize, but I'm experiencing technical difficulties right now. This could be due to OpenAI API limitations. Please try again in a moment, or contact support if the issue persists.`,
-        assistantId: assistantId,
-        timestamp: new Date().toISOString(),
-        isDemo: true,
-        error: 'OpenAI API error'
-      });
+      return NextResponse.json({ 
+        error: 'Failed to process chat message',
+        details: process.env.NODE_ENV === 'development' ? openaiError.message : undefined
+      }, { status: 500 });
     }
 
-    // Fallback response
-    return NextResponse.json({
-      response: `Hello! I'm ${assistant.name}. I'm ready to help you with questions based on my knowledge base.`,
-      assistantId: assistantId,
-      timestamp: new Date().toISOString()
-    });
+    return NextResponse.json({ error: 'Unexpected error occurred' }, { status: 500 });
 
   } catch (error) {
-    console.error('Chat API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
-      { status: 500 }
-    );
+    console.error('Chat endpoint error:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+    }, { status: 500 });
   }
-} 
+}
+
+// Apply rate limiting to chat messages
+export const POST = withRateLimit(RATE_LIMIT_CONFIGS.CHAT, handleChatMessage); 

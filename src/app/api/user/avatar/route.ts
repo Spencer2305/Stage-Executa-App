@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { validateFileSecurely, generateSecureChecksum } from '@/lib/fileUploadSecurity';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,21 +23,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
+    // Comprehensive security validation
+    console.log('🔒 Running security validation for avatar upload');
+    const securityResult = await validateFileSecurely(file, file.name, file.type, 'PRO');
+    
+    if (!securityResult.isValid) {
+      console.warn('🚫 Avatar upload rejected:', securityResult.errors);
       return NextResponse.json({ 
-        error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.' 
+        error: 'File security validation failed',
+        details: securityResult.errors
       }, { status: 400 });
     }
 
-    // Validate file size (2MB max)
-    const maxSize = 2 * 1024 * 1024; // 2MB
-    if (file.size > maxSize) {
-      return NextResponse.json({ 
-        error: 'File too large. Maximum size is 2MB.' 
-      }, { status: 400 });
+    // Log security warnings if any
+    if (securityResult.warnings.length > 0) {
+      console.warn('⚠️ Avatar upload warnings:', securityResult.warnings);
     }
+
+    // Use sanitized filename if provided
+    const safeFileName = securityResult.sanitizedFileName || file.name;
 
     // Convert file to base64 data URL for storage
     const bytes = await file.arrayBuffer();

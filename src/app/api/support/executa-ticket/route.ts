@@ -172,7 +172,7 @@ async function sendEmailToExecutaSupport(emailContent: { subject: string; html: 
     // In a real implementation, you would use your email service (SendGrid, SES, etc.)
     // For now, we'll use a placeholder implementation
     
-    const EXECUTA_SUPPORT_EMAIL = process.env.EXECUTA_SUPPORT_EMAIL || 'support@executa.ai';
+    const EXECUTA_SUPPORT_EMAIL = process.env.EXECUTA_SUPPORT_EMAIL || 'info@executasolutions.com';
     
     // If you're using SendGrid:
     if (process.env.SENDGRID_API_KEY) {
@@ -181,7 +181,7 @@ async function sendEmailToExecutaSupport(emailContent: { subject: string; html: 
       
       await sgMail.send({
         to: EXECUTA_SUPPORT_EMAIL,
-        from: process.env.FROM_EMAIL || 'noreply@executa.ai',
+                  from: process.env.FROM_EMAIL || 'info@executasolutions.com',
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text
@@ -193,7 +193,7 @@ async function sendEmailToExecutaSupport(emailContent: { subject: string; html: 
       const ses = new AWS.SES({ region: process.env.AWS_SES_REGION });
       
       await ses.sendEmail({
-        Source: process.env.FROM_EMAIL || 'noreply@executa.ai',
+        Source: process.env.FROM_EMAIL || 'info@executasolutions.com',
         Destination: {
           ToAddresses: [EXECUTA_SUPPORT_EMAIL]
         },
@@ -298,7 +298,7 @@ The Executa Support Team
       
       await sgMail.send({
         to: data.userEmail,
-        from: process.env.FROM_EMAIL || 'support@executa.ai',
+                  from: process.env.FROM_EMAIL || 'info@executasolutions.com',
         subject: confirmationContent.subject,
         html: confirmationContent.html,
         text: confirmationContent.text
@@ -308,7 +308,7 @@ The Executa Support Team
       const ses = new AWS.SES({ region: process.env.AWS_SES_REGION });
       
       await ses.sendEmail({
-        Source: process.env.FROM_EMAIL || 'support@executa.ai',
+                  Source: process.env.FROM_EMAIL || 'info@executasolutions.com',
         Destination: {
           ToAddresses: [data.userEmail]
         },

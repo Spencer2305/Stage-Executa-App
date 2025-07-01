@@ -248,7 +248,7 @@ export default function SelectPlanPage() {
           <p className="text-muted-foreground">
             Need help choosing?{' '}
             <a 
-              href="mailto:support@executa.com" 
+                                href="mailto:info@executasolutions.com" 
               className="text-primary hover:text-primary/80 font-medium underline underline-offset-4"
             >
               Contact our team

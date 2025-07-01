@@ -689,7 +689,7 @@ export default function DocsPage() {
                         <div>
                           <h4 className="font-semibold text-blue-900 mb-1">Need More Help?</h4>
                           <p className="text-blue-800 text-sm">
-                            Contact our support team at <strong>support@executa.ai</strong> or visit our community forum for additional resources.
+                            Contact our support team at <strong>info@executasolutions.com</strong> or visit our community forum for additional resources.
                           </p>
                         </div>
                       </div>

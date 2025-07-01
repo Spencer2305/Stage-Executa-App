@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateEmail, validatePassword, createAccountAndUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { withRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/security';
 
-export async function POST(request: NextRequest) {
+async function handleRegistration(request: NextRequest): Promise<NextResponse> {
   try {
     const { email, password, name, organizationName } = await request.json();
 
@@ -25,8 +26,10 @@ export async function POST(request: NextRequest) {
     // Validate password strength
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.valid) {
+      // Security: Log detailed errors but only return generic message
+      console.warn('🚫 Password validation failed:', passwordValidation.errors);
       return NextResponse.json(
-        { error: 'Password validation failed', details: passwordValidation.errors },
+        { error: 'Password does not meet security requirements. Must be 8+ characters with uppercase, lowercase, and numbers.' },
         { status: 400 }
       );
     }
@@ -60,18 +63,13 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Database error during registration:', error);
-    
-    // Provide more specific error messages for debugging
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Detailed error:', errorMessage);
-    
+    console.error('Registration error:', error);
     return NextResponse.json(
-      { 
-        error: 'Database error during registration',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
-} 
+}
+
+// Apply rate limiting to prevent automated account creation
+export const POST = withRateLimit(RATE_LIMIT_CONFIGS.AUTH, handleRegistration); 

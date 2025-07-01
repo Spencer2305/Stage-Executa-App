@@ -181,8 +181,8 @@ async function sendEmailToCustomer(ticket: any, agentMessage: string) {
       subject: `Re: [${ticket.id}] Your support request`,
       text: `${agentMessage}\n\n---\nTicket ID: ${ticket.id}\nTo continue this conversation, simply reply to this email.`,
       headers: {
-        'References': `ticket-${ticket.id}@executa.ai`,
-        'In-Reply-To': `ticket-${ticket.id}@executa.ai`
+                  'References': `ticket-${ticket.id}@executasolutions.com`,
+          'In-Reply-To': `ticket-${ticket.id}@executasolutions.com`
       }
     };
 
@@ -224,12 +224,12 @@ View ticket in Executa: ${process.env.NEXT_PUBLIC_APP_URL}/dashboard/tickets/${t
 
     const emailData = {
       to: process.env.SUPPORT_EMAIL_ADDRESS,
-      from: 'noreply@executa.ai',
+              from: 'info@executasolutions.com',
       subject: `[${ticket.id}] ${ticket.reason.replace('_', ' ')} - ${ticket.priority} Priority`,
       text: emailContent,
       headers: {
-        'Message-ID': `ticket-${ticket.id}@executa.ai`,
-        'References': `ticket-${ticket.id}@executa.ai`
+                  'Message-ID': `ticket-${ticket.id}@executasolutions.com`,
+          'References': `ticket-${ticket.id}@executasolutions.com`
       }
     };
 
