@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ assistantId: string }> }
 ) {
   try {
-    const { message, threadId } = await request.json();
+    const { message, threadId, sessionId, userIdentifier } = await request.json();
     const { assistantId } = await params;
 
     if (!message || !assistantId) {
@@ -65,12 +65,60 @@ export async function POST(
       });
     }
 
+    // Track analytics - find or create conversation
+    let conversation = null;
+    const startTime = Date.now();
+    
+    try {
+      // Try to find existing conversation by sessionId or threadId
+      if (sessionId || threadId) {
+        conversation = await db.conversation.findFirst({
+          where: {
+            assistantId: assistantId,
+            OR: [
+              { sessionId: sessionId },
+              { threadId: threadId }
+            ]
+          }
+        });
+      }
+
+      // Create new conversation if none found
+      if (!conversation) {
+        conversation = await db.conversation.create({
+          data: {
+            assistantId: assistantId,
+            accountId: assistant.account.id,
+            sessionId: sessionId,
+            platform: 'WEBSITE',
+            userIdentifier: userIdentifier,
+            threadId: threadId,
+            status: 'ACTIVE',
+            totalMessages: 0,
+            userMessages: 0,
+            assistantMessages: 0
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Could not create conversation record:', err);
+      // Continue without conversation tracking
+    }
+
     try {
       // Create or use existing thread
       let currentThreadId = threadId;
       if (!currentThreadId) {
         const thread = await openai.beta.threads.create();
         currentThreadId = thread.id;
+        
+        // Update conversation with thread ID
+        if (conversation) {
+          await db.conversation.update({
+            where: { id: conversation.id },
+            data: { threadId: currentThreadId }
+          });
+        }
       }
 
       // Add user message to thread
@@ -78,6 +126,18 @@ export async function POST(
         role: "user",
         content: message
       });
+
+      // Track user message
+      if (conversation) {
+        await db.conversationMessage.create({
+          data: {
+            conversationId: conversation.id,
+            role: 'USER',
+            content: message,
+            timestamp: new Date()
+          }
+        }).catch(err => console.warn('Could not save user message:', err));
+      }
 
       // Create and poll run
       const run = await openai.beta.threads.runs.createAndPoll(currentThreadId, {
@@ -97,7 +157,10 @@ Always be helpful and professional, and make it clear what capabilities are avai
         const lastMessage = messages.data[0];
         
         if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content[0].type === 'text') {
-          // Update message count
+          const responseTime = (Date.now() - startTime) / 1000; // Convert to seconds
+          const assistantResponse = lastMessage.content[0].text.value;
+
+          // Update assistant message count
           await db.assistant.update({
             where: { id: assistantId },
             data: {
@@ -107,16 +170,57 @@ Always be helpful and professional, and make it clear what capabilities are avai
             }
           });
 
+          // Track assistant message and update conversation stats
+          if (conversation) {
+            try {
+              await db.conversationMessage.create({
+                data: {
+                  conversationId: conversation.id,
+                  role: 'ASSISTANT',
+                  content: assistantResponse,
+                  responseTime: responseTime,
+                  openaiMessageId: lastMessage.id,
+                  timestamp: new Date()
+                }
+              });
+
+              // Update conversation statistics
+              await db.conversation.update({
+                where: { id: conversation.id },
+                data: {
+                  totalMessages: { increment: 2 }, // User + Assistant message
+                  userMessages: { increment: 1 },
+                  assistantMessages: { increment: 1 },
+                  avgResponseTime: responseTime,
+                  lastMessageAt: new Date()
+                }
+              });
+            } catch (err) {
+              console.warn('Could not save assistant message:', err);
+            }
+          }
+
           return NextResponse.json({
-            response: lastMessage.content[0].text.value,
+            response: assistantResponse,
             assistantId: assistantId,
             threadId: currentThreadId,
+            sessionId: sessionId,
+            conversationId: conversation?.id,
             timestamp: new Date().toISOString(),
             usage: run.usage
           });
         }
       } else {
         console.error('OpenAI run failed:', run.status, run.last_error);
+        
+        // Mark conversation as having errors
+        if (conversation) {
+          await db.conversation.update({
+            where: { id: conversation.id },
+            data: { hasErrors: true }
+          }).catch(err => console.warn('Could not update conversation error status:', err));
+        }
+        
         return NextResponse.json({
           error: 'AI processing failed',
           details: run.last_error?.message || `Run status: ${run.status}`
@@ -125,6 +229,14 @@ Always be helpful and professional, and make it clear what capabilities are avai
 
     } catch (openaiError: any) {
       console.error('OpenAI API error:', openaiError);
+      
+      // Mark conversation as having errors
+      if (conversation) {
+        await db.conversation.update({
+          where: { id: conversation.id },
+          data: { hasErrors: true }
+        }).catch(err => console.warn('Could not update conversation error status:', err));
+      }
       
       // Handle specific OpenAI errors gracefully
       if (openaiError?.error?.code === 'insufficient_quota') {

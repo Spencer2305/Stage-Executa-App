@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useModelStore } from "@/state/modelStore";
+import { useUserStore } from "@/state/userStore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +46,9 @@ import {
   Filter,
   Users,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  Send,
+  X
 } from "lucide-react";
 import Link from "next/link";
 
@@ -134,9 +138,17 @@ function ProgressNudge({ model }: { model: any }) {
   );
 }
 
+interface ChatMessage {
+  id: string;
+  content: string;
+  sender: 'user' | 'bot';
+  timestamp: Date | string;
+}
+
 export default function MyAIsPage() {
   const router = useRouter();
   const { models, isLoading, fetchModels, deleteModel } = useModelStore();
+  const { user } = useUserStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   
@@ -144,9 +156,39 @@ export default function MyAIsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [assistantToDelete, setAssistantToDelete] = useState<{id: string, name: string} | null>(null);
 
+  // Chat state
+  const [showChatPanel, setShowChatPanel] = useState(false);
+  const [selectedAssistant, setSelectedAssistant] = useState<any>(null);
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatThreadId, setChatThreadId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [userIdentifier, setUserIdentifier] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<{[assistantId: string]: ChatMessage[]}>({});
+
   useEffect(() => {
     fetchModels();
   }, [fetchModels]);
+
+  // Generate session ID and user identifier for chat
+  useEffect(() => {
+    if (user?.id) {
+      setUserIdentifier(user.id);
+    } else {
+      // Try to get user ID from localStorage or generate a test user identifier
+      const authToken = localStorage.getItem('executa-auth-token');
+      if (authToken) {
+        try {
+          const payload = JSON.parse(atob(authToken.split('.')[1]));
+          setUserIdentifier(payload.userId || payload.id || `dashboard-user-${Date.now()}`);
+        } catch (e) {
+          setUserIdentifier(`dashboard-user-${Date.now()}`);
+        }
+      } else {
+        setUserIdentifier(`dashboard-user-${Date.now()}`);
+      }
+    }
+  }, [user?.id]);
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -251,6 +293,132 @@ export default function MyAIsPage() {
 
   const handleSettingsClick = (assistantId: string) => {
     router.push(`/dashboard/assistants/${assistantId}/edit`);
+  };
+
+  // Chat functionality
+  const handleChatWithAssistant = (assistant: any, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent card click
+    setSelectedAssistant(assistant);
+    setShowChatPanel(true);
+    
+    // Generate session ID for this chat
+    const newSessionId = `dashboard-chat-${assistant.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setSessionId(newSessionId);
+    
+    // Load conversation history for this assistant
+    if (conversationHistory[assistant.id]) {
+      setChatMessages(conversationHistory[assistant.id]);
+    } else {
+      setChatMessages([
+        {
+          id: "welcome",
+          content: `Hello! I'm ${assistant.name}. How can I help you today?`,
+          sender: "bot",
+          timestamp: new Date()
+        }
+      ]);
+    }
+    
+    // Reset thread ID for new conversation
+    setChatThreadId(null);
+  };
+
+  const handleSendChatMessage = async () => {
+    if (!chatMessage.trim() || !selectedAssistant) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: chatMessage,
+      sender: "user",
+      timestamp: new Date()
+    };
+
+    const newMessages = [...chatMessages, userMessage];
+    setChatMessages(newMessages);
+    setConversationHistory(prev => ({
+      ...prev,
+      [selectedAssistant.id]: newMessages
+    }));
+
+    const currentMessage = chatMessage;
+    setChatMessage("");
+
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const response = await fetch(`/api/chat/${selectedAssistant.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: currentMessage,
+          threadId: chatThreadId,
+          sessionId: sessionId,
+          userIdentifier: userIdentifier
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response');
+      }
+
+      // Update thread ID if this is the first message
+      if (data.threadId && !chatThreadId) {
+        setChatThreadId(data.threadId);
+      }
+
+      const botResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: data.response,
+        sender: "bot",
+        timestamp: new Date()
+      };
+
+      const updatedMessages = [...newMessages, botResponse];
+      setChatMessages(updatedMessages);
+      setConversationHistory(prev => ({
+        ...prev,
+        [selectedAssistant.id]: updatedMessages
+      }));
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        sender: "bot",
+        timestamp: new Date()
+      };
+
+      const updatedMessages = [...newMessages, errorResponse];
+      setChatMessages(updatedMessages);
+      setConversationHistory(prev => ({
+        ...prev,
+        [selectedAssistant.id]: updatedMessages
+      }));
+    }
+  };
+
+  const handleCloseChatPanel = () => {
+    setShowChatPanel(false);
+    setSelectedAssistant(null);
+  };
+
+  const formatChatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    
+    return new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(dateObj);
   };
 
   if (isLoading) {
@@ -505,12 +673,24 @@ export default function MyAIsPage() {
                     </div>
                   )}
 
-                  {/* Click indicator */}
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                  {/* Action buttons */}
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 gap-2">
                     <div className="text-sm text-gray-500">
                       Click to manage assistant
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-200" />
+                    <div className="flex items-center gap-2">
+                      {model?.status === 'active' && (
+                        <Button
+                          size="sm"
+                          onClick={(e) => handleChatWithAssistant(model, e)}
+                          className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border-0 rounded-xl px-3 py-2 shadow-sm hover:shadow-md transition-all duration-200"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1.5" />
+                          Chat Now
+                        </Button>
+                      )}
+                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-200" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -545,6 +725,140 @@ export default function MyAIsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Chat Panel */}
+      {showChatPanel && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300 ease-out">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl h-[85vh] flex flex-col overflow-hidden transform transition-all duration-300 ease-out scale-100 opacity-100">
+            {/* Chat Header */}
+            <div className="relative bg-gradient-to-r from-purple-600 via-purple-700 to-blue-600 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
+                    <Bot className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      {selectedAssistant?.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <p className="text-sm text-white/90">
+                        Online • Real-time AI responses
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCloseChatPanel}
+                  className="text-white/80 hover:text-white hover:bg-white/20 border-0 rounded-xl"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
+            </div>
+
+            {/* Chat Messages */}
+            <ScrollArea className="flex-1 p-0">
+              <div className="px-6 py-4 space-y-6 min-h-full bg-gradient-to-b from-gray-50/50 to-white">
+                {chatMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-center">
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-200 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
+                      <MessageSquare className="w-10 h-10 text-purple-600" />
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900 mb-3">Start your conversation</h4>
+                    <p className="text-gray-500 max-w-md leading-relaxed">
+                      Ask me anything about the knowledge base or get help with your questions. I'm here to assist you!
+                    </p>
+                    <div className="flex items-center gap-2 mt-4 px-3 py-2 bg-purple-50 rounded-full border border-purple-100">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs font-medium text-purple-700">Ready to help</span>
+                    </div>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, index) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} group`}
+                    >
+                      <div className={`flex gap-3 max-w-[85%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {/* Avatar */}
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          msg.sender === 'user' 
+                            ? 'bg-purple-600' 
+                            : 'bg-white border-2 border-purple-100'
+                        }`}>
+                          {msg.sender === 'user' ? (
+                            <div className="w-4 h-4 bg-white rounded-full"></div>
+                          ) : (
+                            <Bot className="w-4 h-4 text-purple-600" />
+                          )}
+                        </div>
+                        
+                                                 {/* Message */}
+                         <div className={`px-4 py-3 rounded-2xl shadow-sm transition-all duration-200 group-hover:shadow-md ${
+                           msg.sender === 'user' 
+                             ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white' 
+                             : 'bg-white border border-gray-200 text-gray-900 hover:border-gray-300'
+                         } ${msg.sender === 'user' ? 'rounded-tr-md' : 'rounded-tl-md'}`}>
+                          <p className="text-sm leading-relaxed">{msg.content}</p>
+                          <p className={`text-xs mt-2 ${
+                            msg.sender === 'user' ? 'text-purple-200' : 'text-gray-500'
+                          }`}>
+                            {formatChatDate(msg.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+
+            {/* Chat Input */}
+            <div className="p-6 bg-white border-t border-gray-100">
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Type your message..."
+                      value={chatMessage}
+                      onChange={(e) => setChatMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendChatMessage()}
+                      className="border-0 bg-white rounded-xl px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none min-h-[44px]"
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleSendChatMessage} 
+                    disabled={!chatMessage.trim()}
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl px-4 py-3 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between mt-3 px-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-xs text-gray-600">
+                      Powered by AI • Saves to analytics
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Press Enter to send
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

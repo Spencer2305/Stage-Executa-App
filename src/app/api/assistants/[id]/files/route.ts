@@ -324,6 +324,7 @@ function mapFileStatus(status: string): 'uploading' | 'processing' | 'completed'
     case 'PROCESSING':
       return 'processing';
     case 'COMPLETED':
+    case 'PROCESSED':  // Add support for PROCESSED status
       return 'completed';
     case 'ERROR':
       return 'error';
