@@ -147,7 +147,7 @@ export class GmailIntegrationService {
         from: getHeader('from'),
         to,
         subject: getHeader('subject'),
-        date: new Date(parseInt(message.internalDate!) || Date.now()),
+        date: new Date(parseInt(message.internalDate!, 10) || Date.now()),
         content,
         labels: message.labelIds || []
       };

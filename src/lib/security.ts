@@ -74,7 +74,7 @@ class RedisStore implements RateLimitStore {
 
   async get(key: string): Promise<number | null> {
     const value = await this.redis.get(key);
-    return value ? parseInt(value) : null;
+    return value ? parseInt(value, 10) : null;
   }
 
   async set(key: string, value: number, ttl: number): Promise<void> {

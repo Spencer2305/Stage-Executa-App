@@ -1,6 +1,14 @@
 import axios, { AxiosResponse } from 'axios';
 import { Model, CreateModelRequest, ModelSession, Document as ModelDocument } from '@/types/model';
 
+// Conditional logger for development only (check for dev mode without process)
+const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+const logger = {
+  log: (...args: any[]) => isDevelopment && console.log(...args),
+  error: (...args: any[]) => console.error(...args), // Keep errors in production for debugging
+  warn: (...args: any[]) => isDevelopment && console.warn(...args),
+};
+
 // Create axios instance with default config
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
@@ -14,18 +22,18 @@ api.interceptors.request.use((config) => {
   // Don't add auth token to auth endpoints EXCEPT /auth/me which needs authentication
   const isAuthEndpoint = config.url?.includes('/auth/');
   const isAuthMeEndpoint = config.url?.includes('/auth/me');
-  console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url} (isAuthEndpoint: ${isAuthEndpoint}, isAuthMeEndpoint: ${isAuthMeEndpoint})`);
+  logger.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url} (isAuthEndpoint: ${isAuthEndpoint}, isAuthMeEndpoint: ${isAuthMeEndpoint})`);
   
   if (!isAuthEndpoint || isAuthMeEndpoint) {
     const token = localStorage.getItem('executa-auth-token');
     if (token) {
-      console.log('🔑 API: Adding Authorization header to request');
+      logger.log('🔑 API: Adding Authorization header to request');
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      console.log('❌ API: No token found, not adding Authorization header');
+      logger.log('❌ API: No token found, not adding Authorization header');
     }
   } else {
-    console.log('🔓 API: Auth endpoint (non-me), skipping Authorization header');
+    logger.log('🔓 API: Auth endpoint (non-me), skipping Authorization header');
   }
   return config;
 });
@@ -46,24 +54,24 @@ api.interceptors.response.use(
 export const authApi = {
   login: async (email: string, password: string) => {
     try {
-      console.log('Making login request:', { email });
+      logger.log('Making login request:', { email });
       const response = await api.post('/auth/login', { email, password });
-      console.log('Login response:', response.data);
+      logger.log('Login response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Login API error:', error);
+      logger.error('Login API error:', error);
       throw error;
     }
   },
 
   register: async (email: string, password: string, name: string, organizationName: string) => {
     try {
-      console.log('Making registration request:', { email, name, organizationName });
+      logger.log('Making registration request:', { email, name, organizationName });
       const response = await api.post('/auth/register', { email, password, name, organizationName });
-      console.log('Registration response:', response.data);
+      logger.log('Registration response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Registration API error:', error);
+      logger.error('Registration API error:', error);
       throw error;
     }
   },
@@ -95,7 +103,7 @@ export const modelApi = {
 
   // Create new assistant with knowledge files
   create: async (data: CreateModelRequest): Promise<Model> => {
-    console.log('🔍 CLIENT: Creating assistant with data:', {
+    logger.log('🔍 CLIENT: Creating assistant with data:', {
       name: data.name,
       useDropboxSync: data.useDropboxSync,
       documentsCount: data.documents.length
@@ -109,10 +117,10 @@ export const modelApi = {
       formData.append('description', data.description);
     }
     if (data.useDropboxSync) {
-      console.log('🔍 CLIENT: Adding useDropboxSync=true to form data');
+      logger.log('🔍 CLIENT: Adding useDropboxSync=true to form data');
       formData.append('useDropboxSync', 'true');
     } else {
-      console.log('🔍 CLIENT: useDropboxSync is false, not adding to form data');
+      logger.log('🔍 CLIENT: useDropboxSync is false, not adding to form data');
     }
     
     // Add files
@@ -122,7 +130,7 @@ export const modelApi = {
 
     // Debug: Log all form data entries
     for (let [key, value] of formData.entries()) {
-      console.log(`🔍 CLIENT: FormData ${key}:`, typeof value === 'string' ? value : `[File: ${(value as File).name}]`);
+      logger.log(`🔍 CLIENT: FormData ${key}:`, typeof value === 'string' ? value : `[File: ${(value as File).name}]`);
     }
 
     const response = await api.post('/assistants/create', formData, {

@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi } from '@/utils/api';
 
+// Conditional logger for development only
+const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+const logger = {
+  log: (...args: any[]) => isDevelopment && console.log(...args),
+  error: (...args: any[]) => console.error(...args), // Keep errors in production for debugging
+};
+
 interface Account {
   id: string;
   accountId: string;
@@ -56,7 +63,7 @@ export const useUserStore = create<UserState>()(
         try {
           await authApi.logout();
         } catch (error) {
-          console.error('Logout error:', error);
+          logger.error('Logout error:', error);
         } finally {
           // Clear local storage
           localStorage.removeItem('executa-auth-token');
@@ -117,31 +124,31 @@ export const useUserStore = create<UserState>()(
       },
       
       getCurrentUser: async () => {
-        console.log('📋 UserStore: getCurrentUser called');
+        logger.log('📋 UserStore: getCurrentUser called');
         const token = localStorage.getItem('executa-auth-token');
-        console.log('🔍 UserStore: Token in localStorage:', token ? 'Found' : 'Not found');
+        logger.log('🔍 UserStore: Token in localStorage:', token ? 'Found' : 'Not found');
         
         if (!token) {
-          console.log('❌ UserStore: No token found, setting user to null');
+          logger.log('❌ UserStore: No token found, setting user to null');
           set({ user: null });
           return;
         }
         
         try {
-          console.log('📡 UserStore: Making API call to getCurrentUser...');
+          logger.log('📡 UserStore: Making API call to getCurrentUser...');
           const response = await authApi.getCurrentUser();
-          console.log('✅ UserStore: API call successful, response:', response);
+          logger.log('✅ UserStore: API call successful, response:', response);
           
           const userData = {
             ...response.user,
             createdAt: new Date(response.user.createdAt)
           };
-          console.log('👤 UserStore: Setting user data:', userData);
+          logger.log('👤 UserStore: Setting user data:', userData);
           
           set({ user: userData });
         } catch (error) {
-          console.error('❌ UserStore: Get current user error:', error);
-          console.log('🧹 UserStore: Clearing token due to API error');
+          logger.error('❌ UserStore: Get current user error:', error);
+          logger.log('🧹 UserStore: Clearing token due to API error');
           // Token might be invalid, clear it
           localStorage.removeItem('executa-auth-token');
           set({ user: null });

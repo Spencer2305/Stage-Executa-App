@@ -258,7 +258,7 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
                     type="number"
                     min="1"
                     value={handoffSettings.maxConversationLength}
-                    onChange={(e) => handleSettingChange('maxConversationLength', parseInt(e.target.value))}
+                    onChange={(e) => handleSettingChange('maxConversationLength', parseInt(e.target.value, 10))}
                   />
                   <p className="text-sm text-gray-500 mt-1">Auto-handoff after this many messages</p>
                 </div>
@@ -378,7 +378,7 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
                         type="number"
                         min="1"
                         value={handoffSettings.internalSettings.maxWaitTime}
-                        onChange={(e) => handleSettingChange('internalSettings.maxWaitTime', parseInt(e.target.value))}
+                        onChange={(e) => handleSettingChange('internalSettings.maxWaitTime', parseInt(e.target.value, 10))}
                       />
                     </div>
                     <div className="flex items-center justify-between">
