@@ -25,6 +25,7 @@ import KnowledgeBaseManager from "@/components/knowledge/KnowledgeBaseManager";
 import GmailIntegration from "@/components/knowledge/GmailIntegration";
 import EmailKnowledgeManager from "@/components/knowledge/EmailKnowledgeManager";
 import DropboxIntegration from "@/components/integrations/DropboxIntegration";
+import GoogleDriveIntegration from "@/components/integrations/GoogleDriveIntegration";
 import SlackConnection from "@/components/integrations/SlackConnection";
 import TeamsConnection from "@/components/integrations/TeamsConnection";
 import DiscordConnection from "@/components/integrations/DiscordConnection";
@@ -187,6 +188,7 @@ export default function AssistantViewPage() {
   const [integrationsStatus, setIntegrationsStatus] = useState({
     gmail: false,
     dropbox: false,
+    googledrive: false,
     slack: false,
     discord: false
   });
@@ -302,7 +304,7 @@ export default function AssistantViewPage() {
     if (!token) return;
 
     try {
-      const integrations = ['gmail', 'dropbox', 'slack', 'discord'];
+      const integrations = ['gmail', 'dropbox', 'googledrive', 'slack', 'discord'];
       const statusChecks = await Promise.all(
         integrations.map(async (integration) => {
           try {
@@ -323,6 +325,7 @@ export default function AssistantViewPage() {
       const statusObj = statusChecks.reduce((acc, curr) => ({ ...acc, ...curr }), {
         gmail: false,
         dropbox: false,
+        googledrive: false,
         slack: false,
         discord: false
       });
@@ -1246,9 +1249,13 @@ Your primary job is to be a knowledgeable assistant based on the uploaded docume
                 window.history.replaceState({}, '', url.toString());
               }}>
                 <TabsList className={`grid w-full mb-4 ${
-                  integrationsStatus.gmail && integrationsStatus.dropbox 
+                  integrationsStatus.gmail && integrationsStatus.dropbox && integrationsStatus.googledrive
+                    ? 'grid-cols-5'
+                    : (integrationsStatus.gmail && integrationsStatus.dropbox) || 
+                      (integrationsStatus.gmail && integrationsStatus.googledrive) || 
+                      (integrationsStatus.dropbox && integrationsStatus.googledrive)
                     ? 'grid-cols-4' 
-                    : integrationsStatus.gmail || integrationsStatus.dropbox 
+                    : integrationsStatus.gmail || integrationsStatus.dropbox || integrationsStatus.googledrive
                     ? 'grid-cols-3' 
                     : 'grid-cols-2'
                 }`}>
@@ -1270,6 +1277,12 @@ Your primary job is to be a knowledgeable assistant based on the uploaded docume
                     <TabsTrigger value="dropbox-sync" className="flex items-center space-x-2">
                       <Cloud className="h-4 w-4" />
                       <span>Dropbox Sync</span>
+                    </TabsTrigger>
+                  )}
+                  {integrationsStatus.googledrive && (
+                    <TabsTrigger value="googledrive-sync" className="flex items-center space-x-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Google Drive Sync</span>
                     </TabsTrigger>
                   )}
                 </TabsList>
@@ -1299,6 +1312,13 @@ Your primary job is to be a knowledgeable assistant based on the uploaded docume
                 {integrationsStatus.dropbox && (
                   <TabsContent value="dropbox-sync" className="flex-1 overflow-hidden">
                     <DropboxIntegration assistantId={assistantId} />
+                  </TabsContent>
+                )}
+
+                {/* Google Drive Sync Tab */}
+                {integrationsStatus.googledrive && (
+                  <TabsContent value="googledrive-sync" className="flex-1 overflow-hidden">
+                    <GoogleDriveIntegration assistantId={assistantId} onSyncComplete={() => fetchModels()} />
                   </TabsContent>
                 )}
               </Tabs>
