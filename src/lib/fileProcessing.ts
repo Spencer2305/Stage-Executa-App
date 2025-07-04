@@ -702,6 +702,13 @@ export async function uploadAndProcessFiles(
 
         if (existingFile) {
           console.log(`⚠️ Duplicate file detected: ${file.fileName}`);
+          // Update status to PROCESSED if not already
+          if (existingFile.status !== 'PROCESSED') {
+            await db.knowledgeFile.update({
+              where: { id: existingFile.id },
+              data: { status: 'PROCESSED' }
+            });
+          }
           results.push({
             fileId: existingFile.id,
             success: true,

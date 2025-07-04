@@ -187,12 +187,14 @@ function mapFileType(fileType: string): 'pdf' | 'txt' | 'docx' | 'gmail' | 'crm'
 function mapFileStatus(status: string): 'uploading' | 'processing' | 'completed' | 'error' {
   switch (status) {
     case 'UPLOADED':
-      return 'completed';
+      return 'uploading';
     case 'PROCESSING':
       return 'processing';
-    case 'COMPLETED':
+    case 'PROCESSED':
       return 'completed';
     case 'ERROR':
+      return 'error';
+    case 'DELETED':
       return 'error';
     default:
       return 'uploading';

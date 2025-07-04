@@ -372,8 +372,11 @@ export default function SettingsPage() {
           console.log('✅ Dropbox is connected');
           connected.add('dropbox');
         }
-        
 
+        if (data.integrations.googledrive) {
+          console.log('✅ Google Drive is connected');
+          connected.add('googledrive');
+        }
         
         // Add Slack from main status endpoint
         if (data.integrations.slack) {
@@ -457,6 +460,33 @@ export default function SettingsPage() {
       } catch (error) {
         console.error('Gmail connection error:', error);
         showError('Failed to connect to Gmail. Please try again.');
+      }
+    } else if (integration === 'googledrive') {
+      try {
+        const token = localStorage.getItem('executa-auth-token');
+        const response = await fetch('/api/integrations/googledrive/auth', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (response.status === 503) {
+            showError('Google Drive integration not configured on this server');
+            return;
+          }
+          throw new Error(errorData.message || 'Failed to initialize Google Drive connection');
+        }
+        
+        const data = await response.json();
+        
+        // Redirect to Google OAuth
+        window.location.href = data.authUrl;
+        
+      } catch (error) {
+        console.error('Google Drive connection error:', error);
+        showError('Failed to connect to Google Drive. Please try again.');
       }
     } else if (integration === 'discord') {
       try {
@@ -857,13 +887,12 @@ export default function SettingsPage() {
     ],
     knowledge: [
       {
-        id: 'drive',
+        id: 'googledrive',
         name: 'Google Drive',
         description: 'Access documents, spreadsheets, and files from your Google Drive workspace',
         icon: Database,
-        connected: connectedIntegrations.has('drive'),
+        connected: connectedIntegrations.has('googledrive'),
         popular: true,
-        comingSoon: true,
         category: 'Cloud Storage'
       },
       {

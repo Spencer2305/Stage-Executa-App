@@ -75,6 +75,15 @@ export default function IntegrationsManager({ assistantId }: IntegrationsManager
       category: 'Cloud Storage',
       authUrl: '/api/integrations/dropbox/auth',
       statusUrl: '/api/integrations/dropbox/status'
+    },
+    {
+      id: 'googledrive',
+      name: 'Google Drive',
+      description: 'Access and train on documents stored in your Google Drive account',
+      icon: Settings,
+      category: 'Cloud Storage',
+      authUrl: '/api/integrations/googledrive/auth',
+      statusUrl: '/api/integrations/googledrive/status'
     }
   ];
 

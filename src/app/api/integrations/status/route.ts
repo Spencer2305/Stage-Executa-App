@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     // Check for active integrations
     const integrations = {
       dropbox: false,
+      googledrive: false,
       slack: false,
     };
 
@@ -42,7 +43,22 @@ export async function GET(request: NextRequest) {
       integrations.dropbox = true;
     }
 
+    // Check Google Drive connection
+    console.log('🔍 Checking Google Drive connection for accountId:', userAccount.account.id);
+    
+    // Note: This will cause a TypeScript error until Prisma migration is run
+    const googleDriveConnection = await db.googleDriveConnection.findFirst({
+      where: {
+        accountId: userAccount.account.id,
+        isActive: true
+      }
+    });
 
+    console.log('📊 Google Drive connection result:', googleDriveConnection ? 'FOUND' : 'NOT FOUND');
+
+    if (googleDriveConnection) {
+      integrations.googledrive = true;
+    }
 
     // Check Slack connection
     console.log('🔍 Checking Slack connection for accountId:', userAccount.account.id);
