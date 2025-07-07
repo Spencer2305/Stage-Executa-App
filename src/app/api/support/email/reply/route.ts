@@ -174,24 +174,125 @@ function cleanEmailContent(content: string): string {
 // Send email response to customer
 async function sendEmailToCustomer(ticket: any, agentMessage: string) {
   try {
-    // This would integrate with your email service (SendGrid, SES, etc.)
     const emailData = {
       to: ticket.session.customerEmail,
-      from: process.env.SUPPORT_EMAIL_ADDRESS,
+      from: process.env.SUPPORT_EMAIL_ADDRESS || 'support@executasolutions.com',
       subject: `Re: [${ticket.id}] Your support request`,
-      text: `${agentMessage}\n\n---\nTicket ID: ${ticket.id}\nTo continue this conversation, simply reply to this email.`,
+      text: `${agentMessage}\n\n---\nTicket ID: ${ticket.id}\nAgent: ${ticket.assignedAgent?.name || 'Support Team'}\n\nTo continue this conversation, simply reply to this email.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px;">
+          <div style="white-space: pre-wrap; margin-bottom: 20px; line-height: 1.6;">
+            ${agentMessage.replace(/\n/g, '<br>')}
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          
+          <div style="color: #666; font-size: 12px;">
+            <p><strong>Ticket ID:</strong> ${ticket.id}</p>
+            <p><strong>Agent:</strong> ${ticket.assignedAgent?.name || 'Support Team'}</p>
+            <p>To continue this conversation, simply reply to this email.</p>
+          </div>
+        </div>
+      `,
       headers: {
-                  'References': `ticket-${ticket.id}@executasolutions.com`,
-          'In-Reply-To': `ticket-${ticket.id}@executasolutions.com`
+        'References': `ticket-${ticket.id}@executasolutions.com`,
+        'In-Reply-To': `ticket-${ticket.id}@executasolutions.com`
       }
     };
 
-    // TODO: Implement actual email sending
-    console.log('Would send email to customer:', emailData);
+    // Implement actual email sending based on available service
+    if (process.env.SENDGRID_API_KEY) {
+      await sendWithSendGrid(emailData);
+      await sendWithAWSSES(emailData);
+    } else if (process.env.SMTP_HOST) {
+      await sendWithSMTP(emailData);
+    } else {
+      // Fallback: log the email for development
+      console.log('📧 Email would be sent (no email service configured):', emailData);
+      return;
+    }
+
+    // Log successful email send
+    console.log(`✅ Email sent to customer ${ticket.session.customerEmail} for ticket ${ticket.id}`);
     
   } catch (error) {
-    console.error('Failed to send email to customer:', error);
+    console.error('❌ Failed to send email to customer:', error);
+    // Don't throw error to prevent breaking the main flow
   }
+}
+
+// SendGrid implementation
+async function sendWithSendGrid(emailData: any) {
+  const sgMail = require('@sendgrid/mail');
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  
+  await sgMail.send({
+    to: emailData.to,
+    from: emailData.from,
+    subject: emailData.subject,
+    text: emailData.text,
+    html: emailData.html,
+    headers: emailData.headers
+  });
+}
+
+// AWS SES implementation
+async function sendWithAWSSES(emailData: any) {
+  const AWS = require('aws-sdk');
+  
+  const ses = new AWS.SES({
+    region: process.env.AWS_SES_REGION,
+  });
+
+  const params = {
+    Source: emailData.from,
+    Destination: {
+      ToAddresses: [emailData.to]
+    },
+    Message: {
+      Subject: {
+        Data: emailData.subject,
+        Charset: 'UTF-8'
+      },
+      Body: {
+        Text: {
+          Data: emailData.text,
+          Charset: 'UTF-8'
+        },
+        Html: {
+          Data: emailData.html,
+          Charset: 'UTF-8'
+        }
+      }
+    },
+    ReplyToAddresses: [emailData.from]
+  };
+
+  await ses.sendEmail(params).promise();
+}
+
+// SMTP implementation (using nodemailer)
+async function sendWithSMTP(emailData: any) {
+  const nodemailer = require('nodemailer');
+  
+  const transporter = nodemailer.createTransporter({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD
+    }
+  });
+
+  await transporter.sendMail({
+    from: emailData.from,
+    to: emailData.to,
+    subject: emailData.subject,
+    text: emailData.text,
+    html: emailData.html,
+    headers: emailData.headers
+  });
 }
 
 // Generate initial support email when ticket is created

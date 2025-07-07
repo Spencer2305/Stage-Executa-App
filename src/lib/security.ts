@@ -171,6 +171,48 @@ export function getRateLimitConfig(type: 'api' | 'auth' | 'chat' | 'upload') {
   return RATE_LIMIT_CONFIG[type];
 }
 
+// Export rate limit configs for direct access
+export const RATE_LIMIT_CONFIGS = {
+  AUTH: RATE_LIMIT_CONFIG.auth,
+  API: RATE_LIMIT_CONFIG.api,
+  CHAT: RATE_LIMIT_CONFIG.chat,
+  UPLOAD: RATE_LIMIT_CONFIG.upload,
+  PASSWORD_RESET: RATE_LIMIT_CONFIG.auth, // Use same config as auth
+};
+
+// Higher-order function to apply rate limiting to route handlers
+export function withRateLimit(
+  config: { windowMs: number; max: number },
+  handler: (request: NextRequest) => Promise<NextResponse>
+) {
+  return async (request: NextRequest): Promise<NextResponse> => {
+    // Get IP address for rate limiting
+    const forwarded = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    const ip = forwarded ? forwarded.split(',')[0] : realIp || 'unknown';
+    
+    // Apply rate limiting
+    const rateLimitResult = await rateLimit(ip, config.max, config.windowMs);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': config.max.toString(),
+            'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+            'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+          }
+        }
+      );
+    }
+    
+    // Call the original handler
+    return handler(request);
+  };
+}
+
 // Security headers configuration
 export const SECURITY_HEADERS = {
   // Content Security Policy

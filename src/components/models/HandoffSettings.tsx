@@ -222,6 +222,55 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
                   </div>
                 </div>
 
+                {/* AI Auto-Detect */}
+                <div className="border rounded-lg p-4 space-y-4 bg-blue-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-blue-800 font-medium">🤖 AI Auto-Detect</Label>
+                      <p className="text-sm text-blue-600">Automatically detect when customers want to speak to a human using AI</p>
+                    </div>
+                    <Switch
+                      checked={handoffSettings.triggerOnAutoDetect || false}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnAutoDetect', checked)}
+                    />
+                  </div>
+                  
+                  {handoffSettings.triggerOnAutoDetect && (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-blue-800">Detection Sensitivity</Label>
+                        <Select 
+                          value={handoffSettings.autoDetectSensitivity || 'medium'} 
+                          onValueChange={(value) => handleSettingChange('autoDetectSensitivity', value)}
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low - Only very clear requests</SelectItem>
+                            <SelectItem value="medium">Medium - Balanced detection</SelectItem>
+                            <SelectItem value="high">High - Sensitive to subtle cues</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Higher sensitivity catches more requests but may have false positives
+                        </p>
+                      </div>
+                      
+                      <div className="bg-blue-100 p-3 rounded text-sm text-blue-700">
+                        <strong>AI will detect phrases like:</strong>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          <li>"I need to talk to someone"</li>
+                          <li>"This isn't working, can I get help?"</li>
+                          <li>"I want to speak with a representative"</li>
+                          <li>"Can you transfer me to a person?"</li>
+                          <li>"I'm frustrated and need human assistance"</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Sentiment Detection */}
                 <div className="flex items-center justify-between">
                   <div>

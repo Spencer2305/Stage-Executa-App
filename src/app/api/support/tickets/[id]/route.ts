@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { notifyTicketUpdate, notifyAgentAssignment } from '@/lib/websocket';
 
 export async function GET(
   request: NextRequest,
@@ -180,6 +181,19 @@ export async function PUT(
           }
         });
 
+        // Send real-time notifications
+        await notifyTicketUpdate(ticket.id, {
+          status: 'ACCEPTED',
+          assignedAgent: {
+            id: humanAgent.id,
+            name: humanAgent.name,
+            email: humanAgent.email
+          },
+          accountId: ticket.accountId
+        });
+
+        await notifyAgentAssignment(ticket.id, humanAgent.id, ticket.accountId);
+
         return NextResponse.json({
           success: true,
           ticket: updatedTicket
@@ -218,6 +232,13 @@ export async function PUT(
             messageType: 'SYSTEM',
             sender: 'SYSTEM'
           }
+        });
+
+        // Send real-time notification
+        await notifyTicketUpdate(ticket.id, {
+          status: 'RESOLVED',
+          resolvedAt: new Date(),
+          accountId: ticket.accountId
         });
 
         return NextResponse.json({
@@ -275,6 +296,19 @@ export async function PUT(
             sender: 'SYSTEM'
           }
         });
+
+        // Send real-time notifications
+        await notifyTicketUpdate(ticket.id, {
+          status: 'ASSIGNED',
+          assignedAgent: {
+            id: targetAgent.id,
+            name: targetAgent.name,
+            email: targetAgent.email
+          },
+          accountId: ticket.accountId
+        });
+
+        await notifyAgentAssignment(ticket.id, agentId, ticket.accountId);
 
         return NextResponse.json({
           success: true,

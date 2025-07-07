@@ -137,9 +137,13 @@ export function useWebSocket(token?: string): WebSocketHook {
     if (!token) return;
 
     // Initialize socket connection
-    const newSocket = io(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', {
+    const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 
+                  (process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : 'http://localhost:3000');
+    
+    const newSocket = io(wsUrl, {
       transports: ['websocket', 'polling'],
       timeout: 20000,
+      forceNew: true
     });
 
     // Connection event handlers

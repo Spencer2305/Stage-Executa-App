@@ -2,10 +2,236 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest, getIntegrationContext } from '@/lib/auth';
 import { db } from '@/lib/db';
 import OpenAI from 'openai';
-import { withRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/security';
 
 const openai = new OpenAI({
 });
+
+// Auto-detection function to check if user wants human assistance
+async function detectHumanRequest(message: string, sensitivity: string = 'medium'): Promise<{ isHumanRequest: boolean; confidence: number; reason: string }> {
+  try {
+    const sensitivityPrompts = {
+      low: "Only detect very explicit requests for human help like 'I want to talk to a human' or 'transfer me to an agent'.",
+      medium: "Detect clear requests for human help including frustrated customers or complex issues that need human attention.",
+      high: "Detect any indication that the customer might benefit from human assistance, including subtle frustration or complex queries."
+    };
+
+    const prompt = `Analyze this customer message to determine if they want to speak to a human agent. ${sensitivityPrompts[sensitivity as keyof typeof sensitivityPrompts]}
+
+Message: "${message}"
+
+Consider these indicators:
+- Direct requests ("human", "agent", "representative", "person")
+- Frustration expressions ("this is not working", "frustrated", "annoyed")
+- Complex issues that might need human help
+- Escalation language ("manager", "supervisor", "complaint")
+- Urgency indicators ("urgent", "important", "asap")
+
+Respond with JSON only:
+{
+  "isHumanRequest": boolean,
+  "confidence": number (0-1),
+  "reason": "brief explanation of why this was detected as human request"
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "system", content: prompt }],
+      temperature: 0.1,
+      max_tokens: 150
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    if (!response) return { isHumanRequest: false, confidence: 0, reason: "No response from AI" };
+
+    try {
+      const parsed = JSON.parse(response);
+      return {
+        isHumanRequest: parsed.isHumanRequest || false,
+        confidence: parsed.confidence || 0,
+        reason: parsed.reason || "Unknown"
+      };
+    } catch (parseError) {
+      console.error('Failed to parse AI detection response:', parseError);
+      return { isHumanRequest: false, confidence: 0, reason: "Parse error" };
+    }
+  } catch (error) {
+    console.error('AI detection error:', error);
+    return { isHumanRequest: false, confidence: 0, reason: "AI detection failed" };
+  }
+}
+
+// Check for various handoff triggers
+async function checkForHandoffTriggers(
+  message: string, 
+  assistantId: string, 
+  sessionId: string, 
+  threadId: string
+): Promise<{ shouldHandoff: boolean; reason: string; handoffId?: string; message: string }> {
+  try {
+    // Get assistant handoff settings
+    const assistant = await db.assistant.findUnique({
+      where: { id: assistantId },
+      select: {
+        handoffEnabled: true,
+        handoffSettings: true,
+        account: {
+          select: { id: true }
+        }
+      }
+    });
+
+    if (!assistant?.handoffEnabled || !assistant.handoffSettings) {
+      return { shouldHandoff: false, reason: "Handoff not enabled", message: "" };
+    }
+
+    const settings = assistant.handoffSettings as any;
+    const reasons: string[] = [];
+
+    // 1. Check keyword triggers
+    if (settings.triggerOnKeywords?.length) {
+      const messageWords = message.toLowerCase().split(/\s+/);
+      const foundKeywords = settings.triggerOnKeywords.filter((keyword: string) => 
+        messageWords.some((word) => word.includes(keyword.toLowerCase()))
+      );
+      
+      if (foundKeywords.length > 0) {
+        reasons.push(`Keyword trigger: ${foundKeywords.join(', ')}`);
+      }
+    }
+
+    // 2. Check AI auto-detection
+    if (settings.triggerOnAutoDetect) {
+      const detection = await detectHumanRequest(message, settings.autoDetectSensitivity || 'medium');
+      
+      // Set confidence threshold based on sensitivity
+      const thresholds = { low: 0.8, medium: 0.6, high: 0.4 };
+      const threshold = thresholds[settings.autoDetectSensitivity as keyof typeof thresholds] || 0.6;
+      
+      if (detection.isHumanRequest && detection.confidence >= threshold) {
+        reasons.push(`AI auto-detection: ${detection.reason} (confidence: ${Math.round(detection.confidence * 100)}%)`);
+      }
+    }
+
+    // 3. Check sentiment (if enabled)
+    if (settings.triggerOnSentiment && reasons.length === 0) {
+      // Simple sentiment check - could be enhanced with proper sentiment analysis
+      const negativeWords = ['frustrated', 'angry', 'upset', 'annoyed', 'terrible', 'awful', 'horrible', 'hate', 'worst'];
+      const hasNegativeSentiment = negativeWords.some(word => message.toLowerCase().includes(word));
+      
+      if (hasNegativeSentiment) {
+        reasons.push("Negative sentiment detected");
+      }
+    }
+
+    // If any triggers were hit, create handoff
+    if (reasons.length > 0) {
+      const handoffReason = reasons.join("; ");
+      
+      // Create handoff request
+      const handoffResult = await createHandoffRequest(
+        assistantId,
+        sessionId,
+        threadId,
+        handoffReason,
+        message,
+        'NORMAL',
+        settings
+      );
+
+      return {
+        shouldHandoff: true,
+        reason: handoffReason,
+        handoffId: handoffResult.handoffId,
+        message: handoffResult.message
+      };
+    }
+
+    return { shouldHandoff: false, reason: "No triggers matched", message: "" };
+
+  } catch (error) {
+    console.error('Error checking handoff triggers:', error);
+    return { shouldHandoff: false, reason: "Error checking triggers", message: "" };
+  }
+}
+
+// Helper to create handoff request
+async function createHandoffRequest(
+  assistantId: string,
+  sessionId: string,
+  threadId: string,
+  reason: string,
+  customerQuery: string,
+  priority: string,
+  handoffSettings: any
+): Promise<{ handoffId: string; message: string }> {
+  try {
+    // Get or create chat session
+    let chatSession = await db.chatSession.findUnique({
+      where: { id: sessionId }
+    });
+
+    if (!chatSession) {
+      const assistant = await db.assistant.findUnique({
+        where: { id: assistantId },
+        select: { accountId: true }
+      });
+
+      chatSession = await db.chatSession.create({
+        data: {
+          id: sessionId,
+          accountId: assistant!.accountId,
+          assistantId: assistantId,
+          status: 'ACTIVE',
+          channel: 'web'
+        }
+      });
+    }
+
+    // Create handoff request
+    const handoffRequest = await db.handoffRequest.create({
+      data: {
+        accountId: chatSession.accountId,
+        sessionId: chatSession.id,
+        assistantId: assistantId,
+        reason: reason as any,
+        priority: priority as any,
+        context: `Auto-triggered from chat. Thread ID: ${threadId}`,
+        customerQuery,
+        handoffSettings,
+        status: 'PENDING'
+      }
+    });
+
+    // Update chat session
+    await db.chatSession.update({
+      where: { id: chatSession.id },
+      data: {
+        isHandedOff: true,
+        status: 'TRANSFERRED'
+      }
+    });
+
+    // Add system message
+    await db.chatMessage.create({
+      data: {
+        sessionId: chatSession.id,
+        content: handoffSettings.handoffMessage || 'I\'m connecting you with a human agent who can better assist you.',
+        messageType: 'SYSTEM',
+        sender: 'AI_ASSISTANT',
+        assistantId: assistantId
+      }
+    });
+
+    return {
+      handoffId: handoffRequest.id,
+      message: handoffSettings.customerWaitMessage || 'Please wait while I connect you with a human agent.'
+    };
+
+  } catch (error) {
+    console.error('Error creating handoff request:', error);
+    throw error;
+  }
+}
 
 async function handleChatMessage(
   request: NextRequest,
@@ -120,6 +346,20 @@ async function handleChatMessage(
             data: { threadId: currentThreadId }
           });
         }
+      }
+
+      // Check for handoff triggers before processing the message
+      const handoffCheck = await checkForHandoffTriggers(message, assistant.id, sessionId, currentThreadId);
+      if (handoffCheck.shouldHandoff) {
+        return NextResponse.json({
+          handoffTriggered: true,
+          handoffReason: handoffCheck.reason,
+          handoffId: handoffCheck.handoffId,
+          response: handoffCheck.message,
+          threadId: currentThreadId,
+          assistantId: assistantId,
+          timestamp: new Date().toISOString()
+        });
       }
 
       // Add user message to thread
@@ -252,5 +492,5 @@ Always be helpful and professional, and make it clear what capabilities are avai
   }
 }
 
-// Apply rate limiting to chat messages
-export const POST = withRateLimit(RATE_LIMIT_CONFIGS.CHAT, handleChatMessage); 
+// Export the POST handler
+export const POST = handleChatMessage; 
