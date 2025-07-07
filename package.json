@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "/Users/stevenparrett/.nvm/versions/node/v20.19.2/bin/node node_modules/next/dist/bin/next dev --turbopack",
-    "_comment": "If SP use this: /Users/stevenparrett/.nvm/versions/node/v20.19.2/bin/node node_modules/next/dist/bin/next dev --turbopack",
+    "dev": "next dev --port 3000 --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -12,6 +11,7 @@
   "dependencies": {
     "@auth/core": "^0.40.0",
     "@aws-sdk/client-s3": "^3.830.0",
+    "@aws-sdk/client-ses": "^3.840.0",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
@@ -40,6 +40,7 @@
     "@types/pdf-parse": "^1.1.5",
     "@types/react-dropzone": "^4.2.2",
     "@types/socket.io": "^3.0.1",
+    "@types/uuid": "^10.0.0",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.9.0",
     "bcrypt": "^6.0.0",

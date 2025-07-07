@@ -375,13 +375,58 @@ function AssistantCard({ model }: { model: any }) {
 }
 
 export default function DashboardPage() {
-  const { user } = useUserStore();
+  console.log('🎯 DashboardPage component mounting...');
+  
+  const { user, setUser } = useUserStore();
   const { models, isLoading, fetchModels } = useModelStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
 
+  console.log('🔍 Dashboard component state:', {
+    user: !!user,
+    searchParams: window.location.search,
+    hasToken: searchParams.get('token') ? 'YES' : 'NO',
+    hasOAuth: searchParams.get('oauth') ? 'YES' : 'NO'
+  });
+
+  // Handle OAuth callback immediately on component mount
   useEffect(() => {
+    console.log('🚀 Dashboard OAuth useEffect running...');
+    const token = searchParams.get('token');
+    const oauth = searchParams.get('oauth');
+    
+    console.log('OAuth check:', { token: !!token, oauth });
+    
+    if (token && oauth) {
+      console.log(`✅ OAuth ${oauth} login successful, processing token immediately...`);
+      console.log('🔑 Token:', token.substring(0, 50) + '...');
+      
+      // Store the token immediately and synchronously
+      localStorage.setItem('executa-auth-token', token);
+      console.log('💾 Token stored in localStorage');
+      
+      // Clean up URL immediately to prevent re-processing
+      const url = new URL(window.location.href);
+      url.searchParams.delete('token');
+      url.searchParams.delete('oauth');
+      window.history.replaceState({}, '', url.toString());
+      console.log('🧹 URL cleaned up');
+      
+      // Force page reload to restart auth flow with token in localStorage
+      console.log('🔄 Reloading page to restart auth flow...');
+      window.location.reload();
+      return;
+    } else {
+      console.log('❌ No OAuth params found in dashboard');
+    }
+  }, []); // Only run once on mount
+
+  useEffect(() => {
+    console.log('🔄 Dashboard main useEffect triggered');
+    console.log('Current user state:', user);
+    console.log('Current URL params:', window.location.search);
+    
     fetchModels();
     if (searchParams.get('welcome') === 'true') {
       setShowWelcome(true);

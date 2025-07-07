@@ -42,9 +42,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Don't redirect on 401 for login/register endpoints (these are expected to fail)
+    const isLoginEndpoint = error.config?.url?.includes('/auth/login');
+    const isRegisterEndpoint = error.config?.url?.includes('/auth/register');
+    
+    if (error.response?.status === 401 && !isLoginEndpoint && !isRegisterEndpoint) {
+      console.log('🚫 API: 401 error on protected endpoint, redirecting to login');
       localStorage.removeItem('executa-auth-token');
       window.location.href = '/login';
+    } else if (error.response?.status === 401 && (isLoginEndpoint || isRegisterEndpoint)) {
+      console.log('🔓 API: 401 error on auth endpoint, not redirecting');
     }
     return Promise.reject(error);
   }
@@ -84,6 +91,42 @@ export const authApi = {
   getCurrentUser: async () => {
     const response = await api.get('/auth/me');
     return response.data;
+  },
+
+  forgotPassword: async (email: string) => {
+    try {
+      logger.log('Making forgot password request:', { email });
+      const response = await api.post('/auth/forgot-password', { email });
+      logger.log('Forgot password response:', response.data);
+      return response.data;
+    } catch (error) {
+      logger.error('Forgot password API error:', error);
+      throw error;
+    }
+  },
+
+  resetPassword: async (token: string, password: string) => {
+    try {
+      logger.log('Making reset password request with token');
+      const response = await api.post('/auth/reset-password', { token, password });
+      logger.log('Reset password response:', response.data);
+      return response.data;
+    } catch (error) {
+      logger.error('Reset password API error:', error);
+      throw error;
+    }
+  },
+
+  verifyResetToken: async (token: string) => {
+    try {
+      logger.log('Verifying reset token');
+      const response = await api.post('/auth/verify-reset-token', { token });
+      logger.log('Token verification response:', response.data);
+      return response.data;
+    } catch (error) {
+      logger.error('Token verification API error:', error);
+      throw error;
+    }
   },
 };
 

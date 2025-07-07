@@ -90,7 +90,6 @@ export default function RootLayout({
       >
         <AuthProvider>
           <NotificationProvider>
-            <Navbar />
             {children}
             <NotificationContainer />
             <Toaster />

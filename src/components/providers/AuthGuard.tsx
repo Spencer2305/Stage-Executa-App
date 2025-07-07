@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserStore } from '@/state/userStore';
 
 interface AuthGuardProps {
@@ -17,14 +17,37 @@ export default function AuthGuard({
 }: AuthGuardProps) {
   const { user, isLoading } = useUserStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Only check auth after loading is complete
-    if (!isLoading && requireAuth && !user) {
+    // Check if this is an OAuth callback (has token and oauth parameters)
+    const token = searchParams.get('token');
+    const oauth = searchParams.get('oauth');
+    const isOAuthCallback = token && oauth;
+
+    if (isOAuthCallback) {
+      console.log('🔄 OAuth callback detected in AuthGuard, processing...');
+      // Handle OAuth in AuthGuard as fallback
+      localStorage.setItem('executa-auth-token', token);
+      console.log('💾 AuthGuard: Token stored in localStorage');
+      
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('token');
+      url.searchParams.delete('oauth');
+      window.history.replaceState({}, '', url.toString());
+      
+      // Reload to restart auth flow
+      window.location.reload();
+      return;
+    }
+
+    // Only check auth after loading is complete and if it's not an OAuth callback
+    if (!isLoading && requireAuth && !user && !isOAuthCallback) {
       console.log('🚫 User not authenticated, redirecting to:', redirectTo);
       router.push(redirectTo);
     }
-  }, [user, isLoading, requireAuth, redirectTo, router]);
+  }, [user, isLoading, requireAuth, redirectTo, router, searchParams]);
 
   // Show loading while authentication is being determined
   if (isLoading) {

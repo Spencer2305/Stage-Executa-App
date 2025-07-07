@@ -15,6 +15,16 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     const initializeAuth = async () => {
       console.log('🔄 AuthProvider: Starting authentication initialization...');
       
+      // Check if this is an OAuth callback - if so, delay initialization
+      const urlParams = new URLSearchParams(window.location.search);
+      const isOAuthCallback = urlParams.has('token') && urlParams.has('oauth');
+      
+      if (isOAuthCallback) {
+        console.log('🔄 AuthProvider: OAuth callback detected, delaying initialization...');
+        // Give the page component time to process the OAuth token
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
       // Check if we have a token in localStorage
       const token = localStorage.getItem('executa-auth-token');
       console.log('🔍 AuthProvider: Token check:', token ? 'Token found' : 'No token');

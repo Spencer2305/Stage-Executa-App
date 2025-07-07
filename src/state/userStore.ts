@@ -79,12 +79,18 @@ export const useUserStore = create<UserState>()(
       
       login: async (email: string, password: string) => {
         set({ isLoading: true });
+        logger.log('🔐 UserStore: Login attempt for:', email.substring(0, 3) + '***');
+        
         try {
+          logger.log('📡 UserStore: Calling authApi.login...');
           const response = await authApi.login(email, password);
+          logger.log('✅ UserStore: Login API response received:', response);
+          
           const { user, token } = response;
           
           // Store token
           localStorage.setItem('executa-auth-token', token);
+          logger.log('💾 UserStore: Token stored successfully');
           
           // Convert date strings to Date objects
           const userData = {
@@ -93,7 +99,9 @@ export const useUserStore = create<UserState>()(
           };
           
           set({ user: userData, isLoading: false });
+          logger.log('✅ UserStore: User state updated successfully');
         } catch (error) {
+          logger.error('❌ UserStore: Login failed with error:', error);
           set({ isLoading: false });
           throw error;
         }

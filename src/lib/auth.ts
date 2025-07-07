@@ -176,8 +176,8 @@ export async function createAccountAndUser(
   name: string,
   organizationName?: string
 ): Promise<{ user: AuthUser; token: string }> {
-  // Hash password
-  const passwordHash = await hashPassword(password);
+  // Hash password (for OAuth users, password will be empty string)
+  const passwordHash = password ? await hashPassword(password) : '';
 
   // Generate account ID
   const accountId = `acc_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
@@ -237,6 +237,10 @@ export async function createAccountAndUser(
     id: result.user.id,
     email: result.user.email,
     name: result.user.name,
+    avatar: result.user.avatar || undefined,
+    bio: result.user.bio || undefined,
+    company: result.user.company || undefined,
+    website: result.user.website || undefined,
     role: result.user.role,
     emailVerified: result.user.emailVerified,
     account: {
