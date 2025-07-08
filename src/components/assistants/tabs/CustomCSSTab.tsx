@@ -150,7 +150,7 @@ export default function CustomCSSTab({ embedStyle, setEmbedStyle }: CustomCSSTab
       </div>
 
       <div className="text-xs text-gray-500 p-3 bg-orange-50 border border-orange-200 rounded-md">
-        ⚠️ <strong>Note:</strong> Custom CSS will override the theme styles. Test thoroughly to ensure compatibility across different browsers and devices.
+                        <strong>Note:</strong> Custom CSS will override the theme styles. Test thoroughly to ensure compatibility across different browsers and devices.
       </div>
     </div>
   );

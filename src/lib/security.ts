@@ -7,7 +7,7 @@ export function validateSecurityEnvironment(): void {
   const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
   
   if (missing.length > 0) {
-    console.error('🚨 CRITICAL SECURITY ERROR: Missing required environment variables:');
+    console.error('CRITICAL SECURITY ERROR: Missing required environment variables:');
     missing.forEach(envVar => console.error(`   - ${envVar}`));
     console.error('Application cannot start without these security-critical environment variables.');
     process.exit(1);
@@ -21,7 +21,7 @@ export function validateSecurityEnvironment(): void {
     process.exit(1);
   }
 
-  console.log('✅ Security environment validation passed');
+  console.log('Security environment validation passed');
 }
 
 // Secure JWT verification without fallback
@@ -133,7 +133,7 @@ if (process.env.NODE_ENV === 'production' && process.env.REDIS_URL) {
   // TODO: Initialize Redis store in production
   // const redis = require('redis').createClient(process.env.REDIS_URL);
   // rateLimitStore = new RedisStore(redis);
-  console.warn('⚠️  PRODUCTION SECURITY: Redis rate limiting not configured. Using memory store (not suitable for production clusters)');
+  console.warn('PRODUCTION SECURITY: Redis rate limiting not configured. Using memory store (not suitable for production clusters)');
   rateLimitStore = new MemoryStore();
 } else {
   rateLimitStore = new MemoryStore();

@@ -944,7 +944,7 @@ export default function Home() {
                    transition={{ delay: 2 }}
                  >
                    <div className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl rounded-tr-sm p-4 max-w-md">
-                     <p className="text-sm">We maintain a 98.7% accuracy rate! Our AI is powered by GPT-4 and fine-tuned specifically for your content. Plus, you can train it further with feedback to make it even more accurate for your specific use case. 🎯</p>
+                     <p className="text-sm">We maintain a 98.7% accuracy rate! Our AI is powered by GPT-4 and fine-tuned specifically for your content. Plus, you can train it further with feedback to make it even more accurate for your specific use case.</p>
                    </div>
                    <motion.div 
                      className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0"

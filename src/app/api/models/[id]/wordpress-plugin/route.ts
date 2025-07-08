@@ -561,7 +561,7 @@ function createSafeImage(src, alt, styles) {
         setTimeout(function() {
             if (icon.offsetWidth === 0) {
                 bubble.removeChild(icon);
-                var emoji = document.createTextNode('💬');
+                var emoji = document.createTextNode('Chat');
                 bubble.appendChild(emoji);
             }
         }, 100);

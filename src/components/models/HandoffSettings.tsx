@@ -1,28 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { 
   MessageSquare, 
+  AlertTriangle, 
+  Clock, 
   Mail, 
   Bell, 
-  Webhook, 
-  Clock, 
-  Users, 
-  Settings, 
-  AlertTriangle,
-  Phone,
-  Calendar,
-  Globe
+  Webhook,
+  Settings,
+  User,
+  Calendar
 } from 'lucide-react';
 
 interface HandoffSettingsProps {
@@ -32,29 +30,47 @@ interface HandoffSettingsProps {
   onUpdate: (enabled: boolean, settings: any) => void;
 }
 
-interface Department {
-  name: string;
-  keywords: string[];
-  agentIds: string[];
-}
-
 const defaultSettings = {
+  // Basic keyword triggers
   triggerOnKeywords: [],
+  
+  // AI-powered detection
+  triggerOnAutoDetect: true,
+  autoDetectSensitivity: 'medium', // low, medium, high
+  
+  // Sentiment analysis
   triggerOnSentiment: false,
   sentimentThreshold: -0.5,
+  
+  // Conversation complexity and length
   triggerOnComplexity: false,
   maxConversationLength: 10,
-  handoffMethod: 'internal_notification',
+  
+  // Failed attempts and escalation
+  triggerOnFailedAttempts: true,
+  maxFailedAttempts: 3,
+  
+  // Escalation patterns
+  triggerOnEscalation: true,
+  escalationKeywords: ['manager', 'supervisor', 'complaint', 'refund', 'cancel'],
+  
+  // Question repetition
+  triggerOnRepetition: true,
+  maxRepetitions: 2,
+  
+  // Urgency detection
+  triggerOnUrgency: true,
+  urgencyKeywords: ['urgent', 'asap', 'emergency', 'immediately', 'critical'],
+  
+  // Customer effort indicators
+  triggerOnHighEffort: true,
+  effortIndicators: ['tried everything', 'nothing works', 'still not working', 'multiple times'],
+  
+  handoffMethod: 'email',
   emailSettings: {
     supportEmail: '',
-    emailTemplate: 'Default handoff notification',
+    emailTemplate: 'New support request from customer',
     includeConversationHistory: true
-  },
-  internalSettings: {
-    notifyAgents: [],
-    autoAssign: true,
-    assignmentMethod: 'least_busy',
-    maxWaitTime: 5
   },
   integrationSettings: {
     slackWebhook: '',
@@ -62,13 +78,9 @@ const defaultSettings = {
     customWebhook: '',
     webhookHeaders: {}
   },
-  handoffMessage: "I'm connecting you with a human agent who can better assist you.",
-  customerWaitMessage: "Please wait while I connect you with a human agent.",
-  offlineMessage: "Our support team is currently offline. Please leave your message and we'll get back to you.",
-  departmentRouting: {
-    enabled: false,
-    departments: []
-  },
+  handoffMessage: "I'm connecting you with our support team who can better assist you.",
+  customerWaitMessage: "Please wait while we connect you with our support team.",
+  offlineMessage: "Our support team will review your message and get back to you soon.",
   businessHours: {
     enabled: false,
     timezone: 'UTC',
@@ -88,66 +100,44 @@ const defaultSettings = {
 export default function HandoffSettings({ assistantId, enabled, settings, onUpdate }: HandoffSettingsProps) {
   const [handoffEnabled, setHandoffEnabled] = useState(enabled);
   const [handoffSettings, setHandoffSettings] = useState({ ...defaultSettings, ...settings });
-  const [availableAgents, setAvailableAgents] = useState([]);
   const [newKeyword, setNewKeyword] = useState('');
-  const [newDepartment, setNewDepartment] = useState({ name: '', keywords: '', agentIds: [] });
 
-  // Mock agents for demo - replace with actual API call
   useEffect(() => {
-    setAvailableAgents([
-      { id: 'agent1', name: 'John Doe', email: 'john@example.com', skills: ['technical', 'billing'] },
-      { id: 'agent2', name: 'Jane Smith', email: 'jane@example.com', skills: ['general', 'sales'] }
-    ]);
-  }, []);
+    setHandoffEnabled(enabled);
+    setHandoffSettings({ ...defaultSettings, ...settings });
+  }, [enabled, settings]);
+
+  const handleEnabledChange = (checked: boolean) => {
+    setHandoffEnabled(checked);
+    onUpdate(checked, handoffSettings);
+  };
 
   const handleSettingChange = (path: string, value: any) => {
+    const newSettings = { ...handoffSettings };
     const keys = path.split('.');
-    const updatedSettings = { ...handoffSettings };
-    let current = updatedSettings;
+    let current = newSettings;
     
     for (let i = 0; i < keys.length - 1; i++) {
+      if (!current[keys[i]]) current[keys[i]] = {};
       current = current[keys[i]];
     }
-    current[keys[keys.length - 1]] = value;
     
-    setHandoffSettings(updatedSettings);
-    onUpdate(handoffEnabled, updatedSettings);
+    current[keys[keys.length - 1]] = value;
+    setHandoffSettings(newSettings);
+    onUpdate(handoffEnabled, newSettings);
   };
 
-  const handleEnabledChange = (enabled: boolean) => {
-    setHandoffEnabled(enabled);
-    onUpdate(enabled, handoffSettings);
-  };
-
-  const addTriggerKeyword = () => {
-    if (newKeyword && !handoffSettings.triggerOnKeywords.includes(newKeyword)) {
-      const updatedKeywords = [...handoffSettings.triggerOnKeywords, newKeyword];
+  const addKeyword = () => {
+    if (newKeyword.trim() && !handoffSettings.triggerOnKeywords.includes(newKeyword.trim())) {
+      const updatedKeywords = [...handoffSettings.triggerOnKeywords, newKeyword.trim()];
       handleSettingChange('triggerOnKeywords', updatedKeywords);
       setNewKeyword('');
     }
   };
 
-  const removeTriggerKeyword = (keyword: string) => {
-    const updatedKeywords = handoffSettings.triggerOnKeywords.filter(k => k !== keyword);
+  const removeKeyword = (index: number) => {
+    const updatedKeywords = handoffSettings.triggerOnKeywords.filter((_: any, i: number) => i !== index);
     handleSettingChange('triggerOnKeywords', updatedKeywords);
-  };
-
-  const addDepartment = () => {
-    if (newDepartment.name) {
-      const department = {
-        name: newDepartment.name,
-        keywords: newDepartment.keywords.split(',').map(k => k.trim()).filter(k => k),
-        agentIds: newDepartment.agentIds
-      };
-      const updatedDepartments = [...handoffSettings.departmentRouting.departments, department];
-      handleSettingChange('departmentRouting.departments', updatedDepartments);
-      setNewDepartment({ name: '', keywords: '', agentIds: [] });
-    }
-  };
-
-  const removeDepartment = (index: number) => {
-    const updatedDepartments = handoffSettings.departmentRouting.departments.filter((_, i) => i !== index);
-    handleSettingChange('departmentRouting.departments', updatedDepartments);
   };
 
   return (
@@ -159,10 +149,10 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
             <div>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" />
-                Live Chat & Human Handoff
+                Live Chat & Support Handoff
               </CardTitle>
               <CardDescription>
-                Enable human agent handoff when AI can't resolve customer issues
+                Enable support handoff when AI can't resolve customer issues. Requests will be sent directly to the account owner.
               </CardDescription>
             </div>
             <Switch
@@ -174,165 +164,290 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
         {handoffEnabled && (
           <CardContent>
             <Alert>
-              <AlertTriangle className="h-4 w-4" />
+              <User className="h-4 w-4" />
               <AlertDescription>
-                Human handoff is enabled. Configure the settings below to customize the experience.
+                Support handoff is enabled. All requests will be forwarded to the account owner via the selected notification method.
               </AlertDescription>
             </Alert>
           </CardContent>
         )}
       </Card>
 
+      {/* Configuration Tabs */}
       {handoffEnabled && (
-        <Tabs defaultValue="triggers" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs defaultValue="triggers" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="triggers">Triggers</TabsTrigger>
-            <TabsTrigger value="method">Method</TabsTrigger>
+            <TabsTrigger value="method">Notification</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
-            <TabsTrigger value="routing">Routing</TabsTrigger>
-            <TabsTrigger value="hours">Hours</TabsTrigger>
+            <TabsTrigger value="hours">Business Hours</TabsTrigger>
           </TabsList>
 
-          {/* Trigger Conditions */}
+          {/* Trigger Configuration */}
           <TabsContent value="triggers" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Handoff Triggers</CardTitle>
-                <CardDescription>Configure when to hand off conversations to human agents</CardDescription>
+                <CardDescription>Configure when the AI should transfer conversations to support</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Keywords */}
-                <div>
-                  <Label>Trigger Keywords</Label>
-                  <div className="flex gap-2 mt-2">
+              <CardContent className="space-y-8">
+                {/* AI Auto-Detection */}
+                <div className="space-y-4 border rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-blue-800 font-medium">🤖 AI Auto-Detection</Label>
+                      <p className="text-sm text-blue-600">Automatically detect when customers want human assistance using AI</p>
+                    </div>
+                    <Switch
+                      checked={handoffSettings.triggerOnAutoDetect}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnAutoDetect', checked)}
+                    />
+                  </div>
+                  
+                  {handoffSettings.triggerOnAutoDetect && (
+                    <div>
+                      <Label className="text-blue-800">Detection Sensitivity</Label>
+                      <Select 
+                        value={handoffSettings.autoDetectSensitivity} 
+                        onValueChange={(value) => handleSettingChange('autoDetectSensitivity', value)}
+                      >
+                        <SelectTrigger className="bg-white mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low - Only explicit requests ("I want to talk to a human")</SelectItem>
+                          <SelectItem value="medium">Medium - Clear frustration and requests</SelectItem>
+                          <SelectItem value="high">High - Subtle cues and potential needs</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Keyword Triggers */}
+                <div className="space-y-3">
+                  <Label>Custom Trigger Keywords</Label>
+                  <p className="text-sm text-gray-500">Additional keywords that will trigger handoff</p>
+                  <div className="flex gap-2">
                     <Input
-                      placeholder="Enter a keyword (e.g., 'human', 'agent', 'help')"
+                      placeholder="Enter keyword (e.g., 'billing', 'technical issue')"
                       value={newKeyword}
                       onChange={(e) => setNewKeyword(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && addTriggerKeyword()}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addKeyword();
+                        }
+                      }}
                     />
-                    <Button onClick={addTriggerKeyword}>Add</Button>
+                    <Button onClick={addKeyword} variant="outline">Add</Button>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {handoffSettings.triggerOnKeywords.map((keyword) => (
-                      <Badge key={keyword} variant="secondary" className="cursor-pointer" onClick={() => removeTriggerKeyword(keyword)}>
+                    {handoffSettings.triggerOnKeywords.map((keyword: string, index: number) => (
+                      <Badge 
+                        key={index} 
+                        variant="secondary" 
+                        className="cursor-pointer"
+                        onClick={() => removeKeyword(index)}
+                      >
                         {keyword} ×
                       </Badge>
                     ))}
                   </div>
                 </div>
 
-                {/* AI Auto-Detect */}
-                <div className="border rounded-lg p-4 space-y-4 bg-blue-50">
+                {/* Escalation Patterns */}
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-blue-800 font-medium">🤖 AI Auto-Detect</Label>
-                      <p className="text-sm text-blue-600">Automatically detect when customers want to speak to a human using AI</p>
+                      <Label>Escalation Pattern Detection</Label>
+                      <p className="text-sm text-gray-500">Trigger on manager requests, complaints, cancellations</p>
                     </div>
                     <Switch
-                      checked={handoffSettings.triggerOnAutoDetect || false}
-                      onCheckedChange={(checked) => handleSettingChange('triggerOnAutoDetect', checked)}
+                      checked={handoffSettings.triggerOnEscalation}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnEscalation', checked)}
                     />
                   </div>
-                  
-                  {handoffSettings.triggerOnAutoDetect && (
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-blue-800">Detection Sensitivity</Label>
-                        <Select 
-                          value={handoffSettings.autoDetectSensitivity || 'medium'} 
-                          onValueChange={(value) => handleSettingChange('autoDetectSensitivity', value)}
-                        >
-                          <SelectTrigger className="bg-white">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low - Only very clear requests</SelectItem>
-                            <SelectItem value="medium">Medium - Balanced detection</SelectItem>
-                            <SelectItem value="high">High - Sensitive to subtle cues</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-blue-600 mt-1">
-                          Higher sensitivity catches more requests but may have false positives
-                        </p>
-                      </div>
-                      
-                      <div className="bg-blue-100 p-3 rounded text-sm text-blue-700">
-                        <strong>AI will detect phrases like:</strong>
-                        <ul className="list-disc list-inside mt-1 space-y-1">
-                          <li>"I need to talk to someone"</li>
-                          <li>"This isn't working, can I get help?"</li>
-                          <li>"I want to speak with a representative"</li>
-                          <li>"Can you transfer me to a person?"</li>
-                          <li>"I'm frustrated and need human assistance"</li>
-                        </ul>
-                      </div>
+                  {handoffSettings.triggerOnEscalation && (
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                      <strong>Auto-detects:</strong> manager, supervisor, complaint, refund, cancel, escalate
                     </div>
                   )}
                 </div>
 
-                {/* Sentiment Detection */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Negative Sentiment Detection</Label>
-                    <p className="text-sm text-gray-500">Handoff when customer sentiment becomes negative</p>
+                {/* Urgency Detection */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Urgency Detection</Label>
+                      <p className="text-sm text-gray-500">Trigger on urgent or time-sensitive requests</p>
+                    </div>
+                    <Switch
+                      checked={handoffSettings.triggerOnUrgency}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnUrgency', checked)}
+                    />
                   </div>
-                  <Switch
-                    checked={handoffSettings.triggerOnSentiment}
-                    onCheckedChange={(checked) => handleSettingChange('triggerOnSentiment', checked)}
-                  />
+                  {handoffSettings.triggerOnUrgency && (
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                      <strong>Auto-detects:</strong> urgent, asap, emergency, immediately, critical, time-sensitive
+                    </div>
+                  )}
                 </div>
 
-                {handoffSettings.triggerOnSentiment && (
-                  <div>
-                    <Label>Sentiment Threshold (-1 to 1)</Label>
-                    <Input
-                      type="number"
-                      min="-1"
-                      max="1"
-                      step="0.1"
-                      value={handoffSettings.sentimentThreshold}
-                      onChange={(e) => handleSettingChange('sentimentThreshold', parseFloat(e.target.value))}
+                {/* Failed Attempts */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Failed Resolution Attempts</Label>
+                      <p className="text-sm text-gray-500">Trigger after AI fails to resolve the issue</p>
+                    </div>
+                    <Switch
+                      checked={handoffSettings.triggerOnFailedAttempts}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnFailedAttempts', checked)}
                     />
-                    <p className="text-sm text-gray-500 mt-1">
-                      Trigger when sentiment score falls below this threshold (negative values = poor sentiment)
-                    </p>
                   </div>
-                )}
+                  {handoffSettings.triggerOnFailedAttempts && (
+                    <div>
+                      <Label>Maximum Failed Attempts</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={handoffSettings.maxFailedAttempts}
+                        onChange={(e) => handleSettingChange('maxFailedAttempts', parseInt(e.target.value, 10))}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Handoff after this many unsuccessful resolution attempts
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* High Customer Effort */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>High Customer Effort Detection</Label>
+                      <p className="text-sm text-gray-500">Trigger when customer indicates high effort/frustration</p>
+                    </div>
+                    <Switch
+                      checked={handoffSettings.triggerOnHighEffort}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnHighEffort', checked)}
+                    />
+                  </div>
+                  {handoffSettings.triggerOnHighEffort && (
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                      <strong>Auto-detects:</strong> "tried everything", "nothing works", "still not working", "multiple times"
+                    </div>
+                  )}
+                </div>
+
+                {/* Question Repetition */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Question Repetition Detection</Label>
+                      <p className="text-sm text-gray-500">Trigger when customer repeats similar questions</p>
+                    </div>
+                    <Switch
+                      checked={handoffSettings.triggerOnRepetition}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnRepetition', checked)}
+                    />
+                  </div>
+                  {handoffSettings.triggerOnRepetition && (
+                    <div>
+                      <Label>Maximum Repetitions</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={handoffSettings.maxRepetitions}
+                        onChange={(e) => handleSettingChange('maxRepetitions', parseInt(e.target.value, 10))}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Handoff after this many similar questions
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sentiment Analysis */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Negative Sentiment Detection</Label>
+                      <p className="text-sm text-gray-500">Trigger when customer sentiment becomes negative</p>
+                    </div>
+                    <Switch
+                      checked={handoffSettings.triggerOnSentiment}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnSentiment', checked)}
+                    />
+                  </div>
+                  {handoffSettings.triggerOnSentiment && (
+                    <div>
+                      <Label>Sentiment Threshold</Label>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <input 
+                          type="range" 
+                          min="-1" 
+                          max="0" 
+                          step="0.1" 
+                          value={handoffSettings.sentimentThreshold}
+                          onChange={(e) => handleSettingChange('sentimentThreshold', parseFloat(e.target.value))}
+                          className="flex-1"
+                        />
+                        <span className="text-sm text-gray-500 w-16">
+                          {handoffSettings.sentimentThreshold}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Lower values = more sensitive to negative sentiment
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Conversation Length */}
-                <div>
-                  <Label>Maximum Conversation Length</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={handoffSettings.maxConversationLength}
-                    onChange={(e) => handleSettingChange('maxConversationLength', parseInt(e.target.value, 10))}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">Auto-handoff after this many messages</p>
-                </div>
-
-                {/* Complexity Detection */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Complex Query Detection</Label>
-                    <p className="text-sm text-gray-500">Handoff when AI detects complex issues</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Long Conversation Detection</Label>
+                      <p className="text-sm text-gray-500">Trigger after extended conversations</p>
+                    </div>
+                    <Switch
+                      checked={handoffSettings.triggerOnComplexity}
+                      onCheckedChange={(checked) => handleSettingChange('triggerOnComplexity', checked)}
+                    />
                   </div>
-                  <Switch
-                    checked={handoffSettings.triggerOnComplexity}
-                    onCheckedChange={(checked) => handleSettingChange('triggerOnComplexity', checked)}
-                  />
+                  {handoffSettings.triggerOnComplexity && (
+                    <div>
+                      <Label>Maximum Messages</Label>
+                      <Input
+                        type="number"
+                        min="5"
+                        max="50"
+                        value={handoffSettings.maxConversationLength}
+                        onChange={(e) => handleSettingChange('maxConversationLength', parseInt(e.target.value, 10))}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Handoff after this many messages if unresolved
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Handoff Method */}
+          {/* Notification Method */}
           <TabsContent value="method" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Handoff Method</CardTitle>
-                <CardDescription>Choose how human agents are notified and assigned</CardDescription>
+                <CardTitle>Notification Method</CardTitle>
+                <CardDescription>Choose how you want to be notified about support requests</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -342,22 +457,16 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="internal_notification">
-                        <div className="flex items-center gap-2">
-                          <Bell className="h-4 w-4" />
-                          Internal Notification
-                        </div>
-                      </SelectItem>
                       <SelectItem value="email">
                         <div className="flex items-center gap-2">
                           <Mail className="h-4 w-4" />
-                          Email
+                          Email Notification
                         </div>
                       </SelectItem>
                       <SelectItem value="integration">
                         <div className="flex items-center gap-2">
                           <Webhook className="h-4 w-4" />
-                          Integration (Slack/Teams)
+                          Integration (Slack/Teams/Webhook)
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -375,17 +484,21 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
                       <Label>Support Email Address</Label>
                       <Input
                         type="email"
-                        placeholder="info@executasolutions.com"
+                        placeholder="support@yourcompany.com"
                         value={handoffSettings.emailSettings.supportEmail}
                         onChange={(e) => handleSettingChange('emailSettings.supportEmail', e.target.value)}
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Email address where support requests will be sent
+                      </p>
                     </div>
                     <div>
                       <Label>Email Template</Label>
                       <Textarea
-                        placeholder="Customize the email notification..."
+                        placeholder="Custom email template for handoff notifications..."
                         value={handoffSettings.emailSettings.emailTemplate}
                         onChange={(e) => handleSettingChange('emailSettings.emailTemplate', e.target.value)}
+                        rows={3}
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -393,48 +506,6 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
                       <Switch
                         checked={handoffSettings.emailSettings.includeConversationHistory}
                         onCheckedChange={(checked) => handleSettingChange('emailSettings.includeConversationHistory', checked)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Internal Notification Settings */}
-                {handoffSettings.handoffMethod === 'internal_notification' && (
-                  <div className="space-y-4 border rounded-lg p-4">
-                    <h4 className="font-medium flex items-center gap-2">
-                      <Bell className="h-4 w-4" />
-                      Internal Notification Configuration
-                    </h4>
-                    <div>
-                      <Label>Assignment Method</Label>
-                      <Select 
-                        value={handoffSettings.internalSettings.assignmentMethod} 
-                        onValueChange={(value) => handleSettingChange('internalSettings.assignmentMethod', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="least_busy">Least Busy Agent</SelectItem>
-                          <SelectItem value="round_robin">Round Robin</SelectItem>
-                          <SelectItem value="skills_based">Skills Based</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Maximum Wait Time (minutes)</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={handoffSettings.internalSettings.maxWaitTime}
-                        onChange={(e) => handleSettingChange('internalSettings.maxWaitTime', parseInt(e.target.value, 10))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label>Auto-assign to Available Agents</Label>
-                      <Switch
-                        checked={handoffSettings.internalSettings.autoAssign}
-                        onCheckedChange={(checked) => handleSettingChange('internalSettings.autoAssign', checked)}
                       />
                     </div>
                   </div>
@@ -466,7 +537,7 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
                     <div>
                       <Label>Custom Webhook URL</Label>
                       <Input
-                        placeholder="https://yourapi.com/handoff-webhook"
+                        placeholder="https://your-api.com/webhook"
                         value={handoffSettings.integrationSettings.customWebhook}
                         onChange={(e) => handleSettingChange('integrationSettings.customWebhook', e.target.value)}
                       />
@@ -481,108 +552,38 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
           <TabsContent value="messages" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Handoff Messages</CardTitle>
-                <CardDescription>Customize messages shown during the handoff process</CardDescription>
+                <CardTitle>Customer Messages</CardTitle>
+                <CardDescription>Customize what customers see during the handoff process</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label>Handoff Message (AI to Customer)</Label>
+                  <Label>Handoff Message</Label>
                   <Textarea
-                    placeholder="Message shown when handing off to human..."
+                    placeholder="What the AI says when handing off to support..."
                     value={handoffSettings.handoffMessage}
                     onChange={(e) => handleSettingChange('handoffMessage', e.target.value)}
+                    rows={2}
                   />
                 </div>
                 <div>
                   <Label>Customer Wait Message</Label>
                   <Textarea
-                    placeholder="Message while waiting for agent..."
+                    placeholder="Message shown while waiting for support..."
                     value={handoffSettings.customerWaitMessage}
                     onChange={(e) => handleSettingChange('customerWaitMessage', e.target.value)}
+                    rows={2}
                   />
                 </div>
                 <div>
                   <Label>Offline Message</Label>
                   <Textarea
-                    placeholder="Message when no agents are available..."
+                    placeholder="Message when support is offline..."
                     value={handoffSettings.offlineMessage}
                     onChange={(e) => handleSettingChange('offlineMessage', e.target.value)}
+                    rows={2}
                   />
                 </div>
               </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Department Routing */}
-          <TabsContent value="routing" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Department Routing</CardTitle>
-                    <CardDescription>Route conversations to specific departments based on keywords</CardDescription>
-                  </div>
-                  <Switch
-                    checked={handoffSettings.departmentRouting.enabled}
-                    onCheckedChange={(checked) => handleSettingChange('departmentRouting.enabled', checked)}
-                  />
-                </div>
-              </CardHeader>
-              {handoffSettings.departmentRouting.enabled && (
-                <CardContent className="space-y-4">
-                  {/* Add Department */}
-                  <div className="border rounded-lg p-4 space-y-4">
-                    <h4 className="font-medium">Add New Department</h4>
-                    <div>
-                      <Label>Department Name</Label>
-                      <Input
-                        placeholder="e.g., Technical Support, Billing, Sales"
-                        value={newDepartment.name}
-                        onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Keywords (comma-separated)</Label>
-                      <Input
-                        placeholder="e.g., technical, bug, error, troubleshoot"
-                        value={newDepartment.keywords}
-                        onChange={(e) => setNewDepartment({ ...newDepartment, keywords: e.target.value })}
-                      />
-                    </div>
-                    <Button onClick={addDepartment} disabled={!newDepartment.name}>
-                      Add Department
-                    </Button>
-                  </div>
-
-                  {/* Existing Departments */}
-                  {handoffSettings.departmentRouting.departments.map((dept, index) => (
-                    <div key={index} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">{dept.name}</h4>
-                        <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          onClick={() => removeDepartment(index)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <Label className="text-sm">Keywords:</Label>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {dept.keywords.map((keyword) => (
-                              <Badge key={keyword} variant="outline" className="text-xs">
-                                {keyword}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              )}
             </Card>
           </TabsContent>
 
@@ -590,77 +591,80 @@ export default function HandoffSettings({ assistantId, enabled, settings, onUpda
           <TabsContent value="hours" className="space-y-4">
             <Card>
               <CardHeader>
+                <CardTitle>Business Hours</CardTitle>
+                <CardDescription>Set when support is available (optional)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Business Hours</CardTitle>
-                    <CardDescription>Set when human agents are available for handoffs</CardDescription>
-                  </div>
+                  <Label>Enable Business Hours</Label>
                   <Switch
                     checked={handoffSettings.businessHours.enabled}
                     onCheckedChange={(checked) => handleSettingChange('businessHours.enabled', checked)}
                   />
                 </div>
-              </CardHeader>
-              {handoffSettings.businessHours.enabled && (
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label>Timezone</Label>
-                    <Select 
-                      value={handoffSettings.businessHours.timezone} 
-                      onValueChange={(value) => handleSettingChange('businessHours.timezone', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="UTC">UTC</SelectItem>
-                        <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                        <SelectItem value="America/Chicago">Central Time</SelectItem>
-                        <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                        <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                        <SelectItem value="Europe/London">London</SelectItem>
-                        <SelectItem value="Europe/Paris">Paris</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
 
-                  <div className="space-y-3">
-                    <Label>Weekly Schedule</Label>
-                    {Object.entries(handoffSettings.businessHours.schedule).map(([day, schedule]) => (
-                      <div key={day} className="flex items-center gap-4 p-3 border rounded">
-                        <div className="w-20 capitalize">{day}</div>
-                        <Switch
-                          checked={schedule.enabled}
-                          onCheckedChange={(checked) => 
-                            handleSettingChange(`businessHours.schedule.${day}.enabled`, checked)
-                          }
-                        />
-                        {schedule.enabled && (
-                          <>
-                            <Input
-                              type="time"
-                              value={schedule.start}
-                              onChange={(e) => 
-                                handleSettingChange(`businessHours.schedule.${day}.start`, e.target.value)
-                              }
-                              className="w-32"
-                            />
-                            <span>to</span>
-                            <Input
-                              type="time"
-                              value={schedule.end}
-                              onChange={(e) => 
-                                handleSettingChange(`businessHours.schedule.${day}.end`, e.target.value)
-                              }
-                              className="w-32"
-                            />
-                          </>
-                        )}
-                      </div>
-                    ))}
+                {handoffSettings.businessHours.enabled && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Timezone</Label>
+                      <Select 
+                        value={handoffSettings.businessHours.timezone} 
+                        onValueChange={(value) => handleSettingChange('businessHours.timezone', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UTC">UTC</SelectItem>
+                          <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                          <SelectItem value="America/Chicago">Central Time</SelectItem>
+                          <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                          <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                          <SelectItem value="Europe/London">London</SelectItem>
+                          <SelectItem value="Europe/Paris">Paris</SelectItem>
+                          <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>Weekly Schedule</Label>
+                      {Object.entries(handoffSettings.businessHours.schedule).map(([day, schedule]: [string, any]) => (
+                        <div key={day} className="flex items-center gap-4 p-2 border rounded">
+                          <div className="w-20 capitalize">{day}</div>
+                          <Switch
+                            checked={schedule.enabled}
+                            onCheckedChange={(checked) => 
+                              handleSettingChange(`businessHours.schedule.${day}.enabled`, checked)
+                            }
+                          />
+                          {schedule.enabled && (
+                            <>
+                              <Input
+                                type="time"
+                                value={schedule.start}
+                                onChange={(e) => 
+                                  handleSettingChange(`businessHours.schedule.${day}.start`, e.target.value)
+                                }
+                                className="w-24"
+                              />
+                              <span className="text-gray-500">to</span>
+                              <Input
+                                type="time"
+                                value={schedule.end}
+                                onChange={(e) => 
+                                  handleSettingChange(`businessHours.schedule.${day}.end`, e.target.value)
+                                }
+                                className="w-24"
+                              />
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </CardContent>
-              )}
+                )}
+              </CardContent>
             </Card>
           </TabsContent>
         </Tabs>

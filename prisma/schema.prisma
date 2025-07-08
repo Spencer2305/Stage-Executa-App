@@ -8,62 +8,59 @@ datasource db {
 }
 
 model Account {
-  id                   String                  @id @default(cuid())
-  name                 String
-  slug                 String                  @unique
-  accountId            String                  @unique @map("account_id")
-  plan                 Plan                    @default(FREE)
-  billingEmail         String?                 @map("billing_email")
-  s3BucketName         String?                 @map("s3_bucket_name")
-  openaiOrgId          String?                 @map("openai_org_id")
-  stripeCustomerId     String?                 @unique @map("stripe_customer_id")
-  stripeSubscriptionId String?                 @unique @map("stripe_subscription_id")
-  stripePriceId        String?
-  stripeCurrentPeriodEnd DateTime?
-  subscriptionStatus   String?                 @map("subscription_status")
-  currentPeriodStart   DateTime?               @map("current_period_start")
-  currentPeriodEnd     DateTime?               @map("current_period_end")
-  createdAt            DateTime                @default(now()) @map("created_at")
-  updatedAt            DateTime                @updatedAt @map("updated_at")
-  assistants           Assistant[]
-  dropboxConnections   DropboxConnection[]
-  slackConnections     SlackConnection[]
-  discordConnections   DiscordConnection[]
-  fileSessions         FileProcessingSession[]
-  knowledgeFiles       KnowledgeFile[]
-  users                User[]
-  
-  // Analytics relations
-  conversations        Conversation[]
-  dailyAnalytics       DailyAnalytics[]
-  popularQueries       PopularQuery[]
-  userFeedback         UserFeedback[]
-
-  chatSessions         ChatSession[]
-  humanAgents          HumanAgent[]
-  handoffRequests      HandoffRequest[]
+  id                       String                     @id @default(cuid())
+  name                     String
+  slug                     String                     @unique
+  accountId                String                     @unique @map("account_id")
+  plan                     Plan                       @default(FREE)
+  billingEmail             String?                    @map("billing_email")
+  s3BucketName             String?                    @map("s3_bucket_name")
+  openaiOrgId              String?                    @map("openai_org_id")
+  createdAt                DateTime                   @default(now()) @map("created_at")
+  updatedAt                DateTime                   @updatedAt @map("updated_at")
+  currentPeriodEnd         DateTime?                  @map("current_period_end")
+  currentPeriodStart       DateTime?                  @map("current_period_start")
+  stripeCurrentPeriodEnd   DateTime?
+  stripePriceId            String?
+  stripeCustomerId         String?                    @unique @map("stripe_customer_id")
+  stripeSubscriptionId     String?                    @unique @map("stripe_subscription_id")
+  subscriptionStatus       String?                    @map("subscription_status")
+  assistants               Assistant[]
+  chatSessions             ChatSession[]
+  conversations            Conversation[]
+  dailyAnalytics           DailyAnalytics[]
+  discordConnections       DiscordConnection[]
+  dropboxConnections       DropboxConnection[]
+  fileSessions             FileProcessingSession[]
+  google_drive_connections google_drive_connections[]
+  handoffRequests          HandoffRequest[]
+  humanAgents              HumanAgent[]
+  knowledgeFiles           KnowledgeFile[]
+  popularQueries           PopularQuery[]
+  slackConnections         SlackConnection[]
+  userFeedback             UserFeedback[]
+  users                    User[]
 
   @@map("accounts")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  accountId     String    @map("account_id")
-  email         String    @unique
-  passwordHash  String    @map("password_hash")
+  id            String      @id @default(cuid())
+  accountId     String      @map("account_id")
+  email         String      @unique
+  passwordHash  String      @map("password_hash")
   name          String
   avatar        String?
   bio           String?
   company       String?
   website       String?
-  role          UserRole  @default(MEMBER)
-  emailVerified Boolean   @default(false) @map("email_verified")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  role          UserRole    @default(MEMBER)
+  emailVerified Boolean     @default(false) @map("email_verified")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  humanAgent    HumanAgent?
   sessions      Session[]
-  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  humanAgent       HumanAgent?
+  account       Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
@@ -132,55 +129,57 @@ model KnowledgeFile {
 }
 
 model Assistant {
-  id                          String            @id @default(cuid())
-  accountId                   String            @map("account_id")
+  id                          String              @id @default(cuid())
+  accountId                   String              @map("account_id")
   name                        String
   description                 String?
   instructions                String?
-  status                      AssistantStatus   @default(DRAFT)
-  openaiAssistantId           String?           @map("openai_assistant_id")
-  vectorStoreId               String?           @map("vector_store_id")
-  model                       String?           @default("gpt-4-turbo")
-  apiKey                      String?           @map("api_key")
-  embedUrl                    String?           @map("embed_url")
-  isPublic                    Boolean           @default(false) @map("is_public")
-  embedBubbleColor            String?           @default("#3B82F6") @map("embed_bubble_color")
-  embedButtonShape            String?           @default("rounded") @map("embed_button_shape")
-  embedFontStyle              String?           @default("system") @map("embed_font_style")
-  embedPosition               String?           @default("bottom-right") @map("embed_position")
-  chatBackgroundColor         String?           @default("#FFFFFF") @map("chat_background_color")
-  userMessageBubbleColor      String?           @default("#3B82F6") @map("user_message_bubble_color")
-  assistantMessageBubbleColor String?           @default("#F3F4F6") @map("assistant_message_bubble_color")
-  assistantFontStyle          String?           @default("sans") @map("assistant_font_style")
-  messageBubbleRadius         Int?              @default(12) @map("message_bubble_radius")
-  showAssistantAvatar         Boolean?          @default(true) @map("show_assistant_avatar")
-  assistantAvatarUrl          String?           @map("assistant_avatar_url")
-  showChatHeader              Boolean?          @default(true) @map("show_chat_header")
-  chatHeaderTitle             String?           @default("AI Assistant") @map("chat_header_title")
-  welcomeMessage              String?           @map("welcome_message")
-  totalSessions               Int               @default(0) @map("total_sessions")
-  totalMessages               Int               @default(0) @map("total_messages")
-  createdAt                   DateTime          @default(now()) @map("created_at")
-  updatedAt                   DateTime          @updatedAt @map("updated_at")
-  lastTrained                 DateTime?         @map("last_trained")
-  files                       AssistantFile[]
-  slackConnections            SlackConnection[]
-  discordConnections          DiscordConnection[]
-  account                     Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  status                      AssistantStatus     @default(DRAFT)
+  openaiAssistantId           String?             @map("openai_assistant_id")
+  vectorStoreId               String?             @map("vector_store_id")
+  model                       String?             @default("gpt-4-turbo")
+  apiKey                      String?             @map("api_key")
+  embedUrl                    String?             @map("embed_url")
+  isPublic                    Boolean             @default(false) @map("is_public")
+  embedBubbleColor            String?             @default("#3B82F6") @map("embed_bubble_color")
+  embedButtonShape            String?             @default("rounded") @map("embed_button_shape")
+  embedFontStyle              String?             @default("system") @map("embed_font_style")
+  embedPosition               String?             @default("bottom-right") @map("embed_position")
+  chatBackgroundColor         String?             @default("#FFFFFF") @map("chat_background_color")
+  userMessageBubbleColor      String?             @default("#3B82F6") @map("user_message_bubble_color")
+  assistantMessageBubbleColor String?             @default("#F3F4F6") @map("assistant_message_bubble_color")
+  assistantFontStyle          String?             @default("sans") @map("assistant_font_style")
+  messageBubbleRadius         Int?                @default(12) @map("message_bubble_radius")
+  showAssistantAvatar         Boolean?            @default(true) @map("show_assistant_avatar")
+  assistantAvatarUrl          String?             @map("assistant_avatar_url")
+  showChatHeader              Boolean?            @default(true) @map("show_chat_header")
+  chatHeaderTitle             String?             @default("AI Assistant") @map("chat_header_title")
+  welcomeMessage              String?             @map("welcome_message")
+  totalSessions               Int                 @default(0) @map("total_sessions")
+  totalMessages               Int                 @default(0) @map("total_messages")
+  createdAt                   DateTime            @default(now()) @map("created_at")
+  updatedAt                   DateTime            @updatedAt @map("updated_at")
+  lastTrained                 DateTime?           @map("last_trained")
+  handoffEnabled              Boolean             @default(false)
+  handoffSettings             Json?               @map("handoff_settings")
   
-  // Analytics relations
+  // New settings fields for advanced AI configuration
+  behaviorSettings            Json?               @map("behavior_settings")
+  knowledgeSettings           Json?               @map("knowledge_settings")
+  moderationSettings          Json?               @map("moderation_settings")
+  advancedSettings            Json?               @map("advanced_settings")
+  
+  files                       AssistantFile[]
+  account                     Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  chatMessages                ChatMessage[]
+  chatSessions                ChatSession[]
   conversations               Conversation[]
   dailyAnalytics              DailyAnalytics[]
-  popularQueries              PopularQuery[]
-  userFeedback                UserFeedback[]
-  
-  chatSessions                ChatSession[]
-  chatMessages                ChatMessage[]
+  discordConnections          DiscordConnection[]
   handoffRequests             HandoffRequest[]
-
-  // New handoff configuration
-  handoffEnabled              Boolean           @default(false)
-  handoffSettings             Json?             @map("handoff_settings")
+  popularQueries              PopularQuery[]
+  slackConnections            SlackConnection[]
+  userFeedback                UserFeedback[]
 
   @@index([accountId, status])
   @@map("assistants")
@@ -236,78 +235,75 @@ model DropboxSyncSession {
 }
 
 model SlackConnection {
-  id                String    @id @default(cuid())
-  accountId         String    @map("account_id")
-  assistantId       String    @map("assistant_id")
-  teamId            String    @map("team_id")
-  teamName          String    @map("team_name")
-  teamDomain        String?   @map("team_domain")
-  userId            String    @map("user_id")
-  userName          String    @map("user_name")
-  botToken          String    @map("bot_token")
-  botUserId         String    @map("bot_user_id")
-  botScopes         String    @map("bot_scopes")
-  isActive          Boolean   @default(true) @map("is_active")
-  lastMessageAt     DateTime? @map("last_message_at")
-  totalMessages     Int       @default(0) @map("total_messages")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  account           Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  assistant         Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  accountId     String    @map("account_id")
+  assistantId   String    @map("assistant_id")
+  teamId        String    @map("team_id")
+  teamName      String    @map("team_name")
+  teamDomain    String?   @map("team_domain")
+  userId        String    @map("user_id")
+  userName      String    @map("user_name")
+  botToken      String    @map("bot_token")
+  botUserId     String    @map("bot_user_id")
+  botScopes     String    @map("bot_scopes")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastMessageAt DateTime? @map("last_message_at")
+  totalMessages Int       @default(0) @map("total_messages")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant     Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, assistantId])
   @@map("slack_connections")
 }
 
 model DiscordConnection {
-  id                String    @id @default(cuid())
-  accountId         String    @map("account_id")
-  assistantId       String    @map("assistant_id")
-  guildId           String    @map("guild_id")
-  guildName         String    @map("guild_name")
-  guildIcon         String?   @map("guild_icon")
-  botToken          String    @map("bot_token")
-  botUserId         String?   @map("bot_user_id")
-  permissions       String    @map("permissions")
-  isActive          Boolean   @default(true) @map("is_active")
-  lastMessageAt     DateTime? @map("last_message_at")
-  totalMessages     Int       @default(0) @map("total_messages")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  account           Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  assistant         Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  accountId     String    @map("account_id")
+  assistantId   String    @map("assistant_id")
+  guildId       String    @map("guild_id")
+  guildName     String    @map("guild_name")
+  guildIcon     String?   @map("guild_icon")
+  botToken      String    @map("bot_token")
+  botUserId     String?   @map("bot_user_id")
+  permissions   String    @map("permissions")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastMessageAt DateTime? @map("last_message_at")
+  totalMessages Int       @default(0) @map("total_messages")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant     Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
 
   @@unique([guildId, assistantId])
   @@map("discord_connections")
 }
 
-// Analytics Models
 model Conversation {
-  id            String              @id @default(cuid())
-  assistantId   String              @map("assistant_id")
-  accountId     String              @map("account_id")
-  sessionId     String?             @map("session_id") // External session ID (website, slack thread, etc.)
-  platform      ConversationPlatform @default(WEBSITE)
-  userIdentifier String?            @map("user_identifier") // IP, user ID, email hash, etc.
-  threadId      String?             @map("thread_id") // OpenAI thread ID
-  status        ConversationStatus  @default(ACTIVE)
-  totalMessages Int                 @default(0) @map("total_messages")
-  userMessages  Int                 @default(0) @map("user_messages")
-  assistantMessages Int             @default(0) @map("assistant_messages")
-  avgResponseTime Float?            @map("avg_response_time") // in seconds
-  userSatisfaction Float?           @map("user_satisfaction") // 1-5 rating
-  hasErrors     Boolean             @default(false) @map("has_errors")
-  startedAt     DateTime            @default(now()) @map("started_at")
-  endedAt       DateTime?           @map("ended_at")
-  lastMessageAt DateTime            @default(now()) @map("last_message_at")
-  createdAt     DateTime            @default(now()) @map("created_at")
-  updatedAt     DateTime            @updatedAt @map("updated_at")
-  
-  // Relations
-  assistant     Assistant           @relation(fields: [assistantId], references: [id], onDelete: Cascade)
-  account       Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  messages      ConversationMessage[]
-  feedback      UserFeedback[]
+  id                String                @id @default(cuid())
+  assistantId       String                @map("assistant_id")
+  accountId         String                @map("account_id")
+  sessionId         String?               @map("session_id")
+  platform          ConversationPlatform  @default(WEBSITE)
+  userIdentifier    String?               @map("user_identifier")
+  threadId          String?               @map("thread_id")
+  status            ConversationStatus    @default(ACTIVE)
+  totalMessages     Int                   @default(0) @map("total_messages")
+  userMessages      Int                   @default(0) @map("user_messages")
+  assistantMessages Int                   @default(0) @map("assistant_messages")
+  avgResponseTime   Float?                @map("avg_response_time")
+  userSatisfaction  Float?                @map("user_satisfaction")
+  hasErrors         Boolean               @default(false) @map("has_errors")
+  startedAt         DateTime              @default(now()) @map("started_at")
+  endedAt           DateTime?             @map("ended_at")
+  lastMessageAt     DateTime              @default(now()) @map("last_message_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  messages          ConversationMessage[]
+  account           Account               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant         Assistant             @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  feedback          UserFeedback[]
 
   @@index([assistantId, createdAt])
   @@index([accountId, createdAt])
@@ -316,59 +312,46 @@ model Conversation {
 }
 
 model ConversationMessage {
-  id               String       @id @default(cuid())
-  conversationId   String       @map("conversation_id")
-  role             MessageRole
-  content          String       @db.Text
-  tokenCount       Int?         @map("token_count")
-  responseTime     Float?       @map("response_time") // in seconds
-  openaiMessageId  String?      @map("openai_message_id")
-  errorMessage     String?      @map("error_message")
-  hasError         Boolean      @default(false) @map("has_error")
-  timestamp        DateTime     @default(now())
-  createdAt        DateTime     @default(now()) @map("created_at")
-  
-  // Relations  
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
+  conversationId  String       @map("conversation_id")
+  role            MessageRole
+  content         String
+  tokenCount      Int?         @map("token_count")
+  responseTime    Float?       @map("response_time")
+  openaiMessageId String?      @map("openai_message_id")
+  errorMessage    String?      @map("error_message")
+  hasError        Boolean      @default(false) @map("has_error")
+  timestamp       DateTime     @default(now())
+  createdAt       DateTime     @default(now()) @map("created_at")
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, timestamp])
   @@map("conversation_messages")
 }
 
 model DailyAnalytics {
-  id                    String   @id @default(cuid())
-  accountId             String   @map("account_id")
-  assistantId           String?  @map("assistant_id") // null for account-wide analytics
-  date                  DateTime @db.Date
-  platform              ConversationPlatform?
-  
-  // Conversation metrics
-  totalConversations    Int      @default(0) @map("total_conversations")
-  totalMessages         Int      @default(0) @map("total_messages")
-  totalUserMessages     Int      @default(0) @map("total_user_messages")
-  totalAssistantMessages Int     @default(0) @map("total_assistant_messages")
-  uniqueUsers           Int      @default(0) @map("unique_users")
-  
-  // Performance metrics
-  avgResponseTime       Float?   @map("avg_response_time")
-  avgConversationLength Float?   @map("avg_conversation_length")
-  avgUserSatisfaction   Float?   @map("avg_user_satisfaction")
-  
-  // Quality metrics
-  successfulConversations Int    @default(0) @map("successful_conversations")
-  errorConversations      Int    @default(0) @map("error_conversations")
-  errorRate               Float? @map("error_rate")
-  
-  // Usage patterns
-  peakHour                Int?   @map("peak_hour") // 0-23
-  avgSessionDuration      Float? @map("avg_session_duration") // in minutes
-  
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
-  
-  // Relations
-  account                 Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  assistant               Assistant? @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  id                      String                @id @default(cuid())
+  accountId               String                @map("account_id")
+  assistantId             String?               @map("assistant_id")
+  date                    DateTime              @db.Date
+  platform                ConversationPlatform?
+  totalConversations      Int                   @default(0) @map("total_conversations")
+  totalMessages           Int                   @default(0) @map("total_messages")
+  totalUserMessages       Int                   @default(0) @map("total_user_messages")
+  totalAssistantMessages  Int                   @default(0) @map("total_assistant_messages")
+  uniqueUsers             Int                   @default(0) @map("unique_users")
+  avgResponseTime         Float?                @map("avg_response_time")
+  avgConversationLength   Float?                @map("avg_conversation_length")
+  avgUserSatisfaction     Float?                @map("avg_user_satisfaction")
+  successfulConversations Int                   @default(0) @map("successful_conversations")
+  errorConversations      Int                   @default(0) @map("error_conversations")
+  errorRate               Float?                @map("error_rate")
+  peakHour                Int?                  @map("peak_hour")
+  avgSessionDuration      Float?                @map("avg_session_duration")
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
+  account                 Account               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant               Assistant?            @relation(fields: [assistantId], references: [id], onDelete: Cascade)
 
   @@unique([accountId, assistantId, date, platform])
   @@index([accountId, date])
@@ -377,23 +360,21 @@ model DailyAnalytics {
 }
 
 model PopularQuery {
-  id            String   @id @default(cuid())
-  accountId     String   @map("account_id")
-  assistantId   String?  @map("assistant_id")
-  query         String   @db.Text
-  queryHash     String   @map("query_hash") // Hash for efficient querying
-  count         Int      @default(1)
-  avgResponseTime Float? @map("avg_response_time")
-  avgSatisfaction Float? @map("avg_satisfaction")
-  lastAsked     DateTime @map("last_asked")
-  isAnswered    Boolean  @default(true) @map("is_answered")
-  category      String?  // Auto-categorized query type
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  
-  // Relations
-  account       Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  assistant     Assistant? @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  id              String     @id @default(cuid())
+  accountId       String     @map("account_id")
+  assistantId     String?    @map("assistant_id")
+  query           String
+  queryHash       String     @map("query_hash")
+  count           Int        @default(1)
+  avgResponseTime Float?     @map("avg_response_time")
+  avgSatisfaction Float?     @map("avg_satisfaction")
+  lastAsked       DateTime   @map("last_asked")
+  isAnswered      Boolean    @default(true) @map("is_answered")
+  category        String?
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  account         Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant       Assistant? @relation(fields: [assistantId], references: [id], onDelete: Cascade)
 
   @@unique([accountId, assistantId, queryHash])
   @@index([accountId, count])
@@ -402,26 +383,154 @@ model PopularQuery {
 }
 
 model UserFeedback {
-  id              String     @id @default(cuid())
-  conversationId  String     @map("conversation_id")
-  messageId       String?    @map("message_id")
-  accountId       String     @map("account_id")
-  assistantId     String     @map("assistant_id")
-  rating          Int        // 1-5 star rating
-  feedback        String?    @db.Text
-  feedbackType    FeedbackType @default(RATING)
-  userIdentifier  String?    @map("user_identifier")
-  platform        ConversationPlatform @default(WEBSITE)
-  createdAt       DateTime   @default(now()) @map("created_at")
-  
-  // Relations
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  account         Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  assistant       Assistant    @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  id             String               @id @default(cuid())
+  conversationId String               @map("conversation_id")
+  messageId      String?              @map("message_id")
+  accountId      String               @map("account_id")
+  assistantId    String               @map("assistant_id")
+  rating         Int
+  feedback       String?
+  feedbackType   FeedbackType         @default(RATING)
+  userIdentifier String?              @map("user_identifier")
+  platform       ConversationPlatform @default(WEBSITE)
+  createdAt      DateTime             @default(now()) @map("created_at")
+  account        Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant      Assistant            @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  conversation   Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([assistantId, createdAt])
   @@index([accountId, createdAt])
   @@map("user_feedback")
+}
+
+model HumanAgent {
+  id              String           @id @default(cuid())
+  accountId       String
+  userId          String           @unique
+  name            String
+  email           String
+  isOnline        Boolean          @default(false)
+  isAvailable     Boolean          @default(true)
+  maxChats        Int              @default(5)
+  autoAssign      Boolean          @default(true)
+  departments     String[]
+  skills          String[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lastActive      DateTime         @default(now())
+  agentMessages   ChatMessage[]
+  chatSessions    ChatSession[]
+  handoffRequests HandoffRequest[]
+  account         Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, userId])
+  @@map("human_agents")
+}
+
+model ChatSession {
+  id               String          @id @default(cuid())
+  accountId        String
+  assistantId      String
+  customerName     String?
+  customerEmail    String?
+  customerPhone    String?
+  customerMetadata Json?
+  status           ChatStatus      @default(ACTIVE)
+  isHandedOff      Boolean         @default(false)
+  humanAgentId     String?
+  channel          String          @default("web")
+  sessionStarted   DateTime        @default(now())
+  sessionEnded     DateTime?
+  totalMessages    Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  messages         ChatMessage[]
+  account          Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assistant        Assistant       @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  humanAgent       HumanAgent?     @relation(fields: [humanAgentId], references: [id])
+  handoffRequest   HandoffRequest?
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id           String        @id @default(cuid())
+  sessionId    String
+  content      String
+  messageType  MessageType   @default(TEXT)
+  sender       MessageSender
+  humanAgentId String?
+  assistantId  String?
+  isInternal   Boolean       @default(false)
+  metadata     Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  assistant    Assistant?    @relation(fields: [assistantId], references: [id])
+  humanAgent   HumanAgent?   @relation(fields: [humanAgentId], references: [id])
+  session      ChatSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model HandoffRequest {
+  id              String          @id @default(cuid())
+  accountId       String
+  sessionId       String          @unique
+  assistantId     String
+  reason          HandoffReason
+  priority        HandoffPriority @default(NORMAL)
+  context         String?
+  customerQuery   String?
+  assignedAgentId String?
+  assignedAt      DateTime?
+  acceptedAt      DateTime?
+  resolvedAt      DateTime?
+  handoffSettings Json
+  status          HandoffStatus   @default(PENDING)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  account         Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  assignedAgent   HumanAgent?     @relation(fields: [assignedAgentId], references: [id])
+  assistant       Assistant       @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  session         ChatSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("handoff_requests")
+}
+
+model google_drive_connections {
+  id                         String                       @id
+  account_id                 String
+  user_id                    String
+  access_token               String
+  refresh_token              String?
+  expires_at                 DateTime?
+  google_account_id          String
+  google_email               String
+  display_name               String
+  is_active                  Boolean                      @default(true)
+  last_sync_at               DateTime?
+  created_at                 DateTime                     @default(now())
+  updated_at                 DateTime
+  accounts                   Account                      @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  google_drive_sync_sessions google_drive_sync_sessions[]
+
+  @@unique([account_id, google_account_id])
+}
+
+model google_drive_sync_sessions {
+  id                       String                       @id
+  connection_id            String
+  status                   GoogleDriveSyncSessionStatus @default(PENDING)
+  total_files              Int                          @default(0)
+  processed_files          Int                          @default(0)
+  error_files              Int                          @default(0)
+  synced_files             Int                          @default(0)
+  skipped_files            Int                          @default(0)
+  error_message            String?
+  started_at               DateTime                     @default(now())
+  completed_at             DateTime?
+  google_drive_connections google_drive_connections     @relation(fields: [connection_id], references: [id], onDelete: Cascade)
 }
 
 enum Plan {
@@ -465,7 +574,6 @@ enum DropboxSyncSessionStatus {
   ERROR
 }
 
-// Enums for analytics
 enum ConversationPlatform {
   WEBSITE
   SLACK
@@ -497,132 +605,6 @@ enum FeedbackType {
   FEATURE_REQUEST
 }
 
-// New models for live chat and human handoff
-model HumanAgent {
-  id          String   @id @default(cuid())
-  accountId   String
-  userId      String
-  name        String
-  email       String
-  isOnline    Boolean  @default(false)
-  isAvailable Boolean  @default(true)
-  maxChats    Int      @default(5)
-  
-  // Agent settings
-  autoAssign  Boolean  @default(true)
-  departments String[] // ["sales", "support", "billing"]
-  skills      String[] // ["technical", "billing", "general"]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  lastActive  DateTime @default(now())
-
-  account           Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chatSessions      ChatSession[]
-  handoffRequests   HandoffRequest[]
-  agentMessages     ChatMessage[]
-
-  @@unique([accountId, userId])
-  @@unique([userId])
-  @@map("human_agents")
-}
-
-model ChatSession {
-  id           String   @id @default(cuid())
-  accountId    String
-  assistantId  String
-  
-  // Customer info
-  customerName      String?
-  customerEmail     String?
-  customerPhone     String?
-  customerMetadata  Json?   // Additional customer data
-  
-  // Session status
-  status           ChatStatus @default(ACTIVE)
-  isHandedOff      Boolean    @default(false)
-  humanAgentId     String?
-  
-  // Session data
-  channel          String     @default("web") // web, whatsapp, etc
-  sessionStarted   DateTime   @default(now())
-  sessionEnded     DateTime?
-  totalMessages    Int        @default(0)
-  
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-
-  account          Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  assistant        Assistant       @relation(fields: [assistantId], references: [id], onDelete: Cascade)
-  humanAgent       HumanAgent?     @relation(fields: [humanAgentId], references: [id])
-  messages         ChatMessage[]
-  handoffRequest   HandoffRequest?
-
-  @@map("chat_sessions")
-}
-
-model ChatMessage {
-  id            String   @id @default(cuid())
-  sessionId     String
-  
-  content       String
-  messageType   MessageType @default(TEXT)
-  sender        MessageSender
-  
-  // Agent/Assistant info
-  humanAgentId  String?
-  assistantId   String?
-  
-  // Message metadata
-  isInternal    Boolean  @default(false) // Internal agent notes
-  metadata      Json?    // File attachments, etc
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  humanAgent    HumanAgent? @relation(fields: [humanAgentId], references: [id])
-  assistant     Assistant?  @relation(fields: [assistantId], references: [id])
-
-  @@map("chat_messages")
-}
-
-model HandoffRequest {
-  id           String   @id @default(cuid())
-  accountId    String
-  sessionId    String   @unique
-  assistantId  String
-  
-  // Request details
-  reason       HandoffReason
-  priority     HandoffPriority @default(NORMAL)
-  context      String?         // Why handoff was triggered
-  customerQuery String?        // Original customer question
-  
-  // Assignment
-  assignedAgentId String?
-  assignedAt      DateTime?
-  acceptedAt      DateTime?
-  resolvedAt      DateTime?
-  
-  // Handoff settings used
-  handoffSettings Json // Store the settings used for this handoff
-  
-  status       HandoffStatus @default(PENDING)
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  account      Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  session      ChatSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  assistant    Assistant    @relation(fields: [assistantId], references: [id], onDelete: Cascade)
-  assignedAgent HumanAgent? @relation(fields: [assignedAgentId], references: [id])
-
-  @@map("handoff_requests")
-}
-
-// Enums for the new models
 enum ChatStatus {
   ACTIVE
   TRANSFERRED
@@ -668,4 +650,11 @@ enum HandoffStatus {
   IN_PROGRESS
   RESOLVED
   EXPIRED
+}
+
+enum GoogleDriveSyncSessionStatus {
+  PENDING
+  SYNCING
+  COMPLETED
+  ERROR
 }
