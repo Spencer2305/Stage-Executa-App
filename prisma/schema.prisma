@@ -60,14 +60,8 @@ model User {
   updatedAt     DateTime    @updatedAt @map("updated_at")
   humanAgent    HumanAgent?
   sessions      Session[]
-<<<<<<< HEAD
   passwordReset PasswordReset?
   account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  humanAgent       HumanAgent?
-=======
-  account       Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
->>>>>>> 880118ae36d2648e64deb91989733efdecc5844f
 
   @@map("users")
 }

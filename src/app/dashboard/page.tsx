@@ -377,10 +377,10 @@ function AssistantCard({ model }: { model: any }) {
 export default function DashboardPage() {
   console.log('🎯 DashboardPage component mounting...');
   
-  const { user, setUser } = useUserStore();
-  const { models, isLoading, fetchModels } = useModelStore();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, isLoading: userLoading } = useUserStore();
+  const { models, isLoading, fetchModels } = useModelStore();
   const [showWelcome, setShowWelcome] = useState(false);
 
   console.log('🔍 Dashboard component state:', {
@@ -423,19 +423,34 @@ export default function DashboardPage() {
   }, []); // Only run once on mount
 
   useEffect(() => {
-    console.log('🔄 Dashboard main useEffect triggered');
-    console.log('Current user state:', user);
-    console.log('Current URL params:', window.location.search);
-    
-    fetchModels();
-    if (searchParams.get('welcome') === 'true') {
-      setShowWelcome(true);
-      // Remove the welcome parameter from URL
-      const url = new URL(window.location.href);
-      url.searchParams.delete('welcome');
-      window.history.replaceState({}, '', url.toString());
-    }
-  }, [fetchModels, searchParams]);
+    const loadDashboard = async () => {
+      console.log('🔍 Dashboard: Starting loadDashboard...');
+      console.log('🔍 Dashboard: User loading state:', userLoading);
+      console.log('🔍 Dashboard: User:', user);
+      console.log('🔍 Dashboard: Models length:', models.length);
+      
+      if (userLoading) {
+        console.log('⏳ Dashboard: Waiting for user authentication...');
+        return;
+      }
+      
+      if (!user) {
+        console.log('❌ Dashboard: No user found, redirecting to login...');
+        router.push('/login');
+        return;
+      }
+      
+      console.log('✅ Dashboard: User authenticated, fetching models...');
+      try {
+        await fetchModels();
+        console.log('✅ Dashboard: Models fetched successfully');
+      } catch (error) {
+        console.error('❌ Dashboard: Error fetching models:', error);
+      }
+    };
+
+    loadDashboard();
+  }, [user, userLoading, router, fetchModels]);
 
   const totalConversations = models.reduce((total, model) => total + (model?.totalSessions || 0), 0);
   const activeModels = models.filter(model => model?.status === 'active');
@@ -643,7 +658,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {models.map((model) => (
+              {models.filter(model => model && model.id).map((model) => (
                 <AssistantCard key={model.id} model={model} />
               ))}
             </div>

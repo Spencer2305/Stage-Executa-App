@@ -1,14 +1,48 @@
+"use client";
+
 import Navbar from "@/components/layout/Navbar";
 import HomePage from "./(main)/page";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import React from "react";
+import { Database, Star, Users, Cloud, Settings, Plug, RefreshCw, MessageCircle, MessageSquare, Sparkles, ArrowRight, Check, Heart, Zap as Lightning } from "lucide-react";
+import { Bot, Brain, Zap, Globe, Shield, BarChart3, Upload, Play, Rocket } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+    },
+  },
+};
+
+const staggerChild = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
 
 export default function RootPage() {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
   return (
-<<<<<<< HEAD
-    <>
-      <Navbar />
-      <HomePage />
-    </>
-=======
     <main className="flex flex-col min-h-screen bg-white">
       {/* Hero Section - Clean and Centered */}
       <section className="relative py-24 lg:py-32 overflow-hidden">
@@ -1130,7 +1164,7 @@ export default function RootPage() {
              >
                {[
                  {
-                   icon: Lightning,
+                   icon: Zap,
                    title: "60 Second Setup",
                    description: "Fastest deployment in the industry",
                    color: "from-brand-500 to-brand-600"
@@ -1196,6 +1230,5 @@ export default function RootPage() {
          }
        `}</style>
     </main>
->>>>>>> 880118ae36d2648e64deb91989733efdecc5844f
   );
 } 

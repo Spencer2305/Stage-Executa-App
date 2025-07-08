@@ -66,10 +66,32 @@ export const useModelStore = create<ModelState>((set, get) => ({
   fetchModels: async () => {
     set({ isLoading: true });
     try {
+      console.log('🔍 ModelStore: Starting fetchModels...');
+      
+      // Check if we have an auth token
+      const token = localStorage.getItem('executa-auth-token');
+      if (!token) {
+        console.log('❌ ModelStore: No auth token found');
+        set({ isLoading: false });
+        return;
+      }
+      
+      console.log('✅ ModelStore: Auth token found, calling API...');
       const models = await modelApi.list();
-      set({ models, isLoading: false });
+      console.log('✅ ModelStore: API call successful, received models:', models.length);
+      
+      // Filter out any invalid models
+      const validModels = models.filter(model => model && model.id);
+      console.log('✅ ModelStore: Valid models after filtering:', validModels.length);
+      
+      set({ models: validModels, isLoading: false });
     } catch (error) {
-      console.error('Failed to fetch models:', error);
+      console.error('❌ ModelStore: Failed to fetch models:', error);
+      console.error('❌ ModelStore: Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        status: (error as any)?.response?.status,
+        data: (error as any)?.response?.data
+      });
       toast.error('Failed to load assistants');
       set({ isLoading: false });
     }
