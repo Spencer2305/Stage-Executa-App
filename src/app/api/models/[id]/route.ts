@@ -72,6 +72,27 @@ export async function GET(
       // API info (mock for now)  
       apiKey: assistant.id.startsWith('asst_') ? assistant.id : `sk_${assistant.id.slice(0, 8)}`,
       embedUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3008'}/chat/${assistant.id}`,
+      // Embed styling fields
+      embedBubbleColor: assistant.embedBubbleColor,
+      embedButtonShape: assistant.embedButtonShape,
+      embedFontStyle: assistant.embedFontStyle,
+      embedPosition: assistant.embedPosition,
+      chatBackgroundColor: assistant.chatBackgroundColor,
+      userMessageBubbleColor: assistant.userMessageBubbleColor,
+      assistantMessageBubbleColor: assistant.assistantMessageBubbleColor,
+      assistantFontStyle: assistant.assistantFontStyle,
+      messageBubbleRadius: assistant.messageBubbleRadius,
+      showAssistantAvatar: assistant.showAssistantAvatar,
+      assistantAvatarUrl: assistant.assistantAvatarUrl,
+      showChatHeader: assistant.showChatHeader,
+      chatHeaderTitle: assistant.chatHeaderTitle,
+      welcomeMessage: assistant.welcomeMessage,
+      owner: {
+        id: auth.account.id, // Assuming auth.account.id is the owner's ID
+        email: auth.account.email, // Assuming auth.account.email is the owner's email
+      },
+      // Add handoffSettings for advanced embed settings
+      handoffSettings: assistant.handoffSettings,
     };
 
     console.log(`✅ Successfully fetched assistant ${id} with ${transformedAssistant.documents.length} documents`);

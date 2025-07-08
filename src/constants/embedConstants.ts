@@ -69,10 +69,10 @@ export const backgroundPatterns = [
 // Animation options
 export const animationOptions = [
   { id: 'none', name: 'None', css: '' },
-  { id: 'smooth', name: 'Smooth', css: 'transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);' },
-  { id: 'bounce', name: 'Bounce', css: 'transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);' },
-  { id: 'slide', name: 'Slide', css: 'transition: all 0.4s ease-in-out;' },
-  { id: 'fade', name: 'Fade', css: 'transition: opacity 0.3s ease, transform 0.3s ease;' }
+  { id: 'smooth', name: 'Smooth', css: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' },
+  { id: 'bounce', name: 'Bounce', css: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)' },
+  { id: 'slide', name: 'Slide', css: 'all 0.4s ease-in-out' },
+  { id: 'fade', name: 'Fade', css: 'opacity 0.3s ease, transform 0.3s ease' }
 ];
 
 // Chat window sizes

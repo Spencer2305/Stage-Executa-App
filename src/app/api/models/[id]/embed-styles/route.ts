@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { authenticateRequest } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
 
-const prisma = new PrismaClient();
-
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await authenticateRequest(request);
@@ -15,7 +13,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const assistantId = params.id;
+    const { id: assistantId } = await params;
     const body = await request.json();
     const { 
       bubbleColor, 
@@ -47,7 +45,7 @@ export async function PUT(
     } = body;
 
     // Verify the assistant belongs to the user's account
-    const assistant = await prisma.assistant.findFirst({
+    const assistant = await db.assistant.findFirst({
       where: {
         id: assistantId,
         accountId: user.account.id,
@@ -73,7 +71,19 @@ export async function PUT(
       assistantAvatarIcon,
       showChatHeader,
       chatHeaderTitle,
-      welcomeMessage
+      welcomeMessage,
+      // Advanced settings
+      selectedTheme,
+      chatHeaderGradient,
+      backgroundPattern,
+      glassEffect,
+      animation,
+      customCSS,
+      googleFont,
+      chatSize,
+      shadowIntensity,
+      borderRadius,
+      opacity
     });
 
     // Prepare advanced styling settings as JSON
@@ -92,7 +102,7 @@ export async function PUT(
     };
 
     // Update the assistant with new embed styles
-    const updatedAssistant = await prisma.assistant.update({
+    const updatedAssistant = await db.assistant.update({
       where: { id: assistantId },
       data: {
         embedBubbleColor: bubbleColor || '#3B82F6',
@@ -149,23 +159,23 @@ export async function PUT(
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
+    // No need to manually disconnect - shared db instance handles this
   }
 }
 
 // GET - Fetch embed styles for assistant (public endpoint for WordPress plugins)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('GET /api/models/[id]/embed-styles - assistantId:', params.id);
+    const { id: assistantId } = await params;
+    console.log('GET /api/models/[id]/embed-styles - assistantId:', assistantId);
 
     // No authentication required - this is a public endpoint for WordPress plugins
-    const assistantId = params.id;
 
     // Fetch assistant with embed styles
-    const assistant = await prisma.assistant.findUnique({
+    const assistant = await db.assistant.findUnique({
       where: { id: assistantId },
       select: {
         id: true,
