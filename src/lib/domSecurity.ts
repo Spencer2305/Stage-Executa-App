@@ -193,7 +193,7 @@ export const WidgetSecurity = {
     setTimeout(() => {
       if (icon.offsetWidth === 0) {
         bubble.removeChild(icon);
-        const emoji = createSafeSpan('💬');
+        const emoji = createSafeSpan('Chat');
         bubble.appendChild(emoji);
       }
     }, 100);

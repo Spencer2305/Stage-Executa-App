@@ -103,7 +103,7 @@ export default function TestHandoffPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">🤖 Live Chat & Human Handoff Test</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Live Chat & Human Handoff Test</h1>
           <p className="text-gray-600 mt-2">Test the handoff settings and auto-detection functionality</p>
         </div>
 
@@ -120,9 +120,9 @@ export default function TestHandoffPage() {
 
           {/* Test Interface */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>🧪 Test Detection</CardTitle>
+                    <Card>
+          <CardHeader>
+            <CardTitle>Test Detection</CardTitle>
                 <CardDescription>
                   Try different messages to see how the handoff system responds
                 </CardDescription>
@@ -143,7 +143,7 @@ export default function TestHandoffPage() {
 
                 {testMessage && (
                   <div className="border rounded p-4 bg-blue-50">
-                    <h4 className="font-medium text-blue-800 mb-2">🔍 Current Detection</h4>
+                    <h4 className="font-medium text-blue-800 mb-2">Current Detection</h4>
                     <div className="space-y-2 text-sm">
                       <div>
                         <strong>Message:</strong> "{testMessage}"
@@ -151,13 +151,13 @@ export default function TestHandoffPage() {
                       <div>
                         <strong>Keyword Matches:</strong> {detectedKeywords.length > 0 ? detectedKeywords.join(', ') : 'None'}
                       </div>
-                      <div>
-                        <strong>Auto-Detect Enabled:</strong> {handoffSettings.triggerOnAutoDetect ? '✅ Yes' : '❌ No'}
-                      </div>
+                                              <div>
+                          <strong>Auto-Detect Enabled:</strong> {handoffSettings.triggerOnAutoDetect ? 'Yes' : 'No'}
+                        </div>
                       <div>
                         <strong>Would Trigger Handoff:</strong> {
                           detectedKeywords.length > 0 || handoffSettings.triggerOnAutoDetect ? 
-                          '✅ Yes' : '❌ No'
+                          'Yes' : 'No'
                         }
                       </div>
                     </div>
@@ -169,7 +169,7 @@ export default function TestHandoffPage() {
             {/* Example Messages */}
             <Card>
               <CardHeader>
-                <CardTitle>💬 Example Test Messages</CardTitle>
+                <CardTitle>Example Test Messages</CardTitle>
                 <CardDescription>Try these messages to test different scenarios</CardDescription>
               </CardHeader>
               <CardContent>
@@ -204,7 +204,7 @@ export default function TestHandoffPage() {
             {testResults && (
               <Card>
                 <CardHeader>
-                  <CardTitle>📊 Test Results</CardTitle>
+                  <CardTitle>Test Results</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {testResults.success ? (
@@ -213,16 +213,16 @@ export default function TestHandoffPage() {
                         <div className="bg-gray-50 p-3 rounded">
                           <div className="font-medium text-gray-800">Detection Summary</div>
                           <div className="text-sm space-y-1 mt-2">
-                            <div>Keywords: {testResults.detection.keywordTriggered ? '✅ Triggered' : '❌ No match'}</div>
-                            <div>AI Auto-detect: {testResults.detection.autoDetectTriggered ? '✅ Triggered' : '❌ No match'}</div>
-                            <div>Sentiment: {testResults.detection.sentimentTriggered ? '✅ Triggered' : '❌ No match'}</div>
+                            <div>Keywords: {testResults.detection.keywordTriggered ? 'Triggered' : 'No match'}</div>
+                            <div>AI Auto-detect: {testResults.detection.autoDetectTriggered ? 'Triggered' : 'No match'}</div>
+                            <div>Sentiment: {testResults.detection.sentimentTriggered ? 'Triggered' : 'No match'}</div>
                           </div>
                         </div>
                         
                         <div className={`p-3 rounded ${testResults.detection.wouldTriggerHandoff ? 'bg-green-50' : 'bg-yellow-50'}`}>
                           <div className="font-medium text-gray-800">Final Result</div>
                           <div className={`text-lg font-bold mt-1 ${testResults.detection.wouldTriggerHandoff ? 'text-green-600' : 'text-yellow-600'}`}>
-                            {testResults.detection.wouldTriggerHandoff ? '✅ HANDOFF TRIGGERED' : '❌ No Handoff'}
+                            {testResults.detection.wouldTriggerHandoff ? 'HANDOFF TRIGGERED' : 'No Handoff'}
                           </div>
                           {testResults.detection.triggerReasons.length > 0 && (
                             <div className="text-xs mt-2">
@@ -258,28 +258,28 @@ export default function TestHandoffPage() {
         {/* Status Summary */}
         <Card>
           <CardHeader>
-            <CardTitle>✅ System Status</CardTitle>
+            <CardTitle>System Status</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4">
               <div className="text-center p-4 bg-green-50 rounded">
-                <div className="text-2xl mb-2">🎯</div>
+                <div className="text-2xl mb-2"></div>
                 <div className="font-medium">Handoff Settings</div>
-                <div className="text-sm text-gray-600">
-                  {handoffEnabled ? '✅ Enabled' : '❌ Disabled'}
-                </div>
+                                  <div className="text-sm text-gray-600">
+                    {handoffEnabled ? 'Enabled' : 'Disabled'}
+                  </div>
               </div>
               
-              <div className="text-center p-4 bg-blue-50 rounded">
-                <div className="text-2xl mb-2">🤖</div>
-                <div className="font-medium">AI Auto-Detect</div>
-                <div className="text-sm text-gray-600">
-                  {handoffSettings.triggerOnAutoDetect ? '✅ Active' : '❌ Inactive'}
+                              <div className="text-center p-4 bg-blue-50 rounded">
+                  <div className="text-2xl mb-2"></div>
+                  <div className="font-medium">AI Auto-Detect</div>
+                  <div className="text-sm text-gray-600">
+                    {handoffSettings.triggerOnAutoDetect ? 'Active' : 'Inactive'}
+                  </div>
                 </div>
-              </div>
               
-              <div className="text-center p-4 bg-purple-50 rounded">
-                <div className="text-2xl mb-2">🔑</div>
+                              <div className="text-center p-4 bg-purple-50 rounded">
+                  <div className="text-2xl mb-2"></div>
                 <div className="font-medium">Keywords</div>
                 <div className="text-sm text-gray-600">
                   {handoffSettings.triggerOnKeywords.length} configured

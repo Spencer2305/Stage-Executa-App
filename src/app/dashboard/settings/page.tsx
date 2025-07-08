@@ -1042,11 +1042,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
         </TabsList>
 
@@ -1284,117 +1283,51 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* Security Tab */}
-        <TabsContent value="security">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>API Keys</CardTitle>
-                <CardDescription>
-                  Manage your API keys for integrating with external services
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">Primary API Key</h4>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <code className="text-sm bg-gray-100 px-2 py-1 rounded">
-                          {showApiKey ? apiKey : '••••••••••••••••••••••••••••••••'}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowApiKey(!showApiKey)}
-                        >
-                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-x-2">
-                      <Button variant="outline" size="sm">
-                        Copy
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Regenerate
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Security</CardTitle>
-                <CardDescription>
-                  Manage your account security settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  variant="outline" 
-                  className="w-full sm:w-auto"
-                  onClick={() => setShowPasswordDialog(true)}
-                >
-                  <Key className="h-4 w-4 mr-2" />
-                  Change Password
-                </Button>
-                <Button variant="outline" className="w-full sm:w-auto text-red-600 hover:text-red-700">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Account
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
         {/* Billing Tab */}
         <TabsContent value="billing">
-          <div className="space-y-6">
+          <div className="space-y-12">
             <SubscriptionPlans 
-              currentPlan={user?.account?.plan as 'FREE' | 'PRO' | 'ENTERPRISE'}
+              currentPlan={user?.account?.plan as 'PRO' | 'ENTERPRISE'}
             />
             
             {/* Usage Statistics */}
-            {user?.account?.plan !== 'FREE' && (
+            {user?.account?.plan && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Usage This Month</CardTitle>
-                  <CardDescription>
+                <CardHeader className="pb-8">
+                  <CardTitle className="text-xl font-kanit font-bold text-gray-900 uppercase tracking-wide">Usage This Month</CardTitle>
+                  <CardDescription className="text-gray-600 text-base mt-3">
                     Track your current usage across all features
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 border rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">AI Assistants</span>
-                        <span className="text-sm text-gray-600">1 / {user?.account?.plan === 'PRO' ? '10' : '∞'}</span>
+                <CardContent className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="p-8 border rounded-lg bg-white hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-sm font-medium text-gray-900 font-kanit uppercase tracking-wide">AI Assistants</span>
+                        <span className="text-sm text-gray-600 font-medium">1 / {user?.account?.plan === 'PRO' ? '10' : 'Unlimited'}</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: '10%' }}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 border rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Messages</span>
-                        <span className="text-sm text-gray-600">1,247 / {user?.account?.plan === 'PRO' ? '10,000' : '∞'}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-green-600 h-2 rounded-full" style={{ width: '12%' }}></div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="bg-gray-800 h-2.5 rounded-full transition-all" style={{ width: '10%' }}></div>
                       </div>
                     </div>
                     
-                    <div className="p-4 border rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Storage</span>
-                        <span className="text-sm text-gray-600">2.1 GB / {user?.account?.plan === 'PRO' ? '10 GB' : '100 GB'}</span>
+                    <div className="p-8 border rounded-lg bg-white hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-sm font-medium text-gray-900 font-kanit uppercase tracking-wide">Messages</span>
+                        <span className="text-sm text-gray-600 font-medium">1,247 / {user?.account?.plan === 'PRO' ? '10,000' : 'Unlimited'}</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-orange-600 h-2 rounded-full" style={{ width: '21%' }}></div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="bg-green-600 h-2.5 rounded-full transition-all" style={{ width: '12%' }}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-8 border rounded-lg bg-white hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-sm font-medium text-gray-900 font-kanit uppercase tracking-wide">Storage</span>
+                        <span className="text-sm text-gray-600 font-medium">2.1 GB / {user?.account?.plan === 'PRO' ? '10 GB' : '100 GB'}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="bg-orange-600 h-2.5 rounded-full transition-all" style={{ width: '21%' }}></div>
                       </div>
                     </div>
                   </div>

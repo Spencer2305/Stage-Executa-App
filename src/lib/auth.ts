@@ -297,7 +297,7 @@ export async function getIntegrationContext(accountId: string): Promise<string> 
     // The AI can then inform users about available integrations and capabilities
     
     const integrationStatus: string[] = [
-      "📋 **Available Integrations for this account:**",
+      "**Available Integrations for this account:**",
       ""
     ];
 
@@ -327,7 +327,7 @@ export async function getIntegrationContext(accountId: string): Promise<string> 
     integrationStatus.push("• Asana - Team collaboration and project coordination");
     integrationStatus.push("");
 
-    integrationStatus.push("📝 *To connect any of these integrations, users can visit the dashboard settings under the 'Integrations' tab.*");
+    integrationStatus.push("*To connect any of these integrations, users can visit the dashboard settings under the 'Integrations' tab.*");
 
     return integrationStatus.join("\n");
   } catch (error) {

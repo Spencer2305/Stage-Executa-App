@@ -1,14 +1,14 @@
-import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
-import { authenticateRequest } from './auth';
+import { Server as SocketIOServer } from 'socket.io';
 import { db } from './db';
+import jwt from 'jsonwebtoken';
 
 let io: SocketIOServer | null = null;
 
 export function initializeWebSocket(server: HTTPServer) {
   io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      origin: ["http://localhost:3000", "http://localhost:3001"],
       methods: ["GET", "POST"]
     }
   });
@@ -16,62 +16,37 @@ export function initializeWebSocket(server: HTTPServer) {
   io.on('connection', async (socket: any) => {
     console.log('Client connected:', socket.id);
 
-    // Authenticate socket connection
+    // Handle authentication
     socket.on('authenticate', async (token: string) => {
       try {
-        // Create a mock request object for authentication
-        const mockRequest = {
-          headers: {
-            get: (name: string) => name === 'authorization' ? `Bearer ${token}` : null
-          }
-        } as any;
+        }
 
-        const user = await authenticateRequest(mockRequest);
+        const user = await db.user.findUnique({
+          where: { id: decoded.userId },
+          include: {
+            account: true
+          }
+        });
+
         if (!user) {
-          socket.emit('auth_error', { message: 'Invalid token' });
+          socket.emit('auth_error', { message: 'User not found' });
           socket.disconnect();
           return;
         }
 
-        // Store user info in socket
-        socket.data.user = user;
+        socket.data.userId = user.id;
         socket.data.accountId = user.account.id;
-
-        // Join account-specific room
+        socket.data.isOwner = user.role === 'OWNER';
+        
+        // Join account room
         socket.join(`account:${user.account.id}`);
-
-        // Join agent-specific room if user is an agent
-        const humanAgent = await db.humanAgent.findUnique({
-          where: { userId: user.id }
-        });
-
-        if (humanAgent) {
-          socket.data.agentId = humanAgent.id;
-          socket.join(`agent:${humanAgent.id}`);
-          
-          // Update agent online status
-          await db.humanAgent.update({
-            where: { id: humanAgent.id },
-            data: { 
-              isOnline: true,
-              lastActive: new Date()
-            }
-          });
-
-          // Notify other agents in account
-          socket.to(`account:${user.account.id}`).emit('agent_status_change', {
-            agentId: humanAgent.id,
-            name: humanAgent.name,
-            isOnline: true
-          });
-        }
 
         socket.emit('authenticated', { 
           message: 'Successfully authenticated',
           user: {
             id: user.id,
             name: user.name,
-            isAgent: !!humanAgent
+            isOwner: user.role === 'OWNER'
           }
         });
 
@@ -82,120 +57,67 @@ export function initializeWebSocket(server: HTTPServer) {
       }
     });
 
-    // Handle agent availability toggle
-    socket.on('toggle_availability', async (available: boolean) => {
-      if (!socket.data.agentId) return;
-
-      try {
-        await db.humanAgent.update({
-          where: { id: socket.data.agentId },
-          data: { isAvailable: available }
-        });
-
-        socket.to(`account:${socket.data.accountId}`).emit('agent_availability_change', {
-          agentId: socket.data.agentId,
-          isAvailable: available
-        });
-
-        socket.emit('availability_updated', { isAvailable: available });
-      } catch (error) {
-        console.error('Error updating agent availability:', error);
-        socket.emit('error', { message: 'Failed to update availability' });
-      }
-    });
-
-    // Handle typing indicators for ticket chat
-    socket.on('typing_start', (data: { ticketId: string }) => {
-      if (!socket.data.user) return;
-      
-      socket.to(`ticket:${data.ticketId}`).emit('agent_typing', {
-        agentName: socket.data.user.name,
-        ticketId: data.ticketId
-      });
-    });
-
-    socket.on('typing_stop', (data: { ticketId: string }) => {
-      socket.to(`ticket:${data.ticketId}`).emit('agent_stop_typing', {
-        ticketId: data.ticketId
-      });
-    });
-
-    // Join ticket room for real-time updates
+    // Handle ticket room management
     socket.on('join_ticket', (ticketId: string) => {
+      if (!socket.data.accountId) return;
       socket.join(`ticket:${ticketId}`);
+      console.log(`User joined ticket room: ${ticketId}`);
     });
 
     socket.on('leave_ticket', (ticketId: string) => {
       socket.leave(`ticket:${ticketId}`);
+      console.log(`User left ticket room: ${ticketId}`);
+    });
+
+    // Handle chat typing indicators
+    socket.on('typing_start', (data: { ticketId: string; userName: string }) => {
+      socket.to(`ticket:${data.ticketId}`).emit('user_typing', {
+        ticketId: data.ticketId,
+        userName: data.userName,
+        isTyping: true
+      });
+    });
+
+    socket.on('typing_stop', (data: { ticketId: string; userName: string }) => {
+      socket.to(`ticket:${data.ticketId}`).emit('user_typing', {
+        ticketId: data.ticketId,
+        userName: data.userName,
+        isTyping: false
+      });
     });
 
     // Handle disconnect
-    socket.on('disconnect', async () => {
+    socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
-
-      if (socket.data.agentId) {
-        try {
-          // Update agent offline status
-          await db.humanAgent.update({
-            where: { id: socket.data.agentId },
-            data: { 
-              isOnline: false,
-              lastActive: new Date()
-            }
-          });
-
-          // Notify other agents
-          socket.to(`account:${socket.data.accountId}`).emit('agent_status_change', {
-            agentId: socket.data.agentId,
-            isOnline: false
-          });
-        } catch (error) {
-          console.error('Error updating agent offline status:', error);
-        }
-      }
     });
   });
 
   return io;
 }
 
-export function getWebSocketServer(): SocketIOServer | null {
+export function getIO() {
   return io;
 }
 
-// Notification functions
-export async function notifyNewTicket(ticket: any) {
+// Simplified notification functions for account owners only
+export async function notifyNewTicket(ticketData: any) {
   if (!io) return;
 
-  const notificationData = {
-    type: 'new_ticket',
-    ticket: {
-      id: ticket.id,
-      priority: ticket.priority,
-      reason: ticket.reason,
-      customerName: ticket.customerName || 'Customer',
-      assistantName: ticket.assistant?.name,
-      createdAt: ticket.createdAt
-    }
-  };
-
-  // Notify all agents in the account
-  io.to(`account:${ticket.accountId}`).emit('new_ticket', notificationData);
-
-  // Send browser notification data
-  io.to(`account:${ticket.accountId}`).emit('browser_notification', {
-    title: `New ${ticket.priority} Priority Ticket`,
-    body: `${ticket.customerName || 'Customer'} needs assistance with ${ticket.assistant?.name}`,
-    icon: '/favicon.ico',
-    tag: `ticket-${ticket.id}`,
-    data: { ticketId: ticket.id }
+  // Notify account owner
+  io.to(`account:${ticketData.accountId}`).emit('new_ticket', {
+    ticketId: ticketData.id,
+    priority: ticketData.priority,
+    reason: ticketData.reason,
+    customerName: ticketData.customerName,
+    assistantName: ticketData.assistant?.name,
+    timestamp: new Date()
   });
 }
 
 export async function notifyTicketUpdate(ticketId: string, update: any) {
   if (!io) return;
 
-  // Notify agents in the account
+  // Notify account owner
   io.to(`account:${update.accountId}`).emit('ticket_updated', {
     ticketId,
     update
@@ -205,7 +127,7 @@ export async function notifyTicketUpdate(ticketId: string, update: any) {
   io.to(`ticket:${ticketId}`).emit('ticket_status_change', {
     ticketId,
     status: update.status,
-    assignedAgent: update.assignedAgent,
+    assignedTo: update.assignedTo,
     timestamp: new Date()
   });
 }
@@ -227,13 +149,13 @@ export async function notifyTicketMessage(sessionId: string, message: any) {
       id: message.id,
       content: message.content,
       sender: message.sender,
-      senderName: message.humanAgent?.name || 'System',
+      senderName: message.senderName || 'System',
       timestamp: message.createdAt,
       isInternal: message.isInternal
     }
   });
 
-  // Notify account if it's from a customer
+  // Notify account owner if it's from a customer
   if (message.sender === 'CUSTOMER') {
     io.to(`account:${ticket.accountId}`).emit('customer_message', {
       ticketId: ticket.id,
@@ -241,21 +163,4 @@ export async function notifyTicketMessage(sessionId: string, message: any) {
       preview: message.content.substring(0, 100)
     });
   }
-}
-
-export async function notifyAgentAssignment(ticketId: string, agentId: string, accountId: string) {
-  if (!io) return;
-
-  // Notify the assigned agent
-  io.to(`agent:${agentId}`).emit('ticket_assigned', {
-    ticketId,
-    message: 'You have been assigned a new ticket'
-  });
-
-  // Notify account of assignment
-  io.to(`account:${accountId}`).emit('ticket_assignment_change', {
-    ticketId,
-    agentId,
-    timestamp: new Date()
-  });
 } 

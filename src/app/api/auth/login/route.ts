@@ -78,7 +78,7 @@ async function handleLogin(request: NextRequest): Promise<NextResponse> {
     };
 
     // Security: Log successful login without sensitive details
-    console.log(`✅ Successful login for user: ${user.email.substring(0, 3)}***`);
+    console.log(`Successful login for user: ${user.email.substring(0, 3)}***`);
 
     return NextResponse.json({
       user: userData,
@@ -102,4 +102,4 @@ async function handleLogin(request: NextRequest): Promise<NextResponse> {
 }
 
 // Apply strict rate limiting to prevent brute force attacks
-export const POST = withRateLimit(RATE_LIMIT_CONFIGS.AUTH, handleLogin); 
+export const POST = withRateLimit(RATE_LIMIT_CONFIGS.AUTH, handleLogin);

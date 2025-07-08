@@ -7,7 +7,7 @@ export function getStripe(): Stripe {
   if (!stripe) {
     }
     
-      apiVersion: '2025-05-28.basil',
+      apiVersion: '2025-06-30.basil',
       typescript: true,
     });
   }
@@ -24,20 +24,9 @@ export const STRIPE_PRICE_IDS = {
 // Plan configuration matching your database schema
 // This can be safely imported on client-side as it doesn't use server env vars
 export const SUBSCRIPTION_PLANS = {
-  FREE: {
-    name: 'Free',
-    price: 0,
-    priceId: null,
-    features: [
-      '1 AI Assistant',
-      '100 conversations/month',
-      '5MB storage',
-      'Email support',
-    ],
-  },
   PRO: {
     name: 'Professional',
-    price: 29,
+    price: 39.99,
     priceId: STRIPE_PRICE_IDS.PRO,
     features: [
       '10 AI Assistants',
@@ -50,7 +39,7 @@ export const SUBSCRIPTION_PLANS = {
   },
   ENTERPRISE: {
     name: 'Enterprise',
-    price: 99,
+    price: null, // Price on Apply
     priceId: STRIPE_PRICE_IDS.ENTERPRISE,
     features: [
       'Unlimited AI Assistants',

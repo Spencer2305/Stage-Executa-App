@@ -13,137 +13,106 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
-    const assignedToMe = searchParams.get('assignedToMe') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
 
     // Build where clause
-    const whereClause: any = {
+    const where: any = {
       accountId: user.account.id
     };
 
     if (status && status !== 'all') {
-      whereClause.status = status;
+      where.status = status.toUpperCase();
     }
 
     if (priority && priority !== 'all') {
-      whereClause.priority = priority;
+      where.priority = priority.toUpperCase();
     }
 
-    if (assignedToMe) {
-      // Find human agent record for current user
-      const humanAgent = await db.humanAgent.findUnique({
-        where: { userId: user.id }
-      });
-      
-      if (humanAgent) {
-        whereClause.assignedAgentId = humanAgent.id;
-      } else {
-        // User is not a human agent, return empty results
-        return NextResponse.json({
-          tickets: [],
-          pagination: {
-            page,
-            limit,
-            total: 0,
-            totalPages: 0
-          }
-        });
-      }
-    }
-
-    // Get tickets with related data
-    const [tickets, totalCount] = await Promise.all([
-      db.handoffRequest.findMany({
-        where: whereClause,
-        include: {
-          session: {
-            include: {
-              messages: {
-                take: 1,
-                orderBy: { createdAt: 'desc' }
-              }
-            }
-          },
-          assistant: {
-            select: {
-              name: true,
-              id: true
-            }
-          },
-          assignedAgent: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                  email: true
-                }
-              }
-            }
+    // Get tickets
+    const tickets = await db.handoffRequest.findMany({
+      where,
+      include: {
+        assistant: {
+          select: {
+            name: true,
+            id: true
           }
         },
-        orderBy: { createdAt: 'desc' },
-        skip: offset,
-        take: limit
-      }),
-      db.handoffRequest.count({ where: whereClause })
-    ]);
+        session: {
+          select: {
+            id: true,
+            customerName: true,
+            customerEmail: true,
+            customerPhone: true,
+            totalMessages: true,
+            createdAt: true
+          }
+        },
+        account: {
+          include: {
+            users: {
+              where: {
+                role: 'OWNER'
+              },
+              select: {
+                name: true,
+                email: true
+              },
+              take: 1
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      skip: offset,
+      take: limit
+    });
 
-    // Transform tickets to include additional data
-    const transformedTickets = await Promise.all(
-      tickets.map(async (ticket) => {
-        // Get message count for session
-        const messageCount = await db.chatMessage.count({
-          where: { sessionId: ticket.sessionId }
-        });
+    // Get total count for pagination
+    const totalCount = await db.handoffRequest.count({ where });
 
-        // Get last activity timestamp
-        const lastMessage = await db.chatMessage.findFirst({
-          where: { sessionId: ticket.sessionId },
-          orderBy: { createdAt: 'desc' }
-        });
-
-        return {
-          id: ticket.id,
-          status: ticket.status,
-          priority: ticket.priority,
-          reason: ticket.reason,
-          customerName: ticket.session.customerName,
-          customerEmail: ticket.session.customerEmail,
-          customerPhone: ticket.session.customerPhone,
-          assistantName: ticket.assistant.name,
-          assistantId: ticket.assistant.id,
-          assignedAgent: ticket.assignedAgent ? {
-            id: ticket.assignedAgent.id,
-            name: ticket.assignedAgent.name,
-            email: ticket.assignedAgent.email,
-            isOnline: ticket.assignedAgent.isOnline,
-            user: ticket.assignedAgent.user
-          } : null,
-          context: ticket.context,
-          customerQuery: ticket.customerQuery,
-          createdAt: ticket.createdAt,
-          assignedAt: ticket.assignedAt,
-          acceptedAt: ticket.acceptedAt,
-          resolvedAt: ticket.resolvedAt,
-          channel: ticket.session.channel,
-          messageCount,
-          lastActivity: lastMessage?.createdAt || ticket.createdAt,
-          sessionId: ticket.sessionId
-        };
-      })
-    );
-
-    const totalPages = Math.ceil(totalCount / limit);
+    // Format tickets
+    const formattedTickets = tickets.map(ticket => {
+      const accountOwner = ticket.account.users[0];
+      
+      return {
+        id: ticket.id,
+        status: ticket.status,
+        priority: ticket.priority,
+        reason: ticket.reason,
+        customerQuery: ticket.customerQuery,
+        createdAt: ticket.createdAt,
+        resolvedAt: ticket.resolvedAt,
+        assistant: ticket.assistant,
+        assignedTo: accountOwner ? {
+          name: accountOwner.name,
+          email: accountOwner.email
+        } : null,
+        customer: {
+          name: ticket.session.customerName,
+          email: ticket.session.customerEmail,
+          phone: ticket.session.customerPhone
+        },
+        session: {
+          id: ticket.session.id,
+          totalMessages: ticket.session.totalMessages,
+          createdAt: ticket.session.createdAt
+        }
+      };
+    });
 
     return NextResponse.json({
-      tickets: transformedTickets,
+      success: true,
+      tickets: formattedTickets,
       pagination: {
         page,
         limit,
         total: totalCount,
-        totalPages
+        pages: Math.ceil(totalCount / limit)
       }
     });
 
@@ -164,235 +133,102 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    
-    // Handle both AI handoff requests and direct support requests
-    if (body.ticketType === 'direct_support') {
-      // Handle direct support requests (like the old executa-ticket system)
-      const {
-        subject,
-        category,
-        priority = 'NORMAL',
-        description,
-        userEmail,
-        userName
-      } = body;
+    const {
+      assistantId,
+      sessionId,
+      reason,
+      priority = 'NORMAL',
+      context,
+      customerQuery,
+      customerInfo
+    } = body;
 
-      // Validate required fields
-      if (!subject || !description || !userEmail || !userName || !category) {
-        return NextResponse.json(
-          { error: 'All fields are required for direct support requests' },
-          { status: 400 }
-        );
+    // Validate required fields
+    if (!assistantId || !sessionId || !reason) {
+      return NextResponse.json(
+        { error: 'Assistant ID, session ID, and reason are required' },
+        { status: 400 }
+      );
+    }
+
+    // Get the assistant and verify it belongs to the user's account
+    const assistant = await db.assistant.findFirst({
+      where: {
+        id: assistantId,
+        accountId: user.account.id
       }
+    });
 
-             // Find or create a system assistant for direct support requests
-       let systemAssistant = await db.assistant.findFirst({
-         where: {
-           accountId: user.account.id,
-           name: 'Direct Support System'
-         }
-       });
+    if (!assistant) {
+      return NextResponse.json({ error: 'Assistant not found' }, { status: 404 });
+    }
 
-       if (!systemAssistant) {
-         systemAssistant = await db.assistant.create({
-           data: {
-             accountId: user.account.id,
-             name: 'Direct Support System',
-             description: 'System assistant for handling direct support requests',
-             status: 'ACTIVE',
-             welcomeMessage: 'Thank you for contacting support. Your request has been received.',
-             handoffEnabled: true,
-             handoffSettings: {
-               handoffMethod: 'email',
-               emailSettings: {
-                 supportEmail: process.env.EXECUTA_SUPPORT_EMAIL || 'info@executasolutions.com'
-               }
-             }
-           }
-         });
-       }
+    // Get or create chat session
+    let chatSession = await db.chatSession.findUnique({
+      where: { id: sessionId }
+    });
 
-       // Create a virtual session for direct support requests
-       const sessionId = `support-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-       
-       const chatSession = await db.chatSession.create({
-         data: {
-           id: sessionId,
-           accountId: user.account.id,
-           assistantId: systemAssistant.id,
-           customerName: userName,
-           customerEmail: userEmail,
-           status: 'ACTIVE',
-           channel: 'support_form',
-           isHandedOff: true
-         }
-       });
+    if (!chatSession) {
+      chatSession = await db.chatSession.create({
+        data: {
+          id: sessionId,
+          accountId: assistant.accountId,
+          assistantId: assistant.id,
+          customerName: customerInfo?.name,
+          customerEmail: customerInfo?.email,
+          customerPhone: customerInfo?.phone,
+          customerMetadata: customerInfo?.metadata,
+          status: 'ACTIVE',
+          channel: 'web'
+        }
+      });
+    }
 
-       // Create handoff request for direct support
-       const ticket = await db.handoffRequest.create({
-         data: {
-           accountId: user.account.id,
-           sessionId: chatSession.id,
-           assistantId: systemAssistant.id,
-           reason: 'CUSTOMER_REQUESTED',
-           priority: priority as any,
-           context: `Direct support request - Category: ${category}`,
-           customerQuery: `${subject}\n\n${description}`,
-           handoffSettings: {
-             handoffMethod: 'email',
-             emailSettings: {
-               supportEmail: process.env.EXECUTA_SUPPORT_EMAIL || 'info@executasolutions.com',
-               includeConversationHistory: false
-             }
-           },
-           status: 'PENDING'
-         },
-         include: {
-           session: true
-         }
-       });
-
-             // Send email notification to support team
-       await sendSupportNotificationEmail(ticket, user);
-
-       // Send confirmation to user
-       await sendUserConfirmationEmail({
-         userEmail,
-         userName,
-         ticketId: ticket.id,
-         subject
-       });
-
-       // Send real-time notification
-       await notifyNewTicket({
-         ...ticket,
-         accountId: user.account.id,
-         customerName: userName,
-         assistant: { name: 'Direct Support System' }
-       });
-
-       return NextResponse.json({
-         success: true,
-         ticket: {
-           id: ticket.id,
-           status: ticket.status,
-           priority: ticket.priority,
-           createdAt: ticket.createdAt,
-           sessionId: ticket.sessionId
-         }
-       });
-    } else {
-      // Handle AI handoff requests (existing logic)
-      const {
-        assistantId,
-        sessionId,
-        reason,
-        priority = 'NORMAL',
+    // Create the handoff request
+    const ticket = await db.handoffRequest.create({
+      data: {
+        accountId: assistant.accountId,
+        sessionId: chatSession.id,
+        assistantId: assistant.id,
+        reason: reason as any,
+        priority: priority as any,
         context,
         customerQuery,
-        customerInfo
-      } = body;
-
-      // Validate required fields
-      if (!assistantId || !sessionId) {
-        return NextResponse.json(
-          { error: 'assistantId and sessionId are required' },
-          { status: 400 }
-        );
+        handoffSettings: {}, // Empty since we don't use complex settings anymore
+        status: 'PENDING'
       }
+    });
 
-      // Get the assistant
-      const assistant = await db.assistant.findUnique({
-        where: { id: assistantId }
-      });
-
-      if (!assistant) {
-        return NextResponse.json({ error: 'Assistant not found' }, { status: 404 });
+    // Update chat session status
+    await db.chatSession.update({
+      where: { id: chatSession.id },
+      data: {
+        isHandedOff: true,
+        status: 'TRANSFERRED'
       }
+    });
 
-      // Check if session exists, create if it doesn't
-      let chatSession = await db.chatSession.findUnique({
-        where: { id: sessionId }
-      });
-
-      if (!chatSession) {
-        chatSession = await db.chatSession.create({
-          data: {
-            id: sessionId,
-            accountId: assistant.accountId,
-            assistantId: assistant.id,
-            customerName: customerInfo?.name,
-            customerEmail: customerInfo?.email,
-            customerPhone: customerInfo?.phone,
-            customerMetadata: customerInfo?.metadata,
-            status: 'ACTIVE',
-            channel: customerInfo?.channel || 'web'
-          }
-        });
+    // Add system message about handoff
+    await db.chatMessage.create({
+      data: {
+        sessionId: chatSession.id,
+        content: 'Your conversation has been transferred to our support team. A human agent will be with you shortly.',
+        messageType: 'SYSTEM',
+        sender: 'AI_ASSISTANT',
+        assistantId: assistant.id
       }
+    });
 
-      // Create handoff request (ticket)
-      const ticket = await db.handoffRequest.create({
-        data: {
-          accountId: assistant.accountId,
-          sessionId: chatSession.id,
-          assistantId: assistant.id,
-          reason: reason as any,
-          priority: priority as any,
-          context,
-          customerQuery,
-          handoffSettings: assistant.handoffSettings || {},
-          status: 'PENDING'
-        },
-        include: {
-          session: true,
-          assistant: {
-            select: {
-              name: true
-            }
-          }
-        }
-      });
-
-      // Update chat session status
-      await db.chatSession.update({
-        where: { id: chatSession.id },
-        data: {
-          isHandedOff: true,
-          status: 'TRANSFERRED'
-        }
-      });
-
-             // Add system message about handoff
-       await db.chatMessage.create({
-         data: {
-           sessionId: chatSession.id,
-           content: 'Your conversation has been transferred to our support team. A human agent will be with you shortly.',
-           messageType: 'SYSTEM',
-           sender: 'AI_ASSISTANT',
-           assistantId: assistant.id
-         }
-       });
-
-       // Send real-time notification
-       await notifyNewTicket({
-         ...ticket,
-         accountId: assistant.accountId,
-         customerName: chatSession.customerName,
-         assistant: { name: assistant.name }
-       });
-
-       return NextResponse.json({
-         success: true,
-         ticket: {
-           id: ticket.id,
-           status: ticket.status,
-           priority: ticket.priority,
-           createdAt: ticket.createdAt,
-           sessionId: ticket.sessionId
-         }
-       });
-    }
+    return NextResponse.json({
+      success: true,
+      ticket: {
+        id: ticket.id,
+        status: ticket.status,
+        priority: ticket.priority,
+        createdAt: ticket.createdAt,
+        sessionId: ticket.sessionId
+      }
+    });
 
   } catch (error) {
     console.error('Error creating ticket:', error);
@@ -406,17 +242,17 @@ export async function POST(request: NextRequest) {
 // Helper functions for email notifications
 async function sendSupportNotificationEmail(ticket: any, user: any) {
   try {
-    const priorityEmoji: Record<string, string> = {
-      'LOW': '🟢',
-      'NORMAL': '🟡', 
-      'HIGH': '🟠',
-      'URGENT': '🔴'
-    };
+      const priorityLabels: Record<string, string> = {
+    'LOW': 'LOW',
+    'NORMAL': 'NORMAL',
+    'HIGH': 'HIGH',
+    'URGENT': 'URGENT'
+  };
 
     const emailData = {
       to: process.env.EXECUTA_SUPPORT_EMAIL || 'info@executasolutions.com',
       from: process.env.SUPPORT_EMAIL_ADDRESS || 'support@executasolutions.com',
-      subject: `[${ticket.id}] ${priorityEmoji[ticket.priority] || '⚪'} New Support Request`,
+              subject: `[${ticket.id}] ${priorityLabels[ticket.priority] || 'NORMAL'} New Support Request`,
       text: `
 New Support Ticket: ${ticket.id}
 
@@ -457,7 +293,7 @@ Visit your dashboard to manage tickets: ${process.env.NEXT_PUBLIC_APP_URL}/dashb
               </div>
               <div>
                 <h3 style="margin: 0 0 8px 0; color: #374151;">Ticket Details</h3>
-                <p><strong>Priority:</strong> ${priorityEmoji[ticket.priority]} ${ticket.priority}</p>
+                <p><strong>Priority:</strong> ${ticket.priority}</p>
                 <p><strong>Reason:</strong> ${ticket.reason.replace('_', ' ')}</p>
                 <p><strong>Created:</strong> ${new Date(ticket.createdAt).toLocaleString()}</p>
               </div>

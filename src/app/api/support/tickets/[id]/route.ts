@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { notifyTicketUpdate, notifyAgentAssignment } from '@/lib/websocket';
+import { notifyTicketUpdate } from '@/lib/websocket';
 
 export async function GET(
   request: NextRequest,
@@ -25,13 +25,13 @@ export async function GET(
           include: {
             messages: {
               orderBy: { createdAt: 'asc' },
-              include: {
-                humanAgent: {
-                  select: {
-                    name: true,
-                    email: true
-                  }
-                }
+              select: {
+                id: true,
+                content: true,
+                messageType: true,
+                sender: true,
+                createdAt: true,
+                isInternal: true
               }
             }
           }
@@ -42,13 +42,17 @@ export async function GET(
             id: true
           }
         },
-        assignedAgent: {
+        account: {
           include: {
-            user: {
+            users: {
+              where: {
+                role: 'OWNER'
+              },
               select: {
                 name: true,
                 email: true
-              }
+              },
+              take: 1
             }
           }
         }
@@ -59,46 +63,32 @@ export async function GET(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    const accountOwner = ticket.account.users[0];
+
     return NextResponse.json({
-      id: ticket.id,
-      status: ticket.status,
-      priority: ticket.priority,
-      reason: ticket.reason,
-      context: ticket.context,
-      customerQuery: ticket.customerQuery,
-      createdAt: ticket.createdAt,
-      assignedAt: ticket.assignedAt,
-      acceptedAt: ticket.acceptedAt,
-      resolvedAt: ticket.resolvedAt,
-      customer: {
-        name: ticket.session.customerName,
-        email: ticket.session.customerEmail,
-        phone: ticket.session.customerPhone,
-        metadata: ticket.session.customerMetadata
-      },
-      assistant: ticket.assistant,
-      assignedAgent: ticket.assignedAgent ? {
-        id: ticket.assignedAgent.id,
-        name: ticket.assignedAgent.name,
-        email: ticket.assignedAgent.email,
-        user: ticket.assignedAgent.user
-      } : null,
-      session: {
-        id: ticket.session.id,
-        channel: ticket.session.channel,
-        status: ticket.session.status,
-        totalMessages: ticket.session.totalMessages
-      },
-      messages: ticket.session.messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        messageType: msg.messageType,
-        sender: msg.sender,
-        createdAt: msg.createdAt,
-        isInternal: msg.isInternal,
-        humanAgent: msg.humanAgent,
-        metadata: msg.metadata
-      }))
+      success: true,
+      ticket: {
+        id: ticket.id,
+        status: ticket.status,
+        reason: ticket.reason,
+        priority: ticket.priority,
+        context: ticket.context,
+        customerQuery: ticket.customerQuery,
+        createdAt: ticket.createdAt,
+        resolvedAt: ticket.resolvedAt,
+        assistant: ticket.assistant,
+        assignedTo: accountOwner ? {
+          name: accountOwner.name,
+          email: accountOwner.email
+        } : null,
+        session: {
+          id: ticket.session.id,
+          customerName: ticket.session.customerName,
+          customerEmail: ticket.session.customerEmail,
+          customerPhone: ticket.session.customerPhone,
+          messages: ticket.session.messages
+        }
+      }
     });
 
   } catch (error) {
@@ -131,8 +121,7 @@ export async function PUT(
         accountId: user.account.id 
       },
       include: {
-        session: true,
-        assignedAgent: true
+        session: true
       }
     });
 
@@ -140,23 +129,18 @@ export async function PUT(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    // Only account owner can manage tickets
+    if (user.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Only account owner can manage tickets' }, { status: 403 });
+    }
+
     switch (action) {
       case 'accept': {
-        // Find human agent record for current user
-        const humanAgent = await db.humanAgent.findUnique({
-          where: { userId: user.id }
-        });
-
-        if (!humanAgent) {
-          return NextResponse.json({ error: 'User is not a human agent' }, { status: 403 });
-        }
-
-        // Update ticket status and assign to current user
+        // Update ticket status to accepted (account owner takes the ticket)
         const updatedTicket = await db.handoffRequest.update({
           where: { id },
           data: {
             status: 'ACCEPTED',
-            assignedAgentId: humanAgent.id,
             assignedAt: new Date(),
             acceptedAt: new Date()
           }
@@ -166,7 +150,6 @@ export async function PUT(
         await db.chatSession.update({
           where: { id: ticket.sessionId },
           data: {
-            humanAgentId: humanAgent.id,
             status: 'TRANSFERRED'
           }
         });
@@ -175,7 +158,7 @@ export async function PUT(
         await db.chatMessage.create({
           data: {
             sessionId: ticket.sessionId,
-            content: `Agent ${humanAgent.name} has joined the conversation and will assist you.`,
+            content: `${user.name} has joined the conversation and will assist you.`,
             messageType: 'SYSTEM',
             sender: 'SYSTEM'
           }
@@ -184,15 +167,12 @@ export async function PUT(
         // Send real-time notifications
         await notifyTicketUpdate(ticket.id, {
           status: 'ACCEPTED',
-          assignedAgent: {
-            id: humanAgent.id,
-            name: humanAgent.name,
-            email: humanAgent.email
+          assignedTo: {
+            name: user.name,
+            email: user.email
           },
           accountId: ticket.accountId
         });
-
-        await notifyAgentAssignment(ticket.id, humanAgent.id, ticket.accountId);
 
         return NextResponse.json({
           success: true,
@@ -247,35 +227,43 @@ export async function PUT(
         });
       }
 
-      case 'transfer': {
-        const { agentId, reason } = data || {};
+      case 'add_message': {
+        const { content, isInternal } = data || {};
 
-        if (!agentId) {
-          return NextResponse.json({ error: 'Agent ID is required for transfer' }, { status: 400 });
+        if (!content) {
+          return NextResponse.json({ error: 'Message content is required' }, { status: 400 });
         }
 
-        // Verify target agent exists and is in same account
-        const targetAgent = await db.humanAgent.findUnique({
-          where: { 
-            id: agentId,
-            accountId: user.account.id
+        // Add message to chat session
+        const message = await db.chatMessage.create({
+          data: {
+            sessionId: ticket.sessionId,
+            content,
+            messageType: 'TEXT',
+            sender: 'HUMAN_AGENT',
+            isInternal: isInternal || false
           }
         });
 
-        if (!targetAgent) {
-          return NextResponse.json({ error: 'Target agent not found' }, { status: 404 });
-        }
+        return NextResponse.json({
+          success: true,
+          message: {
+            id: message.id,
+            content: message.content,
+            sender: message.sender,
+            senderName: user.name,
+            timestamp: message.createdAt,
+            isInternal: message.isInternal
+          }
+        });
+      }
 
+      case 'close': {
         const updatedTicket = await db.handoffRequest.update({
           where: { id },
           data: {
-            assignedAgentId: agentId,
-            status: 'ASSIGNED',
-            assignedAt: new Date(),
-            acceptedAt: null, // Reset acceptance time
-            context: ticket.context ? 
-              `${ticket.context}\n\nTransferred: ${reason || 'No reason provided'}` : 
-              `Transferred: ${reason || 'No reason provided'}`
+            status: 'RESOLVED',
+            resolvedAt: new Date()
           }
         });
 
@@ -283,7 +271,7 @@ export async function PUT(
         await db.chatSession.update({
           where: { id: ticket.sessionId },
           data: {
-            humanAgentId: agentId
+            status: 'RESOLVED'
           }
         });
 
@@ -291,80 +279,21 @@ export async function PUT(
         await db.chatMessage.create({
           data: {
             sessionId: ticket.sessionId,
-            content: `This conversation has been transferred to ${targetAgent.name}.`,
+            content: 'This conversation has been closed.',
             messageType: 'SYSTEM',
             sender: 'SYSTEM'
           }
         });
 
-        // Send real-time notifications
         await notifyTicketUpdate(ticket.id, {
-          status: 'ASSIGNED',
-          assignedAgent: {
-            id: targetAgent.id,
-            name: targetAgent.name,
-            email: targetAgent.email
-          },
+          status: 'RESOLVED',
+          resolvedAt: new Date(),
           accountId: ticket.accountId
         });
 
-        await notifyAgentAssignment(ticket.id, agentId, ticket.accountId);
-
         return NextResponse.json({
           success: true,
           ticket: updatedTicket
-        });
-      }
-
-      case 'update_priority': {
-        const { priority } = data || {};
-
-        if (!['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(priority)) {
-          return NextResponse.json({ error: 'Invalid priority' }, { status: 400 });
-        }
-
-        const updatedTicket = await db.handoffRequest.update({
-          where: { id },
-          data: { priority }
-        });
-
-        return NextResponse.json({
-          success: true,
-          ticket: updatedTicket
-        });
-      }
-
-      case 'add_note': {
-        const { note, isInternal = true } = data || {};
-
-        if (!note) {
-          return NextResponse.json({ error: 'Note content is required' }, { status: 400 });
-        }
-
-        // Find human agent record for current user
-        const humanAgent = await db.humanAgent.findUnique({
-          where: { userId: user.id }
-        });
-
-        const message = await db.chatMessage.create({
-          data: {
-            sessionId: ticket.sessionId,
-            content: note,
-            messageType: 'TEXT',
-            sender: 'HUMAN_AGENT',
-            humanAgentId: humanAgent?.id,
-            isInternal,
-            metadata: {
-              type: 'agent_note',
-              addedBy: user.name,
-              timestamp: new Date().toISOString()
-            }
-          }
-        });
-
-        return NextResponse.json({
-          success: true,
-          message
         });
       }
 

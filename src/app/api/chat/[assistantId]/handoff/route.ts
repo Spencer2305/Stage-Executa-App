@@ -1,33 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
-// Simple email function (replace with your email service)
-async function sendEmail(options: { to: string; subject: string; text: string; html: string }) {
-  console.log('Sending email:', options);
-  // TODO: Implement actual email sending (SendGrid, Nodemailer, etc.)
-}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ assistantId: string }> }
 ) {
   try {
+    const user = await authenticateRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { assistantId } = await params;
     const body = await request.json();
-    const {
-      sessionId,
-      reason,
-      priority = 'NORMAL',
-      context,
-      customerQuery,
-      customerInfo
-    } = body;
+    const { sessionId, reason, priority, context, customerQuery, handoffSettings } = body;
 
-    // Get the assistant and its handoff settings
-    const assistant = await db.assistant.findFirst({
-      where: { id: assistantId },
-      include: {
-        account: true
+    // Get assistant and verify ownership
+    const assistant = await db.assistant.findUnique({
+      where: { 
+        id: assistantId,
+        accountId: user.account.id 
       }
     });
 
@@ -35,13 +28,12 @@ export async function POST(
       return NextResponse.json({ error: 'Assistant not found' }, { status: 404 });
     }
 
-    if (!assistant.handoffEnabled || !assistant.handoffSettings) {
+    // Check if handoff is enabled
+    if (!assistant.handoffEnabled) {
       return NextResponse.json({ error: 'Handoff not enabled for this assistant' }, { status: 400 });
     }
 
-    const handoffSettings = assistant.handoffSettings as any;
-
-    // Check if session exists, create if it doesn't
+    // Get or create chat session
     let chatSession = await db.chatSession.findUnique({
       where: { id: sessionId }
     });
@@ -52,27 +44,10 @@ export async function POST(
           id: sessionId,
           accountId: assistant.accountId,
           assistantId: assistant.id,
-          customerName: customerInfo?.name,
-          customerEmail: customerInfo?.email,
-          customerPhone: customerInfo?.phone,
-          customerMetadata: customerInfo?.metadata,
           status: 'ACTIVE',
           channel: 'web'
         }
       });
-    }
-
-    // Check business hours if enabled
-    if (handoffSettings.businessHours?.enabled) {
-      const isBusinessHours = checkBusinessHours(handoffSettings.businessHours);
-      if (!isBusinessHours) {
-        return NextResponse.json({
-          success: false,
-          message: handoffSettings.offlineMessage || 'Our support team is currently offline. Please leave your message and we\'ll get back to you.',
-          requiresContact: true,
-          businessHours: handoffSettings.businessHours
-        });
-      }
     }
 
     // Create handoff request
@@ -103,21 +78,17 @@ export async function POST(
     await db.chatMessage.create({
       data: {
         sessionId: chatSession.id,
-        content: handoffSettings.handoffMessage || 'I\'m connecting you with a human agent who can better assist you.',
+        content: handoffSettings.handoffMessage || 'I\'m connecting you with our support team who can better assist you.',
         messageType: 'SYSTEM',
         sender: 'AI_ASSISTANT',
         assistantId: assistant.id
       }
     });
 
-    // Handle different handoff methods
+    // Handle notification based on handoff method
     switch (handoffSettings.handoffMethod) {
       case 'email':
         await handleEmailHandoff(assistant, handoffRequest, chatSession, handoffSettings.emailSettings);
-        break;
-        
-      case 'internal_notification':
-        await handleInternalNotification(assistant, handoffRequest, chatSession, handoffSettings.internalSettings);
         break;
         
       case 'integration':
@@ -128,14 +99,14 @@ export async function POST(
     return NextResponse.json({
       success: true,
       handoffId: handoffRequest.id,
-      message: handoffSettings.customerWaitMessage || 'Please wait while I connect you with a human agent.',
-      estimatedWaitTime: handoffSettings.internalSettings?.maxWaitTime || 5
+      message: handoffSettings.customerWaitMessage || 'Please wait while we connect you with our support team.',
+      estimatedWaitTime: 5
     });
 
   } catch (error) {
     console.error('Error creating handoff request:', error);
     return NextResponse.json(
-      { error: 'Failed to process handoff request' },
+      { error: 'Failed to create handoff request' },
       { status: 500 }
     );
   }
@@ -161,12 +132,17 @@ export async function GET(
         sessionId
       },
       include: {
-        assignedAgent: {
+        session: true,
+        account: {
           include: {
-            user: true
+            users: {
+              where: {
+                role: 'OWNER'
+              },
+              take: 1
+            }
           }
-        },
-        session: true
+        }
       }
     });
 
@@ -174,17 +150,19 @@ export async function GET(
       return NextResponse.json({ error: 'Handoff request not found' }, { status: 404 });
     }
 
+    const accountOwner = handoffRequest.account.users[0];
+
     return NextResponse.json({
       success: true,
       status: handoffRequest.status,
-      assignedAgent: handoffRequest.assignedAgent ? {
-        name: handoffRequest.assignedAgent.name,
-        email: handoffRequest.assignedAgent.email,
-        isOnline: handoffRequest.assignedAgent.isOnline
-      } : null,
-      createdAt: handoffRequest.createdAt,
-      assignedAt: handoffRequest.assignedAt,
-      acceptedAt: handoffRequest.acceptedAt
+      assignedTo: accountOwner ? {
+        name: accountOwner.name,
+        email: accountOwner.email
+      } : {
+        name: 'Account Owner',
+        email: 'Not Available'
+      },
+      createdAt: handoffRequest.createdAt
     });
 
   } catch (error) {
@@ -196,122 +174,41 @@ export async function GET(
   }
 }
 
-// Helper functions
+// Simplified email handoff - send to account owner
 async function handleEmailHandoff(assistant: any, handoffRequest: any, chatSession: any, emailSettings: any) {
-  if (!emailSettings?.supportEmail) return;
-
-  const subject = `New Support Request - ${assistant.name}`;
-  const body = `
-New support request from ${chatSession.customerName || 'Customer'}:
-
-Customer Information:
-- Name: ${chatSession.customerName || 'Not provided'}
-- Email: ${chatSession.customerEmail || 'Not provided'}
-- Phone: ${chatSession.customerPhone || 'Not provided'}
-
-Request Details:
-- Reason: ${handoffRequest.reason}
-- Priority: ${handoffRequest.priority}
-- Context: ${handoffRequest.context || 'None provided'}
-- Original Query: ${handoffRequest.customerQuery || 'None provided'}
-
-Session ID: ${chatSession.id}
-Created: ${new Date().toISOString()}
-
-${emailSettings.includeConversationHistory ? 'Conversation history will be attached separately.' : ''}
-  `;
-
-  try {
-    await sendEmail({
-      to: emailSettings.supportEmail,
-      subject,
-      text: body,
-      html: body.replace(/\n/g, '<br>')
-    });
-  } catch (error) {
-    console.error('Failed to send handoff email:', error);
-  }
-}
-
-async function handleInternalNotification(assistant: any, handoffRequest: any, chatSession: any, internalSettings: any) {
-  if (!internalSettings?.notifyAgents?.length) return;
-
-  // Find available agents
-  const availableAgents = await db.humanAgent.findMany({
-    where: {
-      id: { in: internalSettings.notifyAgents },
-      isOnline: true,
-      isAvailable: true,
-      accountId: assistant.accountId
-    },
-    orderBy: {
-      lastActive: 'desc'
-    }
-  });
-
-  if (availableAgents.length === 0) {
-    console.log('No available agents found for handoff');
+  const supportEmail = emailSettings.supportEmail;
+  
+  if (!supportEmail) {
+    console.log('No support email configured for handoff');
     return;
   }
 
-  // Auto-assign if enabled
-  if (internalSettings.autoAssign) {
-    let selectedAgent;
-    
-    switch (internalSettings.assignmentMethod) {
-      case 'least_busy':
-        // Find agent with least active chats
-        const agentChatCounts = await Promise.all(
-          availableAgents.map(async (agent) => ({
-            agent,
-            activeChats: await db.chatSession.count({
-              where: {
-                humanAgentId: agent.id,
-                status: { in: ['ACTIVE', 'TRANSFERRED'] }
-              }
-            })
-          }))
-        );
-        selectedAgent = agentChatCounts
-          .filter(({ activeChats, agent }) => activeChats < agent.maxChats)
-          .sort((a, b) => a.activeChats - b.activeChats)[0]?.agent;
-        break;
-        
-      case 'skills_based':
-        // Simple implementation: first available agent
-        selectedAgent = availableAgents[0];
-        break;
-        
-      case 'round_robin':
-      default:
-        // Round robin by last assignment
-        selectedAgent = availableAgents[0];
-        break;
-    }
+  const emailData = {
+    to: supportEmail,
+    subject: `New Support Request - ${assistant.name}`,
+    html: `
+      <h2>New Support Request</h2>
+      <p><strong>Assistant:</strong> ${assistant.name}</p>
+      <p><strong>Reason:</strong> ${handoffRequest.reason}</p>
+      <p><strong>Priority:</strong> ${handoffRequest.priority}</p>
+      <p><strong>Customer Query:</strong> ${handoffRequest.customerQuery}</p>
+      ${handoffRequest.context ? `<p><strong>Context:</strong> ${handoffRequest.context}</p>` : ''}
+      <p><strong>Session ID:</strong> ${chatSession.id}</p>
+      <p><strong>Request ID:</strong> ${handoffRequest.id}</p>
+      <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+      
+      ${emailSettings.includeConversationHistory ? '<p><em>Conversation history would be included here.</em></p>' : ''}
+      
+      <p>Please review and respond to this support request.</p>
+    `,
+    from: 'noreply@executa.app'
+  };
 
-    if (selectedAgent) {
-      await db.handoffRequest.update({
-        where: { id: handoffRequest.id },
-        data: {
-          assignedAgentId: selectedAgent.id,
-          assignedAt: new Date(),
-          status: 'ASSIGNED'
-        }
-      });
-
-      await db.chatSession.update({
-        where: { id: chatSession.id },
-        data: {
-          humanAgentId: selectedAgent.id
-        }
-      });
-    }
-  }
-
-  // Send notifications to agents (implement real-time notifications here)
-  console.log(`Notifying ${availableAgents.length} agents about new handoff request`);
+  console.log('Would send email handoff notification:', emailData);
+  // TODO: Implement actual email sending
 }
 
+// Simplified integration handoff
 async function handleIntegrationHandoff(assistant: any, handoffRequest: any, chatSession: any, integrationSettings: any) {
   const webhookData = {
     type: 'handoff_request',
@@ -357,51 +254,47 @@ async function handleIntegrationHandoff(assistant: any, handoffRequest: any, cha
     }
   }
 
+  // Send to Teams
+  if (integrationSettings.teamsWebhook) {
+    try {
+      await fetch(integrationSettings.teamsWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          "@type": "MessageCard",
+          "@context": "http://schema.org/extensions",
+          "themeColor": handoffRequest.priority === 'HIGH' ? "FF0000" : "FFA500",
+          "summary": "New Support Request",
+          "sections": [{
+            "activityTitle": "New Support Request",
+            "activitySubtitle": `From ${assistant.name}`,
+            "facts": [
+              { "name": "Customer", "value": chatSession.customerEmail || 'Unknown' },
+              { "name": "Reason", "value": handoffRequest.reason },
+              { "name": "Priority", "value": handoffRequest.priority },
+              { "name": "Assistant", "value": assistant.name }
+            ]
+          }]
+        })
+      });
+    } catch (error) {
+      console.error('Failed to send Teams notification:', error);
+    }
+  }
+
   // Send to custom webhook
   if (integrationSettings.customWebhook) {
     try {
       await fetch(integrationSettings.customWebhook, {
         method: 'POST',
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
-          ...integrationSettings.webhookHeaders
+          ...integrationSettings.webhookHeaders 
         },
         body: JSON.stringify(webhookData)
       });
     } catch (error) {
-      console.error('Failed to send custom webhook:', error);
+      console.error('Failed to send custom webhook notification:', error);
     }
   }
-}
-
-function checkBusinessHours(businessHours: any): boolean {
-  const now = new Date();
-  const timezone = businessHours.timezone || 'UTC';
-  
-  // Convert to specified timezone
-  const timeInZone = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  }).formatToParts(now);
-
-  const dayName = timeInZone.find(part => part.type === 'weekday')?.value.toLowerCase();
-  const hour = parseInt(timeInZone.find(part => part.type === 'hour')?.value || '0');
-  const minute = parseInt(timeInZone.find(part => part.type === 'minute')?.value || '0');
-  const currentTime = hour * 60 + minute; // minutes since midnight
-
-  if (!dayName || !businessHours.schedule[dayName]?.enabled) {
-    return false;
-  }
-
-  const schedule = businessHours.schedule[dayName];
-  const [startHour, startMinute] = schedule.start.split(':').map(Number);
-  const [endHour, endMinute] = schedule.end.split(':').map(Number);
-  
-  const startTime = startHour * 60 + startMinute;
-  const endTime = endHour * 60 + endMinute;
-
-  return currentTime >= startTime && currentTime <= endTime;
 } 

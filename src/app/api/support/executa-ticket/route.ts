@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await authenticateRequest(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    // Note: This endpoint does NOT require authentication since it's for public support requests
+    
     const body = await request.json();
     const {
       subject,
@@ -37,8 +33,7 @@ export async function POST(request: NextRequest) {
       subject,
       category,
       priority,
-      description,
-      user
+      description
     });
 
     // Send email to Executa support team
@@ -75,13 +70,12 @@ function formatSupportEmail(data: {
   category: string;
   priority: string;
   description: string;
-  user: any;
 }) {
-  const priorityEmoji: Record<string, string> = {
-    'LOW': '🟢',
-    'NORMAL': '🟡',
-    'HIGH': '🟠',
-    'URGENT': '🔴'
+  const priorityLabels: Record<string, string> = {
+    'LOW': 'LOW',
+    'NORMAL': 'NORMAL',
+    'HIGH': 'HIGH',
+    'URGENT': 'URGENT'
   };
 
   const categoryLabels: Record<string, string> = {
@@ -95,7 +89,7 @@ function formatSupportEmail(data: {
   };
 
   return {
-    subject: `[${data.ticketId}] ${priorityEmoji[data.priority] || '⚪'} ${data.subject}`,
+    subject: `[${data.ticketId}] ${priorityLabels[data.priority] || 'NORMAL'} ${data.subject}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
@@ -109,13 +103,11 @@ function formatSupportEmail(data: {
               <h3 style="margin: 0 0 8px 0; color: #374151; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Customer Information</h3>
               <p style="margin: 0; color: #6b7280;"><strong>Name:</strong> ${data.userName}</p>
               <p style="margin: 0; color: #6b7280;"><strong>Email:</strong> ${data.userEmail}</p>
-              <p style="margin: 0; color: #6b7280;"><strong>Account ID:</strong> ${data.user.account?.id || 'N/A'}</p>
-              <p style="margin: 0; color: #6b7280;"><strong>User ID:</strong> ${data.user.id}</p>
             </div>
             <div>
               <h3 style="margin: 0 0 8px 0; color: #374151; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Ticket Details</h3>
-                             <p style="margin: 0; color: #6b7280;"><strong>Category:</strong> ${categoryLabels[data.category] || data.category}</p>
-               <p style="margin: 0; color: #6b7280;"><strong>Priority:</strong> ${priorityEmoji[data.priority] || '⚪'} ${data.priority}</p>
+              <p style="margin: 0; color: #6b7280;"><strong>Category:</strong> ${categoryLabels[data.category] || data.category}</p>
+                             <p style="margin: 0; color: #6b7280;"><strong>Priority:</strong> ${data.priority}</p>
               <p style="margin: 0; color: #6b7280;"><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
             </div>
           </div>
@@ -147,12 +139,10 @@ New Support Ticket: ${data.ticketId}
 Customer Information:
 - Name: ${data.userName}
 - Email: ${data.userEmail}
-- Account ID: ${data.user.account?.id || 'N/A'}
-- User ID: ${data.user.id}
 
- Ticket Details:
- - Category: ${categoryLabels[data.category] || data.category}
- - Priority: ${data.priority}
+Ticket Details:
+- Category: ${categoryLabels[data.category] || data.category}
+- Priority: ${data.priority}
 - Submitted: ${new Date().toLocaleString()}
 
 Subject: ${data.subject}

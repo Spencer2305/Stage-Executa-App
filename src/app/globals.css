@@ -137,6 +137,65 @@ html {
   a.hover\:bg-brand-700:hover {
     color: white !important;
   }
+
+  /* Form spacing utilities */
+  .form-field {
+    @apply space-y-3;
+  }
+
+  .form-field > label {
+    @apply block text-sm font-medium text-gray-700 mb-2;
+  }
+
+  .form-field > select,
+  .form-field > input,
+  .form-field > textarea {
+    @apply mt-2;
+  }
+
+  /* Global form element spacing */
+  label + select,
+  label + input,
+  label + textarea,
+  label + [data-slot="select-trigger"],
+  label + [data-slot="input"],
+  label + [data-slot="textarea"] {
+    @apply mt-3;
+  }
+
+  /* Specific spacing for form groups */
+  .form-group {
+    @apply space-y-3;
+  }
+
+  .form-group > label {
+    @apply block text-sm font-medium mb-2;
+  }
+
+  /* Override default shadcn spacing for better UX */
+  [data-slot="label"] + [data-slot="select-trigger"],
+  [data-slot="label"] + [data-slot="input"],
+  [data-slot="label"] + [data-slot="textarea"] {
+    @apply mt-3;
+  }
+
+  /* Improve spacing in settings and configuration forms */
+  .settings-form .space-y-2 {
+    @apply space-y-4;
+  }
+
+  .settings-form label {
+    @apply mb-3;
+  }
+
+  /* Better spacing for nested form elements */
+  .form-section {
+    @apply space-y-6;
+  }
+
+  .form-section > .space-y-2 {
+    @apply space-y-4;
+  }
 }
 
 /* Premium animations */

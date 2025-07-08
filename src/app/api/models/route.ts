@@ -77,6 +77,8 @@ export async function GET(request: NextRequest) {
         id: userAccount.id,
         email: userAccount.email,
       },
+      // Add handoffSettings for advanced embed settings
+      handoffSettings: assistant.handoffSettings,
     }));
 
     console.log(`✅ Found ${models.length} assistants for account`);

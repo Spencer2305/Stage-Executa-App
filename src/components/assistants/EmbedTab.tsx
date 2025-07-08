@@ -25,6 +25,9 @@ interface EmbedTabProps {
 }
 
 export default function EmbedTab({ assistant, user }: EmbedTabProps) {
+  // Extract advanced settings from handoffSettings if they exist
+  const advancedSettings = assistant?.handoffSettings?.embedAdvanced || {};
+  
   const [embedStyle, setEmbedStyle] = useState({
     bubbleColor: assistant?.embedBubbleColor || "#3B82F6",
     buttonShape: assistant?.embedButtonShape || "rounded",
@@ -40,18 +43,18 @@ export default function EmbedTab({ assistant, user }: EmbedTabProps) {
     showChatHeader: assistant?.showChatHeader !== false,
     chatHeaderTitle: assistant?.chatHeaderTitle || "AI Assistant",
     welcomeMessage: assistant?.welcomeMessage || "",
-    // Advanced styling options
-    selectedTheme: assistant?.selectedTheme || 'custom',
-    chatHeaderGradient: assistant?.chatHeaderGradient || 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
-    backgroundPattern: assistant?.backgroundPattern || 'none',
-    glassEffect: assistant?.glassEffect || false,
-    animation: assistant?.animation || 'smooth',
-    customCSS: assistant?.customCSS || '',
-    googleFont: assistant?.googleFont || 'inter',
-    chatSize: assistant?.chatSize || 'standard',
-    shadowIntensity: assistant?.shadowIntensity || 'medium',
-    borderRadius: assistant?.borderRadius || 12,
-    opacity: assistant?.opacity || 100
+    // Advanced styling options - now properly loaded from handoffSettings.embedAdvanced
+    selectedTheme: advancedSettings.selectedTheme || 'custom',
+    chatHeaderGradient: advancedSettings.chatHeaderGradient || 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+    backgroundPattern: advancedSettings.backgroundPattern || 'none',
+    glassEffect: advancedSettings.glassEffect || false,
+    animation: advancedSettings.animation || 'smooth',
+    customCSS: advancedSettings.customCSS || '',
+    googleFont: advancedSettings.googleFont || 'inter',
+    chatSize: advancedSettings.chatSize || 'standard',
+    shadowIntensity: advancedSettings.shadowIntensity || 'medium',
+    borderRadius: advancedSettings.borderRadius || 12,
+    opacity: advancedSettings.opacity || 100
   });
   
   const [isSavingStyles, setIsSavingStyles] = useState(false);
@@ -59,12 +62,25 @@ export default function EmbedTab({ assistant, user }: EmbedTabProps) {
   const [activeStyleTab, setActiveStyleTab] = useState<'basic' | 'themes' | 'advanced' | 'custom' | 'embed'>('basic');
 
   // Apply theme preset
-  const applyThemePreset = (themeId: string) => {
+  const applyThemePreset = async (themeId: string) => {
     if (themeId === 'custom') return;
     
     const theme = themePresets[themeId as keyof typeof themePresets];
     if (!theme) return;
 
+    const newEmbedStyle = {
+      ...embedStyle,
+      selectedTheme: themeId,
+      bubbleColor: theme.bubbleColor,
+      chatBackgroundColor: theme.chatBackgroundColor,
+      userMessageBubbleColor: theme.userMessageBubbleColor,
+      assistantMessageBubbleColor: theme.assistantMessageBubbleColor,
+      chatHeaderGradient: theme.chatHeaderGradient,
+      backgroundPattern: theme.backgroundPattern,
+      glassEffect: theme.glassEffect,
+      animation: theme.animation
+    };
+    
     setEmbedStyle(prev => ({
       ...prev,
       selectedTheme: themeId,
@@ -77,7 +93,31 @@ export default function EmbedTab({ assistant, user }: EmbedTabProps) {
       glassEffect: theme.glassEffect,
       animation: theme.animation
     }));
-    toast.success(`Applied ${theme.name} theme`);
+    
+    // Automatically save the theme to the database
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      const response = await fetch(`/api/models/${assistant.id}/embed-styles`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newEmbedStyle)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Theme Auto-save API Error:', errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to save theme`);
+      }
+
+      toast.success(`Applied and saved ${theme.name} theme`);
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Applied ${theme.name} theme but failed to save: ${errorMessage}. Please click 'Save Styles' manually.`);
+    }
   };
 
   // Apply extracted colors
@@ -104,7 +144,12 @@ export default function EmbedTab({ assistant, user }: EmbedTabProps) {
   const saveEmbedStyles = async () => {
     setIsSavingStyles(true);
     try {
+      console.log('Saving embed styles:', embedStyle);
+      console.log('Assistant ID:', assistant.id);
+      
       const token = localStorage.getItem('executa-auth-token');
+      console.log('Token exists:', !!token);
+      
       const response = await fetch(`/api/models/${assistant.id}/embed-styles`, {
         method: 'PUT',
         headers: {
@@ -114,14 +159,22 @@ export default function EmbedTab({ assistant, user }: EmbedTabProps) {
         body: JSON.stringify(embedStyle)
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Failed to save embed styles');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('API Error Response:', errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to save embed styles`);
       }
 
+      const successData = await response.json();
+      console.log('Success response:', successData);
       toast.success("Embed styles saved successfully!");
     } catch (error) {
       console.error('Save failed:', error);
-      toast.error("Failed to save embed styles");
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to save embed styles: ${errorMessage}`);
     } finally {
       setIsSavingStyles(false);
     }
