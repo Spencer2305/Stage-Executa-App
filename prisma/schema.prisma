@@ -45,23 +45,24 @@ model Account {
 }
 
 model User {
-  id            String      @id @default(cuid())
-  accountId     String      @map("account_id")
-  email         String      @unique
-  passwordHash  String      @map("password_hash")
-  name          String
-  avatar        String?
-  bio           String?
-  company       String?
-  website       String?
-  role          UserRole    @default(MEMBER)
-  emailVerified Boolean     @default(false) @map("email_verified")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  humanAgent    HumanAgent?
-  sessions      Session[]
-  passwordReset PasswordReset?
-  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id                      String                   @id @default(cuid())
+  accountId               String                   @map("account_id")
+  email                   String                   @unique
+  passwordHash            String                   @map("password_hash")
+  name                    String
+  avatar                  String?
+  bio                     String?
+  company                 String?
+  website                 String?
+  role                    UserRole                 @default(MEMBER)
+  emailVerified           Boolean                  @default(false) @map("email_verified")
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  humanAgent              HumanAgent?
+  notificationPreferences NotificationPreferences?
+  passwordReset           PasswordReset?
+  sessions                Session[]
+  account                 Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
@@ -81,7 +82,7 @@ model Session {
 
 model PasswordReset {
   id        String   @id @default(cuid())
-  userId    String   @map("user_id") @unique
+  userId    String   @unique @map("user_id")
   token     String   @unique
   expiresAt DateTime @map("expires_at")
   used      Boolean  @default(false)
@@ -89,6 +90,23 @@ model PasswordReset {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("password_resets")
+}
+
+model NotificationPreferences {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  emailUpdates      Boolean  @default(true) @map("email_updates")
+  securityAlerts    Boolean  @default(true) @map("security_alerts")
+  marketingEmails   Boolean  @default(false) @map("marketing_emails")
+  weeklyReports     Boolean  @default(true) @map("weekly_reports")
+  handoffRequests   Boolean  @default(true) @map("handoff_requests")
+  assistantAlerts   Boolean  @default(true) @map("assistant_alerts")
+  systemMaintenance Boolean  @default(true) @map("system_maintenance")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
 
 model FileProcessingSession {
@@ -173,15 +191,12 @@ model Assistant {
   createdAt                   DateTime            @default(now()) @map("created_at")
   updatedAt                   DateTime            @updatedAt @map("updated_at")
   lastTrained                 DateTime?           @map("last_trained")
+  advancedSettings            Json?               @map("advanced_settings")
+  behaviorSettings            Json?               @map("behavior_settings")
   handoffEnabled              Boolean             @default(false)
   handoffSettings             Json?               @map("handoff_settings")
-  
-  // New settings fields for advanced AI configuration
-  behaviorSettings            Json?               @map("behavior_settings")
   knowledgeSettings           Json?               @map("knowledge_settings")
   moderationSettings          Json?               @map("moderation_settings")
-  advancedSettings            Json?               @map("advanced_settings")
-  
   files                       AssistantFile[]
   account                     Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
   chatMessages                ChatMessage[]

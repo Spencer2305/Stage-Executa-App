@@ -199,6 +199,16 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Check notification preferences before sending email
+    const notificationPrefs = await db.notificationPreferences.findUnique({
+      where: { userId: user.id }
+    });
+    if (notificationPrefs?.emailUpdates) {
+      await sendSupportNotificationEmail(ticket, user);
+    } else {
+      console.log('📧 Skipping support notification email due to user preferences');
+    }
+
     // Update chat session status
     await db.chatSession.update({
       where: { id: chatSession.id },

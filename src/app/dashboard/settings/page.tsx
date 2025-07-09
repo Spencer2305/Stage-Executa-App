@@ -374,10 +374,77 @@ export default function SettingsPage() {
 
   const [notifications, setNotifications] = useState({
     emailUpdates: true,
-    securityAlerts: true,
     marketingEmails: false,
-    weeklyReports: true,
   });
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
+
+  // Fetch notification preferences on mount
+  useEffect(() => {
+    const fetchPreferences = async () => {
+      try {
+        const token = localStorage.getItem('executa-auth-token');
+        const res = await fetch('/api/user/notifications', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.preferences) {
+            setNotifications({
+              emailUpdates: data.preferences.emailUpdates,
+              marketingEmails: data.preferences.marketingEmails,
+            });
+          }
+        }
+      } catch (e) {
+        // Optionally show error
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
+    fetchPreferences();
+  }, []);
+
+  // Helper to update notification preferences in backend
+  const updateNotificationPref = async (newPrefs: any) => {
+    setNotifications(newPrefs);
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      const res = await fetch('/api/user/notifications', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newPrefs)
+      });
+      if (!res.ok) throw new Error('Failed to update preferences');
+      toast.success('Notification preferences updated!');
+    } catch (e) {
+      toast.error('Failed to update notification preferences');
+    }
+  };
+
+  // Helper to update marketing emails via Mailchimp
+  const updateMarketingEmails = async (enabled: boolean) => {
+    setNotifications((prev: any) => ({ ...prev, marketingEmails: enabled }));
+    try {
+      const token = localStorage.getItem('executa-auth-token');
+      const res = await fetch('/api/user/marketing-emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ enabled })
+      });
+      if (!res.ok) throw new Error('Failed to update marketing email subscription');
+      toast.success('Marketing email preference updated!');
+      // Also update notification preferences for consistency
+      updateNotificationPref({ ...notifications, marketingEmails: enabled });
+    } catch (e) {
+      toast.error('Failed to update marketing email subscription');
+    }
+  };
 
   const apiKey = "exec_sk_1234567890abcdef";
 
@@ -852,8 +919,11 @@ export default function SettingsPage() {
         icon: Database,
         connected: connectedIntegrations.has('drive'),
         popular: true,
-        comingSoon: true,
-        category: 'Cloud Storage'
+        category: 'Cloud Storage',
+        authUrl: '/api/integrations/drive/auth',
+        statusUrl: '/api/integrations/drive/status',
+        disconnectUrl: '/api/integrations/drive/disconnect',
+        syncUrl: '/api/integrations/drive/sync'
       },
       {
         id: 'notion',
@@ -1225,6 +1295,9 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {loadingNotifications ? (
+                <div>Loading...</div>
+              ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1234,22 +1307,9 @@ export default function SettingsPage() {
                   <Button
                     variant={notifications.emailUpdates ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setNotifications({...notifications, emailUpdates: !notifications.emailUpdates})}
+                    onClick={() => updateNotificationPref({ ...notifications, emailUpdates: !notifications.emailUpdates })}
                   >
                     {notifications.emailUpdates ? "Enabled" : "Disabled"}
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">Security Alerts</h4>
-                    <p className="text-sm text-gray-600">Get notified about security-related events</p>
-                  </div>
-                  <Button
-                    variant={notifications.securityAlerts ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setNotifications({...notifications, securityAlerts: !notifications.securityAlerts})}
-                  >
-                    {notifications.securityAlerts ? "Enabled" : "Disabled"}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between">
@@ -1260,25 +1320,13 @@ export default function SettingsPage() {
                   <Button
                     variant={notifications.marketingEmails ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setNotifications({...notifications, marketingEmails: !notifications.marketingEmails})}
+                    onClick={() => updateMarketingEmails(!notifications.marketingEmails)}
                   >
                     {notifications.marketingEmails ? "Enabled" : "Disabled"}
                   </Button>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">Weekly Reports</h4>
-                    <p className="text-sm text-gray-600">Get weekly summaries of your assistant's performance</p>
-                  </div>
-                  <Button
-                    variant={notifications.weeklyReports ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setNotifications({...notifications, weeklyReports: !notifications.weeklyReports})}
-                  >
-                    {notifications.weeklyReports ? "Enabled" : "Disabled"}
-                  </Button>
-                </div>
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

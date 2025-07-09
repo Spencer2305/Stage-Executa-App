@@ -13,7 +13,8 @@ import {
   Settings,
   Users,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  Database
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -75,6 +76,17 @@ export default function IntegrationsManager({ assistantId }: IntegrationsManager
       category: 'Cloud Storage',
       authUrl: '/api/integrations/dropbox/auth',
       statusUrl: '/api/integrations/dropbox/status'
+    },
+    {
+      id: 'drive',
+      name: 'Google Drive',
+      description: 'Access documents, spreadsheets, and files from your Google Drive workspace',
+      icon: Database,
+      category: 'Cloud Storage',
+      authUrl: '/api/integrations/drive/auth',
+      statusUrl: '/api/integrations/drive/status',
+      disconnectUrl: '/api/integrations/drive/disconnect',
+      syncUrl: '/api/integrations/drive/sync'
     }
   ];
 
