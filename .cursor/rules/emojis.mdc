@@ -1,0 +1,5 @@
+---
+description: dont allow emojis
+globs: can cursor please not autogen emojis into my work, i want real icons, they are more professional
+alwaysApply: true
+---
