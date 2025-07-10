@@ -1,13 +1,5 @@
 {
   "framework": "nextjs",
   "regions": ["iad1"],
-  "buildCommand": "npm run build",
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "functions": {
-    "src/app/api/**/*.ts": {
-      "runtime": "@vercel/node"
-    }
-  }
+  "buildCommand": "npm run build"
 } 
