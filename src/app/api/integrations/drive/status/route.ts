@@ -3,6 +3,8 @@ import { authenticateRequest } from '@/lib/auth';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 const STORAGE_FILE = path.join(process.cwd(), '.drive-integrations.json');
 
 function loadIntegrations() {
