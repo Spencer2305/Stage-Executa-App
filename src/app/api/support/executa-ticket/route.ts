@@ -171,19 +171,19 @@ async function sendEmailToExecutaSupport(emailContent: { subject: string; html: 
       
       await sgMail.send({
         to: EXECUTA_SUPPORT_EMAIL,
-                  from: process.env.FROM_EMAIL || 'info@executasolutions.com',
+                  from: process.env.AWS_SES_FROM_EMAIL || 'info@executasolutions.com',
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text
       });
     }
     // If you're using AWS SES:
-    else if (process.env.AWS_SES_REGION) {
+    else if (process.env.AWS_REGION) {
       const AWS = require('aws-sdk');
-      const ses = new AWS.SES({ region: process.env.AWS_SES_REGION });
+      const ses = new AWS.SES({ region: process.env.AWS_REGION });
       
       await ses.sendEmail({
-        Source: process.env.FROM_EMAIL || 'info@executasolutions.com',
+        Source: process.env.AWS_SES_FROM_EMAIL || 'info@executasolutions.com',
         Destination: {
           ToAddresses: [EXECUTA_SUPPORT_EMAIL]
         },
@@ -288,17 +288,17 @@ The Executa Support Team
       
       await sgMail.send({
         to: data.userEmail,
-                  from: process.env.FROM_EMAIL || 'info@executasolutions.com',
+                  from: process.env.AWS_SES_FROM_EMAIL || 'info@executasolutions.com',
         subject: confirmationContent.subject,
         html: confirmationContent.html,
         text: confirmationContent.text
       });
-    } else if (process.env.AWS_SES_REGION) {
+    } else if (process.env.AWS_REGION) {
       const AWS = require('aws-sdk');
-      const ses = new AWS.SES({ region: process.env.AWS_SES_REGION });
+      const ses = new AWS.SES({ region: process.env.AWS_REGION });
       
       await ses.sendEmail({
-                  Source: process.env.FROM_EMAIL || 'info@executasolutions.com',
+                  Source: process.env.AWS_SES_FROM_EMAIL || 'info@executasolutions.com',
         Destination: {
           ToAddresses: [data.userEmail]
         },

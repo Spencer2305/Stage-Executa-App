@@ -47,7 +47,9 @@ import {
   Check,
   Star,
   Zap as ZapIcon,
-  AlertTriangle
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useUserStore } from "@/state/userStore";
 import { Badge } from "@/components/ui/badge";
@@ -147,8 +149,7 @@ function IntegrationCard({
   comingSoon = false,
   popular = false,
   category,
-  onConnect,
-  onDisconnect
+  onView
 }: {
   id: string;
   name: string;
@@ -158,11 +159,10 @@ function IntegrationCard({
   comingSoon?: boolean;
   popular?: boolean;
   category?: string;
-  onConnect?: () => void;
-  onDisconnect?: () => void;
+  onView?: () => void;
 }) {
   return (
-    <Card className="border border-gray-200 relative">
+    <Card className="border border-gray-200 relative hover:shadow-md transition-shadow">
       {popular && (
         <div className="absolute -top-2 -right-2">
           <Badge className="bg-green-500 text-white text-xs px-2 py-1">Popular</Badge>
@@ -192,7 +192,7 @@ function IntegrationCard({
               {connected && (
                 <div className="flex items-center space-x-1 text-xs text-green-600">
                   <CheckCircle className="h-3 w-3" />
-                  <span>Connected and syncing</span>
+                  <span>Connected and active</span>
                 </div>
               )}
               {comingSoon && (
@@ -208,14 +208,10 @@ function IntegrationCard({
               <Button variant="outline" size="sm" disabled>
                 Coming Soon
               </Button>
-            ) : connected ? (
-              <Button variant="outline" size="sm" onClick={onDisconnect}>
-                Disconnect
-              </Button>
             ) : (
-              <Button size="sm" onClick={onConnect} className="bg-primary hover:bg-primary/90">
-                <Plus className="h-4 w-4 mr-1" />
-                Connect
+              <Button size="sm" onClick={onView} variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">
+                <Eye className="h-4 w-4 mr-1" />
+                View
               </Button>
             )}
           </div>
@@ -250,6 +246,11 @@ export default function SettingsPage() {
   const [passwordChanging, setPasswordChanging] = useState(false);
   const [showBillingDialog, setShowBillingDialog] = useState(false);
   const [showPlanChangeDialog, setShowPlanChangeDialog] = useState(false);
+  const [showIntegrationDialog, setShowIntegrationDialog] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] = useState<any>(null);
+  const [sliderRef, setSliderRef] = useState<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
   
   // Tab management with URL sync
   const initialTab = searchParams.get('tab') || 'profile';
@@ -672,67 +673,101 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDisconnect = async (integration: string) => {
-    if (integration === 'gmail') {
-      try {
-        const token = localStorage.getItem('executa-auth-token');
-        const response = await fetch('/api/integrations/gmail/status', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ action: 'disconnect' })
-        });
+  const handleViewIntegration = (integration: any) => {
+    setSelectedIntegration(integration);
+    setShowIntegrationDialog(true);
+  };
 
-        if (response.ok) {
-          setConnectedIntegrations(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(integration);
-            return newSet;
-          });
-          toast.success('Gmail disconnected successfully');
-        } else {
-          throw new Error('Failed to disconnect Gmail');
-        }
-      } catch (error) {
-        console.error('Disconnect error:', error);
-        toast.error('Failed to disconnect Gmail');
-      }
-    } else if (integration === 'discord') {
-      try {
-        const token = localStorage.getItem('executa-auth-token');
-        const response = await fetch('/api/integrations/discord/status', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ action: 'disconnect' })
-        });
-
-        if (response.ok) {
-          setConnectedIntegrations(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(integration);
-            return newSet;
-          });
-          toast.success('Discord disconnected successfully');
-        } else {
-          throw new Error('Failed to disconnect Discord');
-        }
-      } catch (error) {
-        console.error('Discord disconnect error:', error);
-        toast.error('Failed to disconnect Discord');
-      }
-    } else {
-      setConnectedIntegrations(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(integration);
-        return newSet;
-      });
+  // Slider control functions
+  const checkScrollability = () => {
+    if (sliderRef) {
+      setCanScrollLeft(sliderRef.scrollLeft > 0);
+      setCanScrollRight(sliderRef.scrollLeft < (sliderRef.scrollWidth - sliderRef.clientWidth));
     }
   };
+
+  const scrollLeft = () => {
+    if (sliderRef) {
+      sliderRef.scrollBy({ left: -200, behavior: 'smooth' });
+      setTimeout(checkScrollability, 300);
+    }
+  };
+
+  const scrollRight = () => {
+    if (sliderRef) {
+      sliderRef.scrollBy({ left: 200, behavior: 'smooth' });
+      setTimeout(checkScrollability, 300);
+    }
+  };
+
+  // Autoplay functionality with infinite scroll
+  useEffect(() => {
+    if (!sliderRef) return;
+
+    let autoplayInterval: NodeJS.Timeout;
+    let isAutoPlaying = true;
+    const itemWidth = 120; // Width of each item (96px + padding)
+
+    const startAutoplay = () => {
+      if (autoplayInterval) clearInterval(autoplayInterval);
+      
+      autoplayInterval = setInterval(() => {
+        if (sliderRef && isAutoPlaying) {
+          const scrollWidth = sliderRef.scrollWidth;
+          const clientWidth = sliderRef.clientWidth;
+          const currentScroll = sliderRef.scrollLeft;
+          const maxScroll = scrollWidth - clientWidth;
+          
+          // If we're near the end (within one item width), reset to beginning
+          if (currentScroll >= maxScroll - itemWidth) {
+            sliderRef.scrollLeft = 0;
+          } else {
+            // Scroll to next item
+            sliderRef.scrollBy({ left: itemWidth, behavior: 'smooth' });
+          }
+          setTimeout(checkScrollability, 300);
+        }
+      }, 4000); // Slower autoplay - every 4 seconds
+    };
+
+    const stopAutoplay = () => {
+      isAutoPlaying = false;
+      if (autoplayInterval) {
+        clearInterval(autoplayInterval);
+      }
+    };
+
+    const resumeAutoplay = () => {
+      isAutoPlaying = true;
+      startAutoplay();
+    };
+
+    const handleMouseEnter = () => stopAutoplay();
+    const handleMouseLeave = () => resumeAutoplay();
+
+    // Start autoplay initially
+    startAutoplay();
+
+    sliderRef.addEventListener('mouseenter', handleMouseEnter);
+    sliderRef.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      stopAutoplay();
+      if (sliderRef) {
+        sliderRef.removeEventListener('mouseenter', handleMouseEnter);
+        sliderRef.removeEventListener('mouseleave', handleMouseLeave);
+      }
+    };
+  }, [sliderRef]);
+
+  // Check scrollability on slider ref change
+  useEffect(() => {
+    if (sliderRef) {
+      checkScrollability();
+      sliderRef.addEventListener('scroll', checkScrollability);
+      return () => sliderRef.removeEventListener('scroll', checkScrollability);
+    }
+  }, [sliderRef]);
 
   const handleProfileSave = async () => {
     if (!profile.name.trim() || !profile.email.trim()) {
@@ -869,6 +904,19 @@ export default function SettingsPage() {
         id: 'gmail',
         name: 'Gmail',
         description: 'Import emails and conversations to train your AI assistant with real customer interactions',
+        detailedDescription: 'Connect your Gmail account to automatically import email conversations and train your AI assistant on real customer interactions. This helps your AI understand your communication style, common customer questions, and appropriate responses.',
+        benefits: [
+          'Automatically sync email conversations for training data',
+          'Improve AI responses based on real customer interactions',
+          'Understand your communication tone and style',
+          'Access historical email data for comprehensive training'
+        ],
+        useCases: [
+          'Customer support automation',
+          'Email response suggestions',
+          'Knowledge base creation from support emails',
+          'Automated email categorization'
+        ],
         icon: Mail,
         connected: connectedIntegrations.has('gmail'),
         popular: true,
@@ -878,6 +926,19 @@ export default function SettingsPage() {
         id: 'slack',
         name: 'Slack',
         description: 'Deploy your AI assistant directly in Slack channels and DMs for team collaboration',
+        detailedDescription: 'Integrate your AI assistant directly into your Slack workspace to provide instant support and information to your team members. Your AI can answer questions, provide documentation, and help with workflows without leaving Slack.',
+        benefits: [
+          'Deploy AI assistant directly in Slack channels',
+          'Instant answers to team questions',
+          'Reduce support ticket volume',
+          'Improve team productivity and knowledge sharing'
+        ],
+        useCases: [
+          'Internal support and FAQ automation',
+          'Onboarding new team members',
+          'Quick access to company documentation',
+          'Workflow automation and reminders'
+        ],
         icon: MessageSquare,
         connected: connectedIntegrations.has('slack'),
         popular: true,
@@ -887,9 +948,21 @@ export default function SettingsPage() {
         id: 'discord',
         name: 'Discord',
         description: 'Add your AI assistant to Discord servers for community support and engagement',
+        detailedDescription: 'Deploy your AI assistant as a Discord bot to provide 24/7 community support, answer frequently asked questions, and engage with your community members across multiple Discord servers.',
+        benefits: [
+          '24/7 automated community support',
+          'Instant responses to common questions',
+          'Scalable community management',
+          'Enhanced member engagement'
+        ],
+        useCases: [
+          'Community support automation',
+          'FAQ and documentation access',
+          'Event information and announcements',
+          'Member onboarding and welcome messages'
+        ],
         icon: MessageSquare,
         connected: connectedIntegrations.has('discord'),
-        comingSoon: true,
         category: 'Chat'
       },
       {
@@ -947,6 +1020,19 @@ export default function SettingsPage() {
         id: 'dropbox',
         name: 'Dropbox',
         description: 'Access and train on documents stored in your Dropbox account',
+        detailedDescription: 'Connect your Dropbox account to automatically sync and train your AI assistant on your documents, PDFs, presentations, and other files. Your AI will have instant access to your knowledge base stored in Dropbox.',
+        benefits: [
+          'Automatic document sync from Dropbox',
+          'Support for PDFs, Word docs, presentations',
+          'Real-time updates when files change',
+          'Secure access to your knowledge base'
+        ],
+        useCases: [
+          'Train AI on company documentation',
+          'Product manuals and guides access',
+          'Internal knowledge base creation',
+          'Document-based customer support'
+        ],
         icon: Cloud,
         connected: connectedIntegrations.has('dropbox'),
         category: 'Cloud Storage'
@@ -1247,10 +1333,10 @@ export default function SettingsPage() {
 
         {/* Integrations Tab */}
         <TabsContent value="integrations">
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Card>
               <CardHeader>
-                <CardTitle>Connected Integrations</CardTitle>
+                <CardTitle>Available Integrations</CardTitle>
                 <CardDescription>
                   Connect your favorite tools and services to enhance your AI assistant
                   <div className="flex items-center space-x-4 mt-2">
@@ -1265,23 +1351,104 @@ export default function SettingsPage() {
               </CardHeader>
             </Card>
 
-            {Object.entries(integrations).map(([category, items]) => (
-              <div key={category} className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 capitalize">
-                  {category.replace(/([A-Z])/g, ' $1').trim()}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {items.map((integration) => (
-                    <IntegrationCard
-                      key={integration.id}
-                      {...integration}
-                      onConnect={() => handleConnect(integration.id)}
-                      onDisconnect={() => handleDisconnect(integration.id)}
-                    />
-                  ))}
+            {/* Available and Connected Integrations */}
+            {Object.entries(integrations).map(([category, items]) => {
+              const availableItems = items.filter(item => !(item as any).comingSoon);
+              if (availableItems.length === 0) return null;
+              
+              return (
+                <div key={category} className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 capitalize">
+                    {category.replace(/([A-Z])/g, ' $1').trim()}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {availableItems.map((integration) => (
+                      <IntegrationCard
+                        key={integration.id}
+                        {...integration}
+                        onView={() => handleViewIntegration(integration)}
+                      />
+                    ))}
+                  </div>
                 </div>
+              );
+            })}
+
+            {/* Coming Soon Integrations Slider */}
+            <div className="space-y-8 pt-12 pb-8 border-t">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Integrations Coming Soon</h2>
+                <p className="text-gray-600">We're working hard to bring you even more powerful integrations</p>
               </div>
-            ))}
+              
+              <div className="relative bg-gray-50 rounded-lg p-6">
+                {/* Left Arrow */}
+                <button
+                  onClick={scrollLeft}
+                  disabled={!canScrollLeft}
+                  className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center transition-all duration-200 ${
+                    canScrollLeft 
+                      ? 'hover:bg-gray-100 text-gray-700 hover:shadow-lg' 
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                {/* Right Arrow */}
+                <button
+                  onClick={scrollRight}
+                  disabled={!canScrollRight}
+                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center transition-all duration-200 ${
+                    canScrollRight 
+                      ? 'hover:bg-gray-100 text-gray-700 hover:shadow-lg' 
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+
+                <div 
+                  ref={setSliderRef}
+                  className="overflow-x-auto scrollbar-hide px-10"
+                >
+                  <div className="flex space-x-6 pb-4" style={{ width: 'max-content' }}>
+                    {(() => {
+                      const comingSoonIntegrations = Object.values(integrations).flat().filter(item => (item as any).comingSoon);
+                      // Duplicate the integrations for infinite scroll effect
+                      const duplicatedIntegrations = [...comingSoonIntegrations, ...comingSoonIntegrations];
+                      
+                      return duplicatedIntegrations.map((integration, index) => (
+                        <div
+                          key={`${integration.id}-${index}`}
+                          className="flex-shrink-0 flex flex-col items-center space-y-3 group cursor-pointer hover:bg-white rounded-lg p-4 transition-all duration-200 w-24"
+                          onClick={() => handleViewIntegration(integration)}
+                        >
+                          <div className="relative">
+                            <IntegrationLogo name={integration.id} className="w-14 h-14 transition-transform group-hover:scale-110" />
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center">
+                              <Clock className="h-2.5 w-2.5 text-white" />
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <h4 className="font-medium text-gray-900 text-xs leading-tight">{integration.name}</h4>
+                            <p className="text-xs text-gray-500 mt-1">{integration.category}</p>
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+                
+                {/* Gradient overlays */}
+                <div className="absolute left-0 top-0 bg-gradient-to-r from-gray-50 to-transparent w-12 h-full pointer-events-none"></div>
+                <div className="absolute right-0 top-0 bg-gradient-to-l from-gray-50 to-transparent w-12 h-full pointer-events-none"></div>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-sm text-gray-500">Use arrows to navigate • Auto-scrolls every 4 seconds • Hover to pause • Infinite loop</p>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
@@ -1659,6 +1826,163 @@ export default function SettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Integration Details Dialog */}
+      {showIntegrationDialog && selectedIntegration && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <IntegrationLogo name={selectedIntegration.id} className="w-16 h-16" />
+                  {selectedIntegration.connected && (
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2 mb-1">
+                    <h2 className="text-2xl font-bold text-gray-900">{selectedIntegration.name}</h2>
+                    {selectedIntegration.popular && (
+                      <Badge className="bg-green-500 text-white text-xs">Popular</Badge>
+                    )}
+                    {selectedIntegration.category && (
+                      <Badge variant="outline" className="text-xs text-gray-500">
+                        {selectedIntegration.category}
+                      </Badge>
+                    )}
+                  </div>
+                  {selectedIntegration.connected ? (
+                    <div className="flex items-center space-x-1 text-sm text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Connected and active</span>
+                    </div>
+                  ) : selectedIntegration.comingSoon ? (
+                    <div className="flex items-center space-x-1 text-sm text-gray-500">
+                      <Clock className="h-4 w-4" />
+                      <span>Coming Q1 2024</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">Available for connection</span>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowIntegrationDialog(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Description */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3">About this integration</h3>
+              <p className="text-gray-600 leading-relaxed">
+                {selectedIntegration.detailedDescription || selectedIntegration.description}
+              </p>
+            </div>
+
+            {/* Benefits */}
+            {selectedIntegration.benefits && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Key Benefits</h3>
+                <ul className="space-y-2">
+                  {selectedIntegration.benefits.map((benefit: string, index: number) => (
+                    <li key={index} className="flex items-start space-x-2">
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-gray-600">{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Use Cases */}
+            {selectedIntegration.useCases && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Popular Use Cases</h3>
+                <ul className="space-y-2">
+                  {selectedIntegration.useCases.map((useCase: string, index: number) => (
+                    <li key={index} className="flex items-start space-x-2">
+                      <Star className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-gray-600">{useCase}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Status and Action */}
+            <div className="border-t pt-6">
+              {selectedIntegration.comingSoon ? (
+                <div className="text-center">
+                  <div className="bg-gray-50 rounded-lg p-6 mb-4">
+                    <Clock className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <h4 className="font-semibold text-gray-900 mb-2">Coming Soon</h4>
+                    <p className="text-sm text-gray-600">
+                      This integration is currently in development and will be available in Q1 2024.
+                      We'll notify you when it's ready!
+                    </p>
+                  </div>
+                  <Button variant="outline" className="w-full">
+                    <Bell className="h-4 w-4 mr-2" />
+                    Notify me when available
+                  </Button>
+                </div>
+              ) : selectedIntegration.connected ? (
+                <div className="text-center">
+                  <div className="bg-green-50 rounded-lg p-6 mb-4">
+                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                    <h4 className="font-semibold text-gray-900 mb-2">Connected and Active</h4>
+                    <p className="text-sm text-gray-600">
+                      This integration is working properly and syncing data with your AI assistant.
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-start space-x-3">
+                      <div className="bg-green-100 rounded-full p-2 flex-shrink-0">
+                        <SettingsIcon className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="text-left">
+                        <h5 className="font-medium text-gray-900 mb-1">Manage this integration</h5>
+                        <p className="text-sm text-gray-600">
+                          Visit your AI assistant's integrations tab to manage settings or disconnect this integration.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="bg-blue-50 rounded-lg p-6 mb-4">
+                    <Plus className="h-12 w-12 text-blue-500 mx-auto mb-3" />
+                    <h4 className="font-semibold text-gray-900 mb-2">Ready to Connect</h4>
+                    <p className="text-sm text-gray-600">
+                      This integration is available and ready to enhance your AI assistant with additional capabilities.
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-start space-x-3">
+                      <div className="bg-blue-100 rounded-full p-2 flex-shrink-0">
+                        <SettingsIcon className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="text-left">
+                        <h5 className="font-medium text-gray-900 mb-1">How to connect</h5>
+                        <p className="text-sm text-gray-600">
+                          Navigate to your AI assistant's integrations tab to set up and configure this connection.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
