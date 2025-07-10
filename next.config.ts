@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
           }
         ]
       }
-    ];
+    ]; // please work!!!
   }
 };
 
