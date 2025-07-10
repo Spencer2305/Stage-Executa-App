@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withSecureAPI, RATE_LIMIT_CONFIGS } from '@/lib/security';
+import { withRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/security';
 
-async function handleBrandColorExtraction(request: NextRequest, user: any): Promise<NextResponse> {
+async function handleBrandColorExtraction(request: NextRequest): Promise<NextResponse> {
   try {
     const { url } = await request.json();
     
@@ -32,8 +32,8 @@ async function handleBrandColorExtraction(request: NextRequest, user: any): Prom
   }
 }
 
-// Apply secure authentication and rate limiting
-export const POST = withSecureAPI(RATE_LIMIT_CONFIGS.API, handleBrandColorExtraction);
+// Apply rate limiting
+export const POST = withRateLimit(RATE_LIMIT_CONFIGS.API, handleBrandColorExtraction);
 
 async function extractColorsFromWebsite(url: string): Promise<string[]> {
   const colors: string[] = [];
