@@ -11,4 +11,4 @@ if command -v nvm &> /dev/null; then
 fi
 
 # Run Next.js dev server
-exec node node_modules/.bin/next dev --turbopack 
+exec node node_modules/.bin/next dev --turbopack
