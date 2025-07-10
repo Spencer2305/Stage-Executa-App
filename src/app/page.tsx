@@ -44,6 +44,7 @@ export default function RootPage() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
+      <Navbar />
       {/* Hero Section - Clean and Centered */}
       <section className="relative py-24 lg:py-32 overflow-hidden">
         {/* Clean background */}

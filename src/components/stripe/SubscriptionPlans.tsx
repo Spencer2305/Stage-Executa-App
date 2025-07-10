@@ -176,48 +176,41 @@ export function SubscriptionPlans({ currentPlan = 'PRO', onPlanSelect }: Subscri
               </div>
 
               <div>
-                  {isCurrentPlan ? (
-                    <div className="space-y-3">
-                      <button disabled className="w-full py-4 px-6 rounded-2xl bg-gray-100 text-gray-500 cursor-not-allowed font-semibold">
-                        Current Plan
+                {isCurrentPlan ? (
+                  <div className="space-y-3">
+                    <button disabled className="w-full py-4 px-6 rounded-2xl bg-green-100 text-green-700 cursor-not-allowed font-semibold border-2 border-green-400">
+                      Active
+                    </button>
+                    {isPaidPlan && (
+                      <button
+                        onClick={handleManageSubscription}
+                        disabled={isLoading === 'manage'}
+                        className="w-full py-4 px-6 rounded-2xl border-2 font-semibold transition-colors hover:text-white"
+                        style={{borderColor: '#6400fe', color: '#6400fe'}}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6400fe'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        {isLoading === 'manage' ? 'Loading...' : 'Manage Subscription'}
                       </button>
-                      {isPaidPlan && (
-                        <button
-                          onClick={handleManageSubscription}
-                          disabled={isLoading === 'manage'}
-                          className="w-full py-4 px-6 rounded-2xl border-2 font-semibold transition-colors hover:text-white"
-                          style={{borderColor: '#6400fe', color: '#6400fe'}}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6400fe'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          {isLoading === 'manage' ? 'Loading...' : 'Manage Subscription'}
-                        </button>
-                      )}
-                    </div>
-                  ) : canUpgrade || canDowngrade ? (
-                    <button
-                      onClick={() => handleSubscribe(planKey as 'PRO' | 'ENTERPRISE')}
-                      disabled={isLoading === planKey}
-                      className="w-full py-4 px-6 rounded-2xl text-white font-semibold transition-colors"
-                      style={{backgroundColor: '#6400fe'}}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5500d9'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6400fe'}
-                    >
-                      {isLoading === planKey ? 'Loading...' : planKey === 'ENTERPRISE' ? 'Contact Sales' : canUpgrade ? `Upgrade to ${plan.name}` : `Switch to ${plan.name}`}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleSubscribe(planKey as 'PRO' | 'ENTERPRISE')}
-                      disabled={isLoading === planKey}
-                      className="w-full py-4 px-6 rounded-2xl text-white font-semibold transition-colors"
-                      style={{backgroundColor: '#6400fe'}}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5500d9'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6400fe'}
-                    >
-                      {isLoading === planKey ? 'Loading...' : planKey === 'ENTERPRISE' ? 'Contact Sales' : `Get ${plan.name}`}
-                    </button>
-                  )}
+                    )}
+                  </div>
+                ) : canUpgrade || canDowngrade ? (
+                  <button
+                    onClick={() => handleSubscribe(planKey as 'PRO' | 'ENTERPRISE')}
+                    className="w-full py-4 px-6 rounded-2xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition-colors"
+                    disabled={isLoading === planKey}
+                  >
+                    {isLoading === planKey ? 'Loading...' : plan.price === null ? 'Contact Sales' : 'Choose Plan'}
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="w-full py-4 px-6 rounded-2xl bg-gray-100 text-gray-400 cursor-not-allowed font-semibold"
+                  >
+                    Not Available
+                  </button>
+                )}
               </div>
             </div>
           );
