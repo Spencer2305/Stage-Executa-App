@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check OpenAI API key
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('your-openai-api-key')) {
       console.log('❌ OpenAI API key not configured');
       return NextResponse.json({ 
         error: 'OpenAI API key not configured', 
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 1: Upload and process files (if any)
-    let fileProcessingResult = null;
+    let fileProcessingResult: any = null;
     let successfulFiles: Array<{fileId: string; success: boolean}> = [];
 
     if (files && files.length > 0) {
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
         }, { status: 500 });
       }
 
-      successfulFiles = fileProcessingResult.results.filter(r => r.success);
+      successfulFiles = fileProcessingResult.results.filter((r: any) => r.success);
     } else {
       console.log(`📁 Creating assistant without initial files (Dropbox sync enabled)`);
     }

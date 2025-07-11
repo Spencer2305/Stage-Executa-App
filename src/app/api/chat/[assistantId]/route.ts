@@ -581,6 +581,7 @@ async function handleChatMessage(
     }
 
     // Check if OpenAI API key is configured
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('your-openai-api-key')) {
       console.log('⚠️ OpenAI API key not configured - returning demo response');
       return NextResponse.json({
         response: `Hello! I'm ${assistant.name}, but I need an OpenAI API key to be configured to provide intelligent responses based on my knowledge base. Please add your OpenAI API key to the .env file.`,
@@ -965,6 +966,7 @@ Always be helpful and professional, and make it clear what capabilities are avai
     }
 
     return NextResponse.json({ error: 'Unexpected error occurred' }, { status: 500 });
+  }
 
   } catch (error) {
     console.error('Chat endpoint error:', error);
