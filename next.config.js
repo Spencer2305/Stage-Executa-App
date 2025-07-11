@@ -8,8 +8,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Fix for build output issues
-  output: 'standalone',
+  // Fix for client reference manifest issue - remove experimental config
   
   // Basic security headers (simplified)
   async headers() {

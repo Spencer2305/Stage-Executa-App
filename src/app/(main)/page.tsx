@@ -1,5 +1,6 @@
 "use client";
 
+import ClientWrapper from "@/components/ClientWrapper";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -123,7 +124,8 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="flex flex-col min-h-screen bg-white">
+    <ClientWrapper>
+      <main className="flex flex-col min-h-screen bg-white">
       {/* Hero Section - Clean and Centered */}
       <section className="relative py-24 lg:py-32 overflow-hidden">
         {/* Clean background */}
@@ -1310,5 +1312,6 @@ export default function Home() {
          }
        `}</style>
     </main>
+    </ClientWrapper>
   );
 }
