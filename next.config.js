@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Minimal config for Vercel compatibility
+  // Force edge runtime to avoid client reference manifest issues
+  experimental: {
+    runtime: 'nodejs',
+    appDir: true,
+  },
+  
+  // Disable problematic features
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -8,11 +14,20 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Remove output standalone - this might be causing the manifest issue
-  // output: 'standalone',
+  // Force static optimization
+  trailingSlash: false,
   
-  // Completely disable experimental features
-  experimental: {},
+  // Minimal webpack config
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
   
   // Basic headers only
   async headers() {

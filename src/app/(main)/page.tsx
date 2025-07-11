@@ -2,6 +2,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Bot, Rocket, Play, Shield, Zap } from "lucide-react";
 
+// Force runtime to avoid client reference manifest issues
+export const runtime = 'nodejs';
+
 export default function Home() {
   return (
     <main className="flex flex-col min-h-screen bg-white">
