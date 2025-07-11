@@ -6,14 +6,15 @@ let s3: AWS.S3 | null = null;
 let sqs: AWS.SQS | null = null;
 
 // Only initialize AWS services if credentials are available
-if (process.env.AWS_ACCESS_KEY_ID && 
-    process.env.AWS_SECRET_ACCESS_KEY && 
-    process.env.AWS_ACCESS_KEY_ID !== 'your-aws-access-key-id') {
+// Use custom environment variable names for Netlify compatibility
+if (process.env.EXECUTA_AWS_ACCESS_KEY_ID && 
+    process.env.EXECUTA_AWS_SECRET_ACCESS_KEY && 
+    process.env.EXECUTA_AWS_ACCESS_KEY_ID !== 'your-aws-access-key-id') {
   
   AWS.config.update({
-    region: process.env.AWS_REGION || 'us-east-1',
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.EXECUTA_AWS_REGION || 'us-east-1',
+    accessKeyId: process.env.EXECUTA_AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.EXECUTA_AWS_SECRET_ACCESS_KEY,
   });
   
   s3 = new AWS.S3();
@@ -38,7 +39,7 @@ function getSQS(): AWS.SQS {
 
 // Constants for Executa App resources
 const EXECUTA_APP_PREFIX = 'executa-app';
-const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+const AWS_REGION = process.env.EXECUTA_AWS_REGION || 'us-east-1';
 
 // Generate account-specific bucket name
 export function generateAccountBucketName(accountId: string): string {

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const config = {
-      AWS_REGION: process.env.AWS_REGION || 'Not set',
+      AWS_REGION: process.env.EXECUTA_AWS_REGION || 'Not set',
       AWS_SES_FROM_EMAIL: process.env.AWS_SES_FROM_EMAIL || 'Not set',
       NODE_ENV: process.env.NODE_ENV,
     };
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       message: 'AWS SES Configuration Check',
       config,
       recommendations: [
-        process.env.AWS_REGION ? '✅ AWS_REGION is set' : '❌ Set AWS_REGION (e.g., us-east-1)',
+        process.env.EXECUTA_AWS_REGION ? '✅ AWS_REGION is set' : '❌ Set EXECUTA_AWS_REGION (e.g., us-east-1)',
         process.env.AWS_SES_FROM_EMAIL ? '✅ AWS_SES_FROM_EMAIL is set' : '❌ Set AWS_SES_FROM_EMAIL',
       ]
     });

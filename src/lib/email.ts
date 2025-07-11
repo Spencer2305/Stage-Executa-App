@@ -1,11 +1,17 @@
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
-// Initialize SES client
-const sesClient = new SESClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-  },
-});
+// Initialize SES client conditionally
+let sesClient: SESClient | null = null;
+
+if (process.env.EXECUTA_AWS_ACCESS_KEY_ID && process.env.EXECUTA_AWS_SECRET_ACCESS_KEY) {
+  sesClient = new SESClient({
+    region: process.env.EXECUTA_AWS_REGION || 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.EXECUTA_AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.EXECUTA_AWS_SECRET_ACCESS_KEY,
+    },
+  });
+}
 
 export interface SendEmailOptions {
   to: string;
@@ -15,6 +21,10 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, htmlBody, textBody }: SendEmailOptions) {
+  if (!sesClient) {
+    throw new Error('AWS SES not configured - email credentials not available');
+  }
+  
   const fromEmail = process.env.AWS_SES_FROM_EMAIL || 'noreply@yourdomain.com';
   
   try {
