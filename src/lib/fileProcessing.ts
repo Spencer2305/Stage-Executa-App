@@ -12,6 +12,7 @@ const openai = new OpenAI({
 });
 
 // Development mode flag
+const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
 // File type validation
 const SUPPORTED_FILE_TYPES: Record<string, string[]> = {
@@ -843,6 +844,7 @@ export async function createOpenAIVectorStore(
     console.log(`📚 Creating real OpenAI vector store for ${name}`);
     
     // Check if OpenAI API key is configured
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('your-openai-api-key')) {
       console.log('⚠️ OpenAI API key not configured - creating mock vector store');
       const mockId = `vs_mock_${accountId}_${assistantId}`;
       console.log(`Mock vector store created: ${mockId}`);
@@ -870,6 +872,7 @@ export async function uploadFilesToOpenAI(
 ): Promise<{ fileId: string; openaiFileId: string }[]> {
   try {
     // Check if OpenAI API key is configured
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('your-openai-api-key')) {
       console.log('⚠️ OpenAI API key not configured - skipping file upload to OpenAI');
       
       // Return mock results for development
@@ -955,6 +958,7 @@ export async function addFilesToVectorStore(
   openaiFileIds: string[]
 ): Promise<void> {
   try {
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('your-openai-api-key')) {
       console.log(`⚠️ OpenAI API key not configured - skipping vector store file addition`);
       return;
     }

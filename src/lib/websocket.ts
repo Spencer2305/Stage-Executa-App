@@ -19,7 +19,7 @@ export function initializeWebSocket(server: HTTPServer) {
     // Handle authentication
     socket.on('authenticate', async (token: string) => {
       try {
-        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret-key') as any;
 
         const user = await db.user.findUnique({
           where: { id: decoded.userId },

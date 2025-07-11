@@ -11,6 +11,7 @@ if (typeof window === 'undefined') { // Only run on server side
 }
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 
 // Types
 export interface JWTPayload {
@@ -55,12 +56,14 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 
 // JWT utilities
 export function signToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
+  return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN 
   } as jwt.SignOptions);
 }
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
+    return jwt.verify(token, JWT_SECRET) as JWTPayload;
   } catch (error) {
     return null;
   }
