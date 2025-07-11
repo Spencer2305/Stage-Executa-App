@@ -8,7 +8,16 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Fix for client reference manifest issue - remove experimental config
+  // Fix for Vercel deployment - use standalone output
+  output: 'standalone',
+  
+  // Disable experimental features that cause issues
+  experimental: {
+    // Remove deprecated serverComponentsExternalPackages
+  },
+  
+  // Add server external packages configuration
+  serverExternalPackages: [],
   
   // Basic security headers (simplified)
   async headers() {
@@ -30,7 +39,7 @@ const nextConfig = {
           }
         ]
       }
-    ]; // please work!!!
+    ];
   }
 };
 
