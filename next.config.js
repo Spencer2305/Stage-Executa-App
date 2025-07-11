@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Temporarily disable linting to fix build issues
+  // Minimal config for Vercel compatibility
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -8,18 +8,13 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Fix for Vercel deployment - use standalone output
-  output: 'standalone',
+  // Remove output standalone - this might be causing the manifest issue
+  // output: 'standalone',
   
-  // Disable experimental features that cause issues
-  experimental: {
-    // Remove deprecated serverComponentsExternalPackages
-  },
+  // Completely disable experimental features
+  experimental: {},
   
-  // Add server external packages configuration
-  serverExternalPackages: [],
-  
-  // Basic security headers (simplified)
+  // Basic headers only
   async headers() {
     return [
       {
@@ -28,14 +23,6 @@ const nextConfig = {
           {
             key: 'X-Frame-Options',
             value: 'DENY'
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff'
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin'
           }
         ]
       }
