@@ -1,42 +1,64 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Disable problematic features for Netlify
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
+  // Netlify specific settings
+  target: 'server',
+  
+  // Image optimization
+  images: {
+    unoptimized: true,
   },
   
-  // Netlify-friendly settings
-  trailingSlash: false,
+  // Disable telemetry
+  telemetry: {
+    enabled: false,
+  },
   
-  // Minimal webpack config for compatibility
+  // Experimental features
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client'],
+  },
+  
+  // Webpack configuration
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
+        ...config.resolve.fallback,
         fs: false,
         net: false,
         tls: false,
-      };
+        crypto: false,
+      }
     }
-    return config;
+    return config
   },
   
-  // Basic headers only
+  // Environment variables
+  env: {
+    CUSTOM_KEY: 'my-value',
+  },
+  
+  // Headers
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: '/api/:path*',
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY'
-          }
-        ]
-      }
-    ];
-  }
-};
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
+        ],
+      },
+    ]
+  },
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
