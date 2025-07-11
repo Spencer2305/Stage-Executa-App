@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('your-stripe-secret-key')) {
       console.log('⚠️ Stripe not configured - simulating plan upgrade');
       
       // Update user's plan in database directly (for development)

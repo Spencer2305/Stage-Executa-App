@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if OpenAI API key is configured
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('your-openai-api-key')) {
       return NextResponse.json({
         response: 'OpenAI API key not configured. Please add your API key to the .env file.',
         isDemo: true

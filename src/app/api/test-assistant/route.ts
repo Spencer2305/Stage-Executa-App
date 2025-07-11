@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Test 2 passed: Database access');
 
     // Test 3: OpenAI API key
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('your-openai-api-key')) {
       return NextResponse.json({ 
         error: 'OpenAI API key not configured properly',
         details: 'Current key appears to be placeholder'

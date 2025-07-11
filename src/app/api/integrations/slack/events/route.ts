@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ status: 'sent_error' });
         }
 
+        // Check if OpenAI API key is configured
+        if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('your-openai-api-key')) {
           await sendSlackMessage(
             slackConnection.botToken,
             event.channel,
