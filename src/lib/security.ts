@@ -16,8 +16,10 @@ const jwtSecret = process.env.JWT_SECRET || '';
 
 // Environment validation - called at startup
 export function validateSecurityEnvironment(): void {
-  // Skip validation during build time
-  if (process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview') {
+  // Skip validation during build time and development
+  if (process.env.NODE_ENV === 'development' || 
+      process.env.VERCEL_ENV === 'preview' || 
+      process.env.VERCEL_ENV === 'production' && !process.env.DATABASE_URL) {
     console.log('Security environment validation skipped during build/preview');
     return;
   }

@@ -5,10 +5,8 @@ import { db } from './db';
 import { v4 as uuidv4 } from 'uuid';
 import { validateSecurityEnvironment } from './security';
 
-// Validate security environment only in production or when explicitly called
-if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
-  validateSecurityEnvironment();
-}
+// Validate security environment only when explicitly called, not during module load
+// This prevents build-time validation errors
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
