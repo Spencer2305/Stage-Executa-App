@@ -1,12 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Force edge runtime to avoid client reference manifest issues
-  experimental: {
-    runtime: 'nodejs',
-    appDir: true,
-  },
-  
-  // Disable problematic features
+  // Disable problematic features for Netlify
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -14,10 +8,10 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Force static optimization
+  // Netlify-friendly settings
   trailingSlash: false,
   
-  // Minimal webpack config
+  // Minimal webpack config for compatibility
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
