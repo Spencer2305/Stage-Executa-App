@@ -8,8 +8,14 @@ import {
 import OpenAI from 'openai';
 
 // Initialize OpenAI client with better error handling
-const openai = new OpenAI({
-});
+let openai: OpenAI | null = null;
+
+// Only initialize OpenAI client if API key is available
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key') {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 // Development mode flag
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
@@ -904,6 +910,10 @@ export async function uploadFilesToOpenAI(
 
         console.log(`⬆️ Uploading ${file.originalName} to OpenAI (${textBuffer.length} bytes)`);
 
+        if (!openai) {
+          throw new Error('OpenAI client not initialized - API key missing');
+        }
+        
         const openaiFile = await openai.files.create({
           file: fileForUpload,
           purpose: 'assistants'
@@ -977,6 +987,10 @@ export async function addFilesToVectorStore(
 
     // Add files to real vector store
     console.log(`📚 Adding ${openaiFileIds.length} files to vector store ${vectorStoreId}`);
+    
+    if (!openai) {
+      throw new Error('OpenAI client not initialized - API key missing');
+    }
     
     try {
       await (openai.beta as any).vectorStores.fileBatches.create(vectorStoreId, {
