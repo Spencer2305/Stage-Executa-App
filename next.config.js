@@ -8,6 +8,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
+  // Fix for build output issues
+  output: 'standalone',
+  
   // Basic security headers (simplified)
   async headers() {
     return [
