@@ -3,8 +3,15 @@ import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-});
+// Initialize OpenAI client conditionally
+let openai: OpenAI | null = null;
+
+// Only initialize OpenAI client if API key is available
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key') {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 // Complete settings interface matching the UI (removed welcomeMessage)
 interface AssistantSettings {
@@ -325,7 +332,11 @@ export async function PUT(
           console.log('Advanced settings will be applied during chat interactions:', settings.advanced);
         }
         
-        await openai.beta.assistants.update(assistant.openaiAssistantId, openaiUpdateParams);
+        if (!openai) {
+          console.warn('OpenAI client not initialized - skipping assistant update');
+        } else {
+          await openai.beta.assistants.update(assistant.openaiAssistantId, openaiUpdateParams);
+        }
         
         console.log(`OpenAI assistant updated with enhanced instructions`);
       } catch (openaiError) {

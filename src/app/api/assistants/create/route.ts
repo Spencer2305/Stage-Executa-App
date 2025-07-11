@@ -6,8 +6,15 @@ import { listDropboxFiles, downloadDropboxFile } from '@/lib/dropbox';
 import OpenAI from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 
-const openai = new OpenAI({
-});
+// Initialize OpenAI client conditionally
+let openai: OpenAI | null = null;
+
+// Only initialize OpenAI client if API key is available
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key') {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -258,6 +265,10 @@ Your primary job is to be a knowledgeable assistant based on the uploaded docume
             }
           }
 
+          if (!openai) {
+            throw new Error('OpenAI client not initialized - API key missing');
+          }
+          
           const openaiAssistant = await openai.beta.assistants.create(assistantConfig);
 
           console.log(`✅ OpenAI assistant created: ${openaiAssistant.id}`);
@@ -319,6 +330,10 @@ Your primary job is to be a knowledgeable assistant based on the uploaded docume
           }
         };
 
+        if (!openai) {
+          throw new Error('OpenAI client not initialized - API key missing');
+        }
+        
         const openaiAssistant = await openai.beta.assistants.create(basicAssistantConfig);
 
         await db.assistant.update({

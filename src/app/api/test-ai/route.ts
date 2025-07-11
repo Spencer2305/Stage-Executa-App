@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-});
+// Initialize OpenAI client conditionally
+let openai: OpenAI | null = null;
+
+// Only initialize OpenAI client if API key is available
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key') {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +28,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Test basic OpenAI functionality
+    if (!openai) {
+      return NextResponse.json({
+        response: 'OpenAI client not initialized - API key missing',
+        isDemo: true
+      });
+    }
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo",
       messages: [

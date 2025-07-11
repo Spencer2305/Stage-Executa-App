@@ -3,8 +3,15 @@ import { authenticateRequest, getIntegrationContext } from '@/lib/auth';
 import { db } from '@/lib/db';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-});
+// Initialize OpenAI client conditionally
+let openai: OpenAI | null = null;
+
+// Only initialize OpenAI client if API key is available
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key') {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 // Enhanced AI auto-detection function to check if user wants human assistance
 async function detectHumanRequest(message: string, sensitivity: string = 'medium'): Promise<{ isHumanRequest: boolean; confidence: number; reason: string }> {
@@ -69,6 +76,10 @@ Respond with JSON only:
   "reason": "specific explanation of why this was detected as needing human assistance"
 }`;
 
+    if (!openai) {
+      return { isHumanRequest: false, confidence: 0, reason: "OpenAI client not initialized" };
+    }
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "system", content: prompt }],
@@ -309,7 +320,7 @@ async function getConversationHistory(sessionId: string, threadId: string) {
     }
 
     // If we have fewer than 10 messages, try to get from OpenAI thread
-    if (messageCount < 10 && threadId) {
+    if (messageCount < 10 && threadId && openai) {
       try {
         const threadMessages = await openai.beta.threads.messages.list(threadId, { limit: 50 });
         const aiMessages = threadMessages.data.map(msg => ({
@@ -349,6 +360,10 @@ Consider:
 
 Respond with just the numerical score (e.g., -0.7, 0.2, 0.8):`;
 
+    if (!openai) {
+      return 0; // Return neutral sentiment if OpenAI not available
+    }
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "system", content: prompt }],
@@ -681,7 +696,7 @@ async function handleChatMessage(
       // Create or use existing thread
       let currentThreadId = threadId;
       if (!currentThreadId) {
-        const thread = await openai.beta.threads.create();
+        const thread = await openai!.beta.threads.create();
         currentThreadId = thread.id;
         
         // Update conversation with thread ID
@@ -708,6 +723,13 @@ async function handleChatMessage(
       }
 
       // Add user message to thread
+      if (!openai) {
+        return NextResponse.json({ 
+          error: 'OpenAI client not initialized - API key missing',
+          details: 'OpenAI API key not configured properly'
+        }, { status: 500 });
+      }
+      
       await openai.beta.threads.messages.create(currentThreadId, {
         role: "user",
         content: message

@@ -1,13 +1,40 @@
 import AWS from 'aws-sdk';
 import { db } from './db';
 
-// Configure AWS
-AWS.config.update({
-  region: process.env.AWS_REGION || 'us-east-1',
-});
+// Configure AWS conditionally
+let s3: AWS.S3 | null = null;
+let sqs: AWS.SQS | null = null;
 
-const s3 = new AWS.S3();
-const sqs = new AWS.SQS();
+// Only initialize AWS services if credentials are available
+if (process.env.AWS_ACCESS_KEY_ID && 
+    process.env.AWS_SECRET_ACCESS_KEY && 
+    process.env.AWS_ACCESS_KEY_ID !== 'your-aws-access-key-id') {
+  
+  AWS.config.update({
+    region: process.env.AWS_REGION || 'us-east-1',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  });
+  
+  s3 = new AWS.S3();
+  sqs = new AWS.SQS();
+}
+
+// Helper function to get S3 with error handling
+function getS3(): AWS.S3 {
+  if (!s3) {
+    throw new Error('AWS S3 not initialized - AWS credentials not configured');
+  }
+  return s3;
+}
+
+// Helper function to get SQS with error handling
+function getSQS(): AWS.SQS {
+  if (!sqs) {
+    throw new Error('AWS SQS not initialized - AWS credentials not configured');
+  }
+  return sqs;
+}
 
 // Constants for Executa App resources
 const EXECUTA_APP_PREFIX = 'executa-app';
@@ -47,7 +74,7 @@ export async function createAccountBucket(accountId: string): Promise<string> {
   try {
     // Check if bucket already exists
     try {
-      await s3.headBucket({ Bucket: bucketName }).promise();
+      await getS3().headBucket({ Bucket: bucketName }).promise();
       console.log(`Bucket ${bucketName} already exists`);
       return bucketName;
     } catch (error) {
@@ -62,12 +89,12 @@ export async function createAccountBucket(accountId: string): Promise<string> {
       } : undefined
     };
 
-    await s3.createBucket(createParams).promise();
+    await getS3().createBucket(createParams).promise();
     console.log(`✅ Bucket created: ${bucketName}`);
 
     // Enable server-side encryption (simplest approach)
     try {
-      await s3.putBucketEncryption({
+      await getS3().putBucketEncryption({
         Bucket: bucketName,
         ServerSideEncryptionConfiguration: {
           Rules: [
@@ -86,7 +113,7 @@ export async function createAccountBucket(accountId: string): Promise<string> {
 
     // Add basic tags (optional, non-critical)
     try {
-      await s3.putBucketTagging({
+      await getS3().putBucketTagging({
         Bucket: bucketName,
         Tagging: {
           TagSet: [
@@ -147,7 +174,7 @@ export async function uploadFileToAccountBucket(
       ServerSideEncryption: 'AES256'
     };
 
-    await s3.upload(uploadParams).promise();
+    await getS3().upload(uploadParams).promise();
 
     return {
       s3Key,
@@ -172,7 +199,7 @@ export async function getPresignedDownloadUrl(
       Expires: expiresIn
     };
 
-    return s3.getSignedUrl('getObject', params);
+    return getS3().getSignedUrl('getObject', params);
   } catch (error) {
     console.error('Error generating presigned URL:', error);
     throw new Error(`Failed to generate download URL: ${error}`);
@@ -182,7 +209,7 @@ export async function getPresignedDownloadUrl(
 // Delete file from S3
 export async function deleteFileFromS3(bucketName: string, s3Key: string): Promise<void> {
   try {
-    await s3.deleteObject({
+    await getS3().deleteObject({
       Bucket: bucketName,
       Key: s3Key
     }).promise();
@@ -213,7 +240,7 @@ export async function createProcessingQueue(accountId: string): Promise<string> 
       }
     };
 
-    const result = await sqs.createQueue(createParams).promise();
+    const result = await getSQS().createQueue(createParams).promise();
     return result.QueueUrl!;
   } catch (error) {
     console.error(`Error creating SQS queue for account ${accountId}:`, error);
@@ -248,7 +275,7 @@ export async function sendFileProcessingMessage(
       }
     };
 
-    await sqs.sendMessage(params).promise();
+    await getSQS().sendMessage(params).promise();
   } catch (error) {
     console.error('Error sending processing message:', error);
     throw new Error(`Failed to send processing message: ${error}`);

@@ -3,8 +3,15 @@ import { db } from '@/lib/db';
 import { verifySlackSignature, sendSlackMessage } from '@/lib/slack';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-});
+// Initialize OpenAI client conditionally
+let openai: OpenAI | null = null;
+
+// Only initialize OpenAI client if API key is available
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key') {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -97,6 +104,16 @@ export async function POST(request: NextRequest) {
         }
 
         try {
+          if (!openai) {
+            await sendSlackMessage(
+              slackConnection.botToken,
+              event.channel,
+              "I need an OpenAI API key to be configured to provide intelligent responses. Please contact the administrator.",
+              event.thread_ts
+            );
+            return NextResponse.json({ status: 'sent_error' });
+          }
+          
           // Clean the message text (remove bot mentions)
           let messageText = event.text;
           if (event.channel_type !== 'im') {

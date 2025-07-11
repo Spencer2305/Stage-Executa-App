@@ -5,7 +5,7 @@ let stripe: Stripe | null = null;
 
 export function getStripe(): Stripe {
   if (!stripe) {
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'your-stripe-secret-key') {
       throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
     }
     

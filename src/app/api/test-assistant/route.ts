@@ -3,8 +3,15 @@ import { authenticateRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-});
+// Initialize OpenAI client conditionally
+let openai: OpenAI | null = null;
+
+// Only initialize OpenAI client if API key is available
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key') {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,6 +61,13 @@ export async function POST(request: NextRequest) {
     console.log('✅ Test 4 passed: Database write');
 
     // Test 5: Basic OpenAI API call
+    if (!openai) {
+      return NextResponse.json({ 
+        error: 'OpenAI client not initialized - API key missing',
+        details: 'OpenAI API key not configured properly'
+      }, { status: 500 });
+    }
+    
     try {
       const completion = await openai.chat.completions.create({
         model: "gpt-4-turbo",
