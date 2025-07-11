@@ -921,6 +921,12 @@ Always be helpful and professional, and make it clear what capabilities are avai
             }
           });
         }
+        
+        // If we get here, the run completed but no valid response was found
+        return NextResponse.json({ 
+          error: 'No valid response from assistant',
+          details: 'Run completed but no assistant message found'
+        }, { status: 500 });
       } else {
         console.error('OpenAI run failed:', run.status, run.last_error);
         
@@ -964,10 +970,6 @@ Always be helpful and professional, and make it clear what capabilities are avai
         details: process.env.NODE_ENV === 'development' ? openaiError.message : undefined
       }, { status: 500 });
     }
-
-    return NextResponse.json({ error: 'Unexpected error occurred' }, { status: 500 });
-  }
-
   } catch (error) {
     console.error('Chat endpoint error:', error);
     return NextResponse.json({ 
