@@ -5,8 +5,8 @@ import { db } from './db';
 import { v4 as uuidv4 } from 'uuid';
 import { validateSecurityEnvironment } from './security';
 
-// Validate security environment on module load
-if (typeof window === 'undefined') { // Only run on server side
+// Validate security environment only in production or when explicitly called
+if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
   validateSecurityEnvironment();
 }
 

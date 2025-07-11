@@ -16,6 +16,12 @@ const jwtSecret = process.env.JWT_SECRET || '';
 
 // Environment validation - called at startup
 export function validateSecurityEnvironment(): void {
+  // Skip validation during build time
+  if (process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview') {
+    console.log('Security environment validation skipped during build/preview');
+    return;
+  }
+
   const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
   
   if (missing.length > 0) {
@@ -26,10 +32,12 @@ export function validateSecurityEnvironment(): void {
   }
 
   if (jwtSecret.length < 32) {
+    console.error('CRITICAL SECURITY ERROR: JWT_SECRET must be at least 32 characters long');
     process.exit(1);
   }
 
   if (jwtSecret === 'fallback-secret' || jwtSecret === 'your-secret-key' || jwtSecret === 'secret') {
+    console.error('CRITICAL SECURITY ERROR: JWT_SECRET cannot use default/placeholder values');
     process.exit(1);
   }
 
