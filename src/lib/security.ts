@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from './auth';
 import crypto from 'crypto';
 
+// List of required environment variables for security and app operation
+const requiredEnvVars = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+  'OPENAI_API_KEY',
+  'STRIPE_SECRET_KEY',
+  // Add any other critical env vars here
+];
+
+// JWT secret for security checks
+const jwtSecret = process.env.JWT_SECRET || '';
+
 // Environment validation - called at startup
 export function validateSecurityEnvironment(): void {
   const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
