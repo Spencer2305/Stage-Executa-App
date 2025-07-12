@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Netlify compatibility
-  output: 'standalone',
-  
   // Disable problematic features for Netlify
   eslint: {
     ignoreDuringBuilds: true,
