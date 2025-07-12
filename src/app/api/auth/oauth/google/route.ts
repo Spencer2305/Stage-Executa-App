@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const redirectTo = searchParams.get('redirectTo') || '/dashboard';
     
     // Google OAuth configuration
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri = `${process.env.NEXTAUTH_URL}/api/auth/oauth/google/callback`;
     
     if (!clientId) {

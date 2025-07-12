@@ -33,6 +33,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange code for token
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    
+    if (!clientId || !clientSecret) {
+      console.error('❌ Google OAuth not configured');
+      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/login?error=oauth_not_configured`);
+    }
+    
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -40,6 +48,8 @@ export async function GET(request: NextRequest) {
       },
       body: new URLSearchParams({
         code,
+        client_id: clientId,
+        client_secret: clientSecret,
         grant_type: 'authorization_code',
         redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/oauth/google/callback`,
       }),
