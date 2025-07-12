@@ -17,6 +17,11 @@ const nextConfig = {
     unoptimized: true,
   },
   
+  // Experimental features that might help with Netlify
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client'],
+  },
+  
   // Minimal webpack config for compatibility
   webpack: (config, { isServer }) => {
     if (!isServer) {
