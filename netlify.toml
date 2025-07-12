@@ -1,44 +1,16 @@
 [build]
-  command = "npm run build"
+  command = "npm run build:netlify"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
   NPM_VERSION = "10"
-  # Disable Next.js telemetry
   NEXT_TELEMETRY_DISABLED = "1"
-  # Ensure proper build mode
   NODE_ENV = "production"
-  # Force Next.js to use the correct output
-  NEXT_SHARP_PATH = ""
-  # Skip database connection during build
   SKIP_ENV_VALIDATION = "true"
-  # Force deployment update
-  NETLIFY_DEPLOY_TIMESTAMP = "2024-07-12-21-00"
+  NETLIFY_DEPLOY_TIMESTAMP = "2024-07-12-21-30"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[functions]
-  node_bundler = "esbuild"
-
-# Redirect all API routes to Next.js
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/___netlify-handler"
-  status = 200
-
-# Redirect all other routes to Next.js
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/___netlify-handler"
-  status = 200
-
-# Headers for API routes
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin" 
+# Let the plugin handle redirects automatically 
