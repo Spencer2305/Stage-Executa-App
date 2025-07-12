@@ -1,33 +1,9 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter, Kanit, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import AuthProvider from "@/components/providers/AuthProvider";
 import { Toaster } from "sonner";
 import { NotificationProvider, NotificationContainer } from "@/components/ui/notification";
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600", "700", "800"],
-});
-
-const inter = Inter({
-  variable: "--font-body", 
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const kanit = Kanit({
-  variable: "--font-kanit",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "Executa - Build AI Chatbots from Your Knowledge Base",
@@ -80,9 +56,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${jetbrainsMono.variable} ${plusJakartaSans.variable} ${inter.variable} ${kanit.variable} antialiased`}
-      >
+      <body className="font-sans antialiased">
         <AuthProvider>
           <NotificationProvider>
             {children}
