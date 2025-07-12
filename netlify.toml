@@ -16,6 +16,9 @@
   # Force deployment update
   NETLIFY_DEPLOY_TIMESTAMP = "2024-07-12-20-15"
 
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 [functions]
   node_bundler = "esbuild"
 
