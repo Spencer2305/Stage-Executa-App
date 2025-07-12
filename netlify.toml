@@ -11,6 +11,8 @@
   NODE_ENV = "production"
   # Force Next.js to use the correct output
   NEXT_SHARP_PATH = ""
+  # Force Netlify to detect changes
+  NETLIFY_DEPLOY_TIMESTAMP = "2024-07-12-19-30"
 
 [functions]
   node_bundler = "esbuild"
