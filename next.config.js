@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Netlify compatibility
+  output: 'standalone',
+  
   // Disable problematic features for Netlify
   eslint: {
     ignoreDuringBuilds: true,
@@ -10,6 +13,12 @@ const nextConfig = {
   
   // Netlify-friendly settings
   trailingSlash: false,
+  poweredByHeader: false,
+  
+  // Image optimization - disable for Netlify
+  images: {
+    unoptimized: true,
+  },
   
   // Minimal webpack config for compatibility
   webpack: (config, { isServer }) => {
@@ -23,7 +32,7 @@ const nextConfig = {
     return config;
   },
   
-  // Basic headers only
+  // Basic security headers
   async headers() {
     return [
       {
@@ -32,6 +41,10 @@ const nextConfig = {
           {
             key: 'X-Frame-Options',
             value: 'DENY'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
           }
         ]
       }

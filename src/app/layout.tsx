@@ -1,32 +1,18 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter, Kanit, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import AuthProvider from "@/components/providers/AuthProvider";
 import { Toaster } from "sonner";
 import { NotificationProvider, NotificationContainer } from "@/components/ui/notification";
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600", "700", "800"],
-});
-
+// Use only Inter font for better build reliability
 const inter = Inter({
-  variable: "--font-body", 
   subsets: ["latin"],
+  variable: "--font-inter",
   weight: ["300", "400", "500", "600", "700"],
-});
-
-const kanit = Kanit({
-  variable: "--font-kanit",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  display: 'swap',
+  fallback: ['system-ui', 'arial'],
 });
 
 export const metadata: Metadata = {
@@ -81,7 +67,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${jetbrainsMono.variable} ${plusJakartaSans.variable} ${inter.variable} ${kanit.variable} antialiased`}
+        className={`${inter.variable} font-sans antialiased`}
       >
         <AuthProvider>
           <NotificationProvider>

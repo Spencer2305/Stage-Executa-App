@@ -5,6 +5,10 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_VERSION = "10"
+  # Disable Next.js telemetry
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Ensure proper build mode
+  NODE_ENV = "production"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
@@ -12,11 +16,13 @@
 [functions]
   node_bundler = "esbuild"
 
+# API routes redirect
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/___netlify-handler"
   status = 200
 
+# Fallback for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
