@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build:netlify"
+  command = "npm run build"
   publish = ".next"
 
 [build.environment]
@@ -8,9 +8,10 @@
   NEXT_TELEMETRY_DISABLED = "1"
   NODE_ENV = "production"
   SKIP_ENV_VALIDATION = "true"
-  NETLIFY_DEPLOY_TIMESTAMP = "2024-07-12-21-30"
+  NETLIFY_DEPLOY_TIMESTAMP = "2024-07-12-22-00"
+  # Force Next.js to use the correct output
+  NEXT_SHARP_PATH = ""
+  # Ensure proper build mode
+  NEXT_PUBLIC_VERCEL_URL = ""
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-
-# Let the plugin handle redirects automatically 
+# Plugin will be configured through Netlify UI 
