@@ -16,6 +16,8 @@
   NEXT_SHARP_PATH = ""
   # Netlify plugin configuration
   NEXT_PRIVATE_TARGET = "server"
+  # Force deployment update
+  NETLIFY_DEPLOY_TIMESTAMP = "2024-07-12-19-45"
 
 [functions]
   node_bundler = "esbuild"
