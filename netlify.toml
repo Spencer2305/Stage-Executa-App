@@ -6,7 +6,19 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+  # Disable Next.js telemetry
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Ensure proper build mode
+  NODE_ENV = "production"
+  # Force Next.js to use the correct output
+  NEXT_SHARP_PATH = ""
+  # Netlify plugin configuration
   NEXT_PRIVATE_TARGET = "server"
+
+[functions]
+  node_bundler = "esbuild"
 
 # Redirect all API routes to Next.js
 [[redirects]]
