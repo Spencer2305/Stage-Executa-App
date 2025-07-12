@@ -9,9 +9,8 @@
   NEXT_TELEMETRY_DISABLED = "1"
   # Ensure proper build mode
   NODE_ENV = "production"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+  # Force Next.js to use the correct output
+  NEXT_SHARP_PATH = ""
 
 [functions]
   node_bundler = "esbuild"
