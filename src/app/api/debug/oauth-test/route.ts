@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     let redirectUri: string;
     
     if (provider === 'google') {
+      clientId = process.env.GOOGLE_CLIENT_ID;
       redirectUri = `${baseUrl}/api/auth/oauth/google/callback`;
       authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       authUrl.searchParams.set('client_id', clientId || '');
