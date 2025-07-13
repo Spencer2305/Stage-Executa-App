@@ -18,12 +18,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        'heading': ['var(--font-heading)', 'Plus Jakarta Sans', 'sans-serif'],
-        'body': ['var(--font-body)', 'Inter', 'sans-serif'],
-        'sans': ['var(--font-body)', 'Inter', 'sans-serif'], // Set Inter as default sans font
-        // Keep legacy fonts for backward compatibility
-        'kanit': ['var(--font-kanit)', 'Kanit', 'sans-serif'],
-        'heebo': ['Heebo', 'sans-serif'],
+        'sans': ['var(--font-inter)', 'Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        'mono': ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
       },
       colors: {
         // Brand colors using #6400fe as the primary accent

@@ -73,17 +73,17 @@ html {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-sans;
   }
   
-  /* H1 uses Kanit font in uppercase */
+  /* All headings use system fonts and are semi-bold */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-semibold;
+  }
+  
+  /* H1 uses uppercase styling */
   h1 {
-    @apply font-kanit uppercase;
-  }
-  
-  /* Other headings use Plus Jakarta Sans */
-  h2, h3, h4, h5, h6 {
-    @apply font-heading;
+    @apply uppercase;
   }
 
   .brand-hover:hover {
@@ -110,8 +110,6 @@ html {
   .bg-brand-700 {
     color: white;
   }
-
-
 
   .btn-brand {
     @apply bg-brand-600 hover:bg-brand-700 focus:ring-brand-600 text-white;
